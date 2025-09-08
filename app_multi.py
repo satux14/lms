@@ -690,7 +690,7 @@ def admin_payments(instance_name):
     if loan_filter:
         query = query.filter(Loan.loan_name.contains(loan_filter))
     if status_filter:
-        query = query.filter(Payment.payment_status == status_filter)
+        query = query.filter(Payment.status == status_filter)
     if payment_method:
         query = query.filter(Payment.payment_method == payment_method)
     
@@ -792,7 +792,7 @@ def admin_add_payment(instance_name, loan_id=None):
             payment_method=payment_method,
             transaction_id=transaction_id,
             payment_date=payment_date,
-            payment_status='pending'  # All payments start as pending
+            status='pending'  # All payments start as pending
         )
         db.session.add(payment)
         db.session.commit()
@@ -921,7 +921,7 @@ def admin_edit_payment(instance_name, payment_id):
         payment.amount = Decimal(request.form['amount'])
         payment.payment_method = request.form['payment_method']
         payment.transaction_id = request.form.get('transaction_id', '')
-        payment.payment_status = request.form['payment_status']
+        payment.status = request.form['payment_status']
         
         # Parse payment date
         payment_date_str = request.form.get('payment_date')
@@ -1031,13 +1031,13 @@ def customer_dashboard(instance_name):
         accumulated_interest = calculate_accumulated_interest(loan)
         
         # Calculate pending payments for this specific loan
-        pending_payments = Payment.query.filter_by(loan_id=loan.id, payment_status='pending').all()
+        pending_payments = Payment.query.filter_by(loan_id=loan.id, status='pending').all()
         pending_principal = sum(payment.principal_amount for payment in pending_payments)
         pending_interest = sum(payment.interest_amount for payment in pending_payments)
         pending_total = sum(payment.amount for payment in pending_payments)
         
         # Calculate verified payments for this specific loan
-        verified_payments = Payment.query.filter_by(loan_id=loan.id, payment_status='verified').all()
+        verified_payments = Payment.query.filter_by(loan_id=loan.id, status='verified').all()
         verified_principal = sum(payment.principal_amount for payment in verified_payments)
         verified_interest = sum(payment.interest_amount for payment in verified_payments)
         
@@ -1136,7 +1136,7 @@ def customer_make_payment(instance_name, loan_id):
             payment_method=payment_method,
             transaction_id=transaction_id,
             payment_date=payment_date,
-            payment_status='pending'  # All payments start as pending
+            status='pending'  # All payments start as pending
         )
         db.session.add(payment)
         db.session.commit()
