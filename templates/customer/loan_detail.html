@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}Loan Details - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>{{ loan.loan_name }} Details
+                </h1>
+                <a href="{{ url_for('customer_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Loan Information -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Loan Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Loan ID</h6>
+                            <h5>#{{ loan.id }}</h5>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Status</h6>
+                            <span class="badge bg-success fs-6">Active</span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Original Principal</h6>
+                            <h5 class="text-primary">₹{{ "%.2f"|format(loan.principal_amount) }}</h5>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Remaining Balance</h6>
+                            <h5 class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</h5>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Amount Paid</h6>
+                            <h5 class="text-success">₹{{ "%.2f"|format(loan.principal_amount - loan.remaining_principal) }}</h5>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Total Interest Paid</h6>
+                            <h5 class="text-info">₹{{ "%.2f"|format(total_interest_paid) }}</h5>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Payment Frequency</h6>
+                            <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }} fs-6">
+                                {{ loan.payment_frequency.title() }}
+                            </span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Loan Type</h6>
+                            <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }} fs-6">
+                                {{ 'Regular Loan' if loan.loan_type == 'regular' else 'Interest-Only Loan' }}
+                            </span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Created Date</h6>
+                            <p>{{ loan.created_at.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Days Active</h6>
+                            <p>{{ days_active }} days</p>
+                        </div>
+                    </div>
+
+
+                    <!-- Financial Summary -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="text-muted mb-3">Financial Summary</h6>
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Verified Paid</h6>
+                                            <h4 class="text-primary">₹{{ "%.2f"|format(verified_principal + total_interest_paid) }}</h4>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Principal Paid</h6>
+                                            <h5 class="text-success">₹{{ "%.2f"|format(verified_principal) }}</h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Interest Paid</h6>
+                                            <h5 class="text-info">₹{{ "%.2f"|format(total_interest_paid) }}</h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Remaining</h6>
+                                            <h5 class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</h5>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if pending_total > 0 %}
+                                    <hr>
+                                    <div class="row text-center">
+                                        <div class="col-12">
+                                            <h6 class="text-muted">Pending Verification</h6>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Total Pending</h6>
+                                            <h5 class="text-warning">₹{{ "%.2f"|format(pending_total) }}</h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Principal Pending</h6>
+                                            <h5 class="text-warning">₹{{ "%.2f"|format(pending_principal) }}</h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">Interest Pending</h6>
+                                            <h5 class="text-warning">₹{{ "%.2f"|format(pending_interest) }}</h5>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <h6 class="text-muted">After Verification</h6>
+                                            <h5 class="text-success">₹{{ "%.2f"|format(loan.remaining_principal - pending_principal) }}</h5>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-info mt-2">
+                                        <small>
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Pending payments will reduce your balance once verified by admin.
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mt-4">
+                        <h6 class="text-muted">Payment Progress</h6>
+                        {% set progress = ((loan.principal_amount - loan.remaining_principal) / loan.principal_amount * 100) %}
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar bg-success" 
+                                 role="progressbar" 
+                                 style="width: {{ progress }}%"
+                                 aria-valuenow="{{ progress }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ "%.1f"|format(progress) }}% Paid
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">₹{{ "%.2f"|format(loan.remaining_principal) }} remaining</small>
+                            <small class="text-muted">₹{{ "%.2f"|format(loan.principal_amount - loan.remaining_principal) }} paid</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Payment History
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Interest</th>
+                                            <th>Principal</th>
+                                            <th>Method</th>
+                                            <th>Transaction ID</th>
+                                            <th>Status</th>
+                                            <th>Proof</th>
+                                        </tr>
+                                    </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
+                                    <td>₹{{ "%.2f"|format(payment.interest_amount) }}</td>
+                                    <td>₹{{ "%.2f"|format(payment.principal_amount) }}</td>
+                                    <td>
+                                        {% if payment.payment_method %}
+                                            <span class="badge bg-info">
+                                                {{ payment.payment_method.replace('_', ' ').title() }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if payment.transaction_id %}
+                                            <small class="text-muted">{{ payment.transaction_id[:10] }}...</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if payment.status == 'verified' else 'warning' if payment.status == 'pending' else 'danger' }}">
+                                            {{ payment.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if payment.proof_filename %}
+                                            <a href="{{ url_for('uploaded_file', filename=payment.proof_filename) }}" 
+                                               target="_blank" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Payments Yet</h5>
+                        <p class="text-muted">Make your first payment to see the history here.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Customer Notes -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sticky-note me-2"></i>Loan Notes
+                    </h5>
+                    <button class="btn btn-sm btn-outline-info" onclick="toggleNotesEdit()">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="notesDisplay">
+                        {% if loan.customer_notes %}
+                            <p class="mb-0 text-muted">{{ loan.customer_notes }}</p>
+                        {% else %}
+                            <p class="mb-0 text-muted fst-italic">No notes added yet. Click Edit to add notes.</p>
+                        {% endif %}
+                    </div>
+                    <div id="notesEdit" style="display: none;">
+                        <form method="POST" action="{{ url_for('customer_edit_notes', loan_id=loan.id) }}">
+                            <textarea class="form-control" 
+                                      name="customer_notes" 
+                                      rows="3" 
+                                      placeholder="Add your notes about this loan...">{{ loan.customer_notes or '' }}</textarea>
+                            <div class="mt-2">
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleNotesEdit()">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Interest Calculator -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Interest Calculator
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <h6 class="text-muted">Daily Interest</h6>
+                            <h4 class="text-success">₹{{ "%.2f"|format(daily_interest) }}</h4>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-muted">Monthly Interest</h6>
+                            <h4 class="text-warning">₹{{ "%.2f"|format(monthly_interest) }}</h4>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Accumulated Interest</h6>
+                        <h3 class="text-danger">
+                            ₹{{ "%.2f"|format(accumulated_interest) }}
+                        </h3>
+                        <small class="text-muted">Total interest from loan creation</small>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Recommended Payment</h6>
+                        <h3 class="text-primary">
+                            ₹{{ "%.2f"|format(daily_interest if loan.payment_frequency == 'daily' else monthly_interest) }}
+                        </h3>
+                        <small class="text-muted">per {{ loan.payment_frequency }}</small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>Interest is calculated daily and added to your balance if not paid.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Make Payment -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>Make Payment
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('customer_make_payment', loan_id=loan.id) }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Payment Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="amount" 
+                                       name="amount" 
+                                       step="0.01" 
+                                       min="0.01" 
+                                       {% if loan.loan_type == 'interest_only' %}
+                                       {% if accumulated_interest > 0 %}
+                                       max="{{ accumulated_interest }}"
+                                       {% else %}
+                                       max="0.01"
+                                       disabled
+                                       {% endif %}
+                                       {% else %}
+                                       max="{{ loan.remaining_principal }}"
+                                       {% endif %}
+                                       required>
+                            </div>
+                            <div class="form-text">
+                                {% if loan.loan_type == 'interest_only' %}
+                                    {% if accumulated_interest > 0 %}
+                                        <strong>Interest-Only Loan:</strong> You can only pay interest (₹{{ "%.2f"|format(accumulated_interest) }} accumulated)
+                                    {% else %}
+                                        <strong>Interest-Only Loan:</strong> No interest pending. All interest has been paid.
+                                    {% endif %}
+                                {% else %}
+                                    Maximum: ₹{{ "%.2f"|format(loan.remaining_principal) }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_method" class="form-label">Payment Method</label>
+                            <select class="form-select" id="payment_method" name="payment_method" required>
+                                <option value="">Select payment method...</option>
+                                <option value="gpay">Google Pay (GPay)</option>
+                                <option value="upi">UPI</option>
+                                <option value="phonepay">PhonePe</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="cash">Cash</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="transaction_id" class="form-label">Transaction ID / UPI Reference</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="transaction_id" 
+                                   name="transaction_id" 
+                                   placeholder="e.g., UPI123456789 or TXN987654321">
+                            <div class="form-text">
+                                Enter your UPI transaction ID or bank reference number
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="proof_file" class="form-label">Payment Proof (Optional)</label>
+                            <input type="file"
+                                   class="form-control"
+                                   id="proof_file"
+                                   name="proof_file"
+                                   accept=".jpg,.jpeg,.png,.gif,.pdf">
+                            <div class="form-text">
+                                Upload screenshot of payment confirmation (JPEG, PNG, GIF, PDF - Max 16MB)
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_date" class="form-label">Payment Date & Time (Optional)</label>
+                            <input type="datetime-local"
+                                   class="form-control"
+                                   id="payment_date"
+                                   name="payment_date">
+                            <div class="form-text">
+                                Leave empty to use current date/time, or select when payment was actually made
+                            </div>
+                        </div>
+
+
+                        <div class="d-grid">
+                            {% if loan.loan_type == 'interest_only' and accumulated_interest <= 0 %}
+                                <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                    <i class="fas fa-check me-2"></i>No Payment Required
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-credit-card me-2"></i>Make Payment
+                                </button>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            {% if loan.loan_type == 'interest_only' %}
+                                <strong>Interest-Only Loan:</strong> You can only pay interest. Principal amount remains fixed until loan closure.
+                            {% else %}
+                                Payments above the interest amount will reduce your principal balance.
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Tips -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Payment Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>Pay daily</strong> to minimize interest
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>Pay more than interest</strong> to reduce principal
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>Set reminders</strong> for regular payments
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <strong>Track progress</strong> to stay motivated
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set current date/time as default for payment date
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    
+    const dateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+    document.getElementById('payment_date').value = dateTimeString;
+});
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const maxAmount = {{ loan.remaining_principal }};
+    
+    if (amount > maxAmount) {
+        e.preventDefault();
+        alert('Payment amount cannot exceed the remaining balance of ₹' + maxAmount.toFixed(2));
+        return;
+    }
+    
+    if (amount <= 0) {
+        e.preventDefault();
+        alert('Payment amount must be greater than ₹0');
+        return;
+    }
+    
+    // Confirmation
+    if (!confirm('Make payment of ₹' + amount.toFixed(2) + '?')) {
+        e.preventDefault();
+    }
+});
+
+// Auto-refresh interest calculations
+setInterval(function() {
+    // This would typically make an API call to refresh interest calculations
+    console.log('Refreshing interest calculations...');
+}, 30000); // Refresh every 30 seconds
+
+// Toggle notes edit mode
+function toggleNotesEdit() {
+    const display = document.getElementById('notesDisplay');
+    const edit = document.getElementById('notesEdit');
+    
+    if (display.style.display === 'none') {
+        display.style.display = 'block';
+        edit.style.display = 'none';
+    } else {
+        display.style.display = 'none';
+        edit.style.display = 'block';
+    }
+}
+</script>
+{% endblock %}

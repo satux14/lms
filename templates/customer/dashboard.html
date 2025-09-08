@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}My Dashboard - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-tachometer-alt me-2"></i>My Dashboard
+                </h1>
+                <div class="text-muted">
+                    Welcome back, <strong>{{ current_user.username }}</strong>!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if loan_data %}
+    <!-- Loan Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ loan_data|length }}</h5>
+                    <p class="card-text">Active Loans</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        ₹{{ "%.2f"|format(loan_data|sum(attribute='loan.remaining_principal')) }}
+                    </h5>
+                    <p class="card-text">Outstanding Balance</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        ₹{{ "%.2f"|format(loan_data|sum(attribute='daily_interest')) }}
+                    </h5>
+                    <p class="card-text">Daily Interest</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">
+                        ₹{{ "%.2f"|format(loan_data|sum(attribute='monthly_interest')) }}
+                    </h5>
+                    <p class="card-text">Monthly Interest</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Loans -->
+    <div class="row">
+        {% for data in loan_data %}
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>{{ data.loan.loan_name }}
+                    </h5>
+                    <span class="badge bg-{{ 'success' if data.loan.payment_frequency == 'daily' else 'warning' }}">
+                        {{ data.loan.payment_frequency.title() }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <!-- Principal Information -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <h6 class="text-muted">Original Principal</h6>
+                            <h5 class="text-primary">₹{{ "%.2f"|format(data.loan.principal_amount) }}</h5>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-muted">Remaining Balance</h6>
+                            <h5 class="text-warning">₹{{ "%.2f"|format(data.loan.remaining_principal) }}</h5>
+                        </div>
+                    </div>
+
+                    <!-- Interest Information -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <h6 class="text-muted">Daily Interest</h6>
+                            <h5 class="text-success">₹{{ "%.2f"|format(data.daily_interest) }}</h5>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-muted">Monthly Interest</h6>
+                            <h5 class="text-info">₹{{ "%.2f"|format(data.monthly_interest) }}</h5>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-3">
+                        {% set progress = ((data.loan.principal_amount - data.loan.remaining_principal) / data.loan.principal_amount * 100) %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="text-muted mb-0">Payment Progress</h6>
+                            <h6 class="text-success mb-0">{{ "%.1f"|format(progress) }}%</h6>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" 
+                                 role="progressbar" 
+                                 style="width: {{ progress }}%"
+                                 aria-valuenow="{{ progress }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ "%.1f"|format(progress) }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Payments -->
+                    {% if data.pending_total > 0 %}
+                    <div class="alert alert-warning mb-3">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-clock me-1"></i>Pending Payments
+                        </h6>
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted">Total</small><br>
+                                <strong>₹{{ "%.2f"|format(data.pending_total) }}</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Principal</small><br>
+                                <strong>₹{{ "%.2f"|format(data.pending_principal) }}</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Interest</small><br>
+                                <strong>₹{{ "%.2f"|format(data.pending_interest) }}</strong>
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            These payments are awaiting admin verification. Your balance will be reduced once confirmed.
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <!-- Actions -->
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('customer_loan_detail', loan_id=data.loan.id) }}" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small>
+                        <i class="fas fa-calendar me-1"></i>
+                        Created: {{ data.loan.created_at.strftime('%Y-%m-%d') }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Payment Tips -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>Payment Tips
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-calendar-day fa-3x text-success"></i>
+                            </div>
+                            <h6>Pay Daily</h6>
+                            <p class="text-muted">Make daily payments to minimize interest accumulation and reduce your principal faster.</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-plus-circle fa-3x text-warning"></i>
+                            </div>
+                            <h6>Pay More Than Interest</h6>
+                            <p class="text-muted">When you pay more than the daily/monthly interest, the excess reduces your principal balance.</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-chart-line fa-3x text-info"></i>
+                            </div>
+                            <h6>Track Your Progress</h6>
+                            <p class="text-muted">Monitor your payment history and see how your principal balance decreases over time.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- No Loans -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-4"></i>
+                    <h3 class="text-muted">No Active Loans</h3>
+                    <p class="text-muted mb-4">
+                        You don't have any active loans at the moment. Contact an administrator to create a new loan.
+                    </p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Need a loan?</strong> Contact your administrator to set up a new loan with flexible payment options.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh interest calculations every minute
+setInterval(function() {
+    // This would typically make an API call to refresh interest calculations
+    console.log('Refreshing interest calculations...');
+}, 60000);
+
+// Add payment amount suggestions
+document.querySelectorAll('input[name="amount"]').forEach(function(input) {
+    const form = input.closest('form');
+    const suggestedAmount = form.querySelector('.form-text').textContent.match(/\$([\d.]+)/);
+    
+    if (suggestedAmount) {
+        input.addEventListener('focus', function() {
+            if (!this.value) {
+                this.value = suggestedAmount[1];
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

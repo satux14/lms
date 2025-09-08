@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Create User - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_interest_rate') }}">
+                            <i class="fas fa-percentage me-2"></i>Interest Rates
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus me-2"></i>Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card me-2"></i>All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>Users
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-user-plus me-2"></i>Create New User
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Users
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-plus me-2"></i>User Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="username" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Username
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="username" 
+                                               name="username" 
+                                               placeholder="e.g., john_doe"
+                                               required>
+                                        <div class="form-text">Choose a unique username for login</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">
+                                            <i class="fas fa-envelope me-1"></i>Email Address (Optional)
+                                        </label>
+                                        <input type="email" 
+                                               class="form-control" 
+                                               id="email" 
+                                               name="email" 
+                                               placeholder="e.g., john@example.com">
+                                        <div class="form-text">Optional: Enter a valid email address</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="password" class="form-label">
+                                            <i class="fas fa-lock me-1"></i>Password
+                                        </label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="password" 
+                                               name="password" 
+                                               placeholder="Enter secure password"
+                                               required>
+                                        <div class="form-text">Enter a secure password</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="confirm_password" class="form-label">
+                                            <i class="fas fa-lock me-1"></i>Confirm Password
+                                        </label>
+                                        <input type="password" 
+                                               class="form-control" 
+                                               id="confirm_password" 
+                                               name="confirm_password" 
+                                               placeholder="Confirm password"
+                                               required>
+                                        <div class="form-text">Re-enter the password</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-shield-alt me-1"></i>User Role
+                                        </label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="is_admin" 
+                                                   name="is_admin">
+                                            <label class="form-check-label" for="is_admin">
+                                                <strong>Admin User</strong>
+                                                <small class="text-muted d-block">
+                                                    Admin users can manage loans, interest rates, and other users
+                                                </small>
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" 
+                                                   type="radio" 
+                                                   id="customer_role" 
+                                                   name="role_type" 
+                                                   value="customer" 
+                                                   checked>
+                                            <label class="form-check-label" for="customer_role">
+                                                <strong>Customer User</strong>
+                                                <small class="text-muted d-block">
+                                                    Customer users can view their loans and make payments
+                                                </small>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>User Roles:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li><strong>Admin:</strong> Full access to all features including user management, loan creation, and system settings</li>
+                                        <li><strong>Customer:</strong> Limited access to view their own loans and make payments</li>
+                                    </ul>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-user-plus me-1"></i>Create User
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- User Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i>User Preview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="userPreview">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-user fa-3x mb-3"></i>
+                                    <p>User details will appear here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Tips -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-lightbulb me-2"></i>Quick Tips
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Use descriptive usernames
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Use any password length
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Verify email addresses
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    Assign appropriate roles
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Real-time user preview
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
+    const adminCheckbox = document.getElementById('is_admin');
+    const customerRadio = document.getElementById('customer_role');
+    
+    function updatePreview() {
+        const username = usernameInput.value;
+        const email = emailInput.value;
+        const isAdmin = adminCheckbox.checked;
+        
+        const previewDiv = document.getElementById('userPreview');
+        
+        if (username && email) {
+            previewDiv.innerHTML = `
+                <div class="text-center">
+                    <div class="avatar-circle mx-auto mb-3">
+                        ${username.charAt(0).toUpperCase()}
+                    </div>
+                    <h6><strong>${username}</strong></h6>
+                    <p class="text-muted mb-2">${email}</p>
+                    <span class="badge ${isAdmin ? 'bg-danger' : 'bg-primary'}">
+                        <i class="fas fa-${isAdmin ? 'crown' : 'user'} me-1"></i>
+                        ${isAdmin ? 'Admin' : 'Customer'}
+                    </span>
+                </div>
+            `;
+        } else {
+            previewDiv.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-user fa-3x mb-3"></i>
+                    <p>User details will appear here</p>
+                </div>
+            `;
+        }
+    }
+    
+    usernameInput.addEventListener('input', updatePreview);
+    emailInput.addEventListener('input', updatePreview);
+    adminCheckbox.addEventListener('change', updatePreview);
+    customerRadio.addEventListener('change', updatePreview);
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        
+        if (!username.trim()) {
+            e.preventDefault();
+            alert('Please enter a username');
+            return;
+        }
+        
+        // Email is now optional, so no validation needed
+        
+        if (!password) {
+            e.preventDefault();
+            alert('Please enter a password');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match');
+            return;
+        }
+        
+        // Password length validation removed for now
+        
+        // Confirmation
+        const userType = adminCheckbox.checked ? 'Admin' : 'Customer';
+        if (!confirm(`Create ${userType} user "${username}" with email "${email}"?`)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+
+<style>
+.avatar-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 24px;
+}
+</style>
+{% endblock %}
