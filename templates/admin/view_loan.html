@@ -10,32 +10,32 @@
             <div class="position-sticky pt-3">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
                             <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_interest_rate') }}">
+                        <a class="nav-link" href="{{ url_for('admin_interest_rate', instance_name=instance_name) }}">
                             <i class="fas fa-percentage me-2"></i>Interest Rates
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                        <a class="nav-link" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
                             <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
                             <i class="fas fa-plus me-2"></i>Create Loan
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                        <a class="nav-link" href="{{ url_for('admin_payments', instance_name=instance_name) }}">
                             <i class="fas fa-credit-card me-2"></i>All Payments
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                        <a class="nav-link" href="{{ url_for('admin_users', instance_name=instance_name) }}">
                             <i class="fas fa-users me-2"></i>Users
                         </a>
                     </li>
@@ -50,7 +50,7 @@
                     <i class="fas fa-file-invoice-dollar me-2"></i>Loan Details: {{ loan.loan_name }}
                 </h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
-                    <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-secondary me-2">
+                    <a href="{{ url_for('admin_loans', instance_name=instance_name) }}" class="btn btn-outline-secondary me-2">
                         <i class="fas fa-arrow-left me-1"></i>Back to All Loans
                     </a>
                     <a href="{{ url_for('admin_edit_loan', loan_id=loan.id) }}" class="btn btn-warning me-2">

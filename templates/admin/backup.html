@@ -10,42 +10,42 @@
             <div class="position-sticky pt-3">
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                        <a class="nav-link" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
                             <i class="fas fa-file-invoice-dollar"></i> All Loans
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                        <a class="nav-link" href="{{ url_for('admin_payments', instance_name=instance_name) }}">
                             <i class="fas fa-credit-card"></i> All Payments
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                        <a class="nav-link" href="{{ url_for('admin_users', instance_name=instance_name) }}">
                             <i class="fas fa-users"></i> Users
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
                             <i class="fas fa-plus"></i> Create Loan
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_user') }}">
+                        <a class="nav-link" href="{{ url_for('admin_create_user', instance_name=instance_name) }}">
                             <i class="fas fa-user-plus"></i> Create User
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_add_payment') }}">
+                        <a class="nav-link" href="{{ url_for('admin_add_payment', instance_name=instance_name) }}">
                             <i class="fas fa-plus-circle"></i> Add Payment
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('admin_backup') }}">
+                        <a class="nav-link active" href="{{ url_for('admin_backup', instance_name=instance_name) }}">
                             <i class="fas fa-database"></i> Backup
                         </a>
                     </li>

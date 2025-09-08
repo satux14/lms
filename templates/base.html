@@ -230,20 +230,20 @@
                             </a>
                             <ul class="dropdown-menu">
                                 {% if current_user.is_admin %}
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
                                         <i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_interest_rate') }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_interest_rate', instance_name=instance_name) }}">
                                         <i class="fas fa-percentage me-2"></i>Interest Rates
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_loans') }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
                                         <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_create_loan') }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
                                         <i class="fas fa-plus me-2"></i>Create Loan
                                     </a></li>
                                 {% else %}
-                                    <li><a class="dropdown-item" href="{{ url_for('customer_dashboard') }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('customer_dashboard', instance_name=instance_name) }}">
                                         <i class="fas fa-tachometer-alt me-2"></i>My Dashboard
                                     </a></li>
                                 {% endif %}
