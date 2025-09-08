@@ -328,7 +328,7 @@
                             <h5 class="mb-0">
                                 <i class="fas fa-history me-2"></i>Payment History
                             </h5>
-                            <a href="{{ url_for('admin_add_payment', loan_id=loan.id) }}" class="btn btn-sm btn-primary">
+                            <a href="{{ url_for('admin_add_payment', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-plus"></i> Add Payment
                             </a>
                         </div>
@@ -372,7 +372,7 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin_edit_payment', payment_id=payment.id) }}" 
+                                                <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
                                                    class="btn btn-sm btn-outline-primary" title="Edit Payment">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
@@ -386,7 +386,7 @@
                             <div class="text-center py-4">
                                 <i class="fas fa-credit-card fa-2x text-muted mb-2"></i>
                                 <p class="text-muted mb-3">No payments yet</p>
-                                <a href="{{ url_for('admin_add_payment', loan_id=loan.id) }}" class="btn btn-sm btn-primary">
+                                <a href="{{ url_for('admin_add_payment', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-sm btn-primary">
                                     <i class="fas fa-plus"></i> Add First Payment
                                 </a>
                             </div>
