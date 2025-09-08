@@ -632,6 +632,57 @@ def admin_edit_loan(loan_id):
                          customers=customers,
                          payments=payments)
 
+@app.route('/admin/loan/<int:loan_id>')
+@login_required
+def admin_view_loan(loan_id):
+    """View detailed loan information (read-only)"""
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard'))
+    
+    loan = Loan.query.get_or_404(loan_id)
+    
+    # Get payment history
+    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    
+    # Calculate accumulated interest from loan creation to now
+    accumulated_interest = calculate_accumulated_interest(loan)
+    
+    # Calculate current daily/monthly interest rates (for display purposes)
+    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+    
+    # Calculate days active
+    days_active = (date.today() - loan.created_at.date()).days
+    
+    # Calculate total interest paid for this loan (verified only)
+    total_interest_paid = db.session.query(db.func.sum(Payment.interest_amount)).filter_by(loan_id=loan_id, status='verified').scalar() or 0
+    
+    # Calculate pending payment amounts
+    pending_payments = Payment.query.filter_by(loan_id=loan_id, status='pending').all()
+    pending_principal = sum(payment.principal_amount for payment in pending_payments)
+    pending_interest = sum(payment.interest_amount for payment in pending_payments)
+    pending_total = sum(payment.amount for payment in pending_payments)
+    
+    # Calculate verified payment amounts
+    verified_payments = Payment.query.filter_by(loan_id=loan_id, status='verified').all()
+    verified_principal = sum(payment.principal_amount for payment in verified_payments)
+    verified_interest = sum(payment.interest_amount for payment in verified_payments)
+    
+    return render_template('admin/view_loan.html', 
+                         loan=loan,
+                         payments=payments,
+                         daily_interest=daily_interest,
+                         monthly_interest=monthly_interest,
+                         accumulated_interest=accumulated_interest,
+                         days_active=days_active,
+                         total_interest_paid=total_interest_paid,
+                         pending_principal=pending_principal,
+                         pending_interest=pending_interest,
+                         pending_total=pending_total,
+                         verified_principal=verified_principal,
+                         verified_interest=verified_interest)
+
 @app.route('/admin/users')
 @login_required
 def admin_users():
