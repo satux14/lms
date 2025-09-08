@@ -34,7 +34,7 @@
                         <li><i class="fas fa-check text-success me-2"></i>View all loan accounts</li>
                         <li><i class="fas fa-check text-success me-2"></i>Monitor payment activities</li>
                     </ul>
-                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg mt-3">
+                    <a href="{{ url_for('login', instance_name=instance_name) }}" class="btn btn-primary btn-lg mt-3">
                         <i class="fas fa-sign-in-alt me-2"></i>Admin Login
                     </a>
                 </div>
@@ -57,7 +57,7 @@
                         <li><i class="fas fa-check text-success me-2"></i>Track daily interest accumulation</li>
                         <li><i class="fas fa-check text-success me-2"></i>Payment history and records</li>
                     </ul>
-                    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg mt-3">
+                    <a href="{{ url_for('login', instance_name=instance_name) }}" class="btn btn-success btn-lg mt-3">
                         <i class="fas fa-sign-in-alt me-2"></i>Customer Login
                     </a>
                 </div>
@@ -114,7 +114,7 @@
                 <div class="card-body">
                     <h4 class="mb-3">New to our system?</h4>
                     <p class="text-muted mb-4">Register as a customer to start managing your loans</p>
-                    <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+                    <a href="{{ url_for('register', instance_name=instance_name) }}" class="btn btn-outline-primary btn-lg">
                         <i class="fas fa-user-plus me-2"></i>Create Account
                     </a>
                 </div>
