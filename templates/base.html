@@ -210,6 +210,11 @@
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-university me-2"></i>Lending Management System
+                {% if instance_name %}
+                    <span class="badge bg-{{ 'danger' if instance_name == 'prod' else 'warning' if instance_name == 'dev' else 'info' }} ms-2">
+                        {{ instance_name.upper() }}
+                    </span>
+                {% endif %}
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

@@ -1,0 +1,489 @@
+"""
+Multi-Instance Lending Management System
+======================================
+
+This is a simplified multi-instance application that handles prod, dev, and testing instances
+in a single Flask app with URL-based routing.
+
+URL Structure:
+- /prod/... - Production instance
+- /dev/... - Development instance  
+- /testing/... - Testing instance
+- /... - Default to production instance
+
+Author: Lending Management System
+Version: 1.0.1
+"""
+
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, g
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from datetime import datetime, date, timedelta
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+import os
+import uuid
+from pathlib import Path
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
+
+# Initialize extensions
+db = SQLAlchemy()
+login_manager = LoginManager()
+
+# Database Models (same as original)
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    password_hash = db.Column(db.String(120), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class InterestRate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    rate = db.Column(db.Numeric(10, 4), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+
+class Loan(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    loan_name = db.Column(db.String(100), nullable=False)
+    principal_amount = db.Column(db.Numeric(15, 2), nullable=False)
+    remaining_principal = db.Column(db.Numeric(15, 2), nullable=False)
+    interest_rate = db.Column(db.Numeric(5, 4), nullable=False)
+    payment_frequency = db.Column(db.String(20), nullable=False)
+    loan_type = db.Column(db.String(20), nullable=False, default='regular')
+    admin_notes = db.Column(db.Text, nullable=True)
+    customer_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Relationships
+    customer = db.relationship('User', backref='loans')
+    payments = db.relationship('Payment', backref='loan', lazy=True, order_by='Payment.payment_date.desc()')
+
+class Payment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.Integer, db.ForeignKey('loan.id'), nullable=False)
+    amount = db.Column(db.Numeric(15, 2), nullable=False)
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    payment_type = db.Column(db.String(20), nullable=False)
+    interest_amount = db.Column(db.Numeric(15, 2), default=0)
+    principal_amount = db.Column(db.Numeric(15, 2), default=0)
+    transaction_id = db.Column(db.String(100), nullable=True)
+    payment_method = db.Column(db.String(20), nullable=True)
+    proof_filename = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(20), default='pending')
+
+class PendingInterest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    loan_id = db.Column(db.Integer, db.ForeignKey('loan.id'), nullable=False)
+    amount = db.Column(db.Numeric(15, 2), nullable=False)
+    due_date = db.Column(db.Date, nullable=False)
+    month_year = db.Column(db.String(7), nullable=False)
+    is_paid = db.Column(db.Boolean, default=False)
+
+# Instance management
+VALID_INSTANCES = ['prod', 'dev', 'testing']
+DEFAULT_INSTANCE = 'prod'
+
+def get_current_instance():
+    """Get current instance from URL path"""
+    try:
+        path_parts = request.path.strip('/').split('/')
+        if path_parts and path_parts[0] in VALID_INSTANCES:
+            return path_parts[0]
+        return DEFAULT_INSTANCE
+    except:
+        return DEFAULT_INSTANCE
+
+def get_database_uri(instance=None):
+    """Get database URI for specific instance"""
+    if instance is None:
+        instance = get_current_instance()
+    
+    if instance not in VALID_INSTANCES:
+        instance = DEFAULT_INSTANCE
+    
+    # Create instances directory
+    instances_dir = Path("instances")
+    instances_dir.mkdir(exist_ok=True)
+    
+    # Create instance directory
+    instance_dir = instances_dir / instance
+    instance_dir.mkdir(exist_ok=True)
+    
+    # Create database directory
+    db_dir = instance_dir / "database"
+    db_dir.mkdir(exist_ok=True)
+    
+    db_path = db_dir / f"lending_app_{instance}.db"
+    return f"sqlite:///{db_path}"
+
+def get_uploads_folder(instance=None):
+    """Get uploads folder for specific instance"""
+    if instance is None:
+        instance = get_current_instance()
+    
+    if instance not in VALID_INSTANCES:
+        instance = DEFAULT_INSTANCE
+    
+    instances_dir = Path("instances")
+    instance_dir = instances_dir / instance
+    uploads_dir = instance_dir / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    
+    return str(uploads_dir)
+
+def configure_app_for_instance(instance):
+    """Configure app for specific instance"""
+    app.config['SQLALCHEMY_DATABASE_URI'] = get_database_uri(instance)
+    app.config['UPLOAD_FOLDER'] = get_uploads_folder(instance)
+    app.config['INSTANCE_NAME'] = instance
+
+# Initialize app
+def init_app():
+    """Initialize the application"""
+    # Configure for default instance first
+    configure_app_for_instance(DEFAULT_INSTANCE)
+    
+    # Initialize extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+    login_manager.login_view = 'login'
+    
+    # Create all instance directories and databases
+    for instance in VALID_INSTANCES:
+        configure_app_for_instance(instance)
+        with app.app_context():
+            db.create_all()
+            create_default_data(instance)
+
+def create_default_data(instance):
+    """Create default data for instance"""
+    # Create default admin user if it doesn't exist
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            email=f'admin@{instance}.lendingapp.com',
+            password_hash=generate_password_hash('admin123'),
+            is_admin=True
+        )
+        db.session.add(admin)
+        
+        # Create default interest rate
+        default_rate = InterestRate(rate=Decimal('0.21'))  # 21%
+        db.session.add(default_rate)
+        
+        db.session.commit()
+        print(f"Default admin user created for {instance}: username='admin', password='admin123'")
+
+# Helper functions (same as original)
+def calculate_daily_interest(principal, annual_rate):
+    """Calculate daily interest amount"""
+    try:
+        daily_rate = annual_rate / 365
+        return Decimal(str(principal)) * Decimal(str(daily_rate))
+    except (InvalidOperation, TypeError):
+        return Decimal('0')
+
+def calculate_monthly_interest(principal, annual_rate):
+    """Calculate monthly interest amount"""
+    try:
+        monthly_rate = annual_rate / 12
+        return Decimal(str(principal)) * Decimal(str(monthly_rate))
+    except (InvalidOperation, TypeError):
+        return Decimal('0')
+
+def calculate_interest_for_period(principal, annual_rate, start_date, end_date):
+    """Calculate interest for a specific time period"""
+    try:
+        days = (end_date - start_date).days
+        if days <= 0:
+            return Decimal('0')
+        
+        daily_rate = annual_rate / 365
+        return Decimal(str(principal)) * Decimal(str(daily_rate)) * Decimal(str(days))
+    except (InvalidOperation, TypeError):
+        return Decimal('0')
+
+def calculate_accumulated_interest(loan, as_of_date=None):
+    """Calculate total accumulated interest for a loan"""
+    try:
+        if as_of_date is None:
+            as_of_date = date.today()
+        
+        # Calculate interest from loan creation to as_of_date
+        total_interest = calculate_interest_for_period(
+            loan.remaining_principal, 
+            loan.interest_rate, 
+            loan.created_at.date(), 
+            as_of_date
+        )
+        
+        # Subtract verified interest payments
+        verified_interest_payments = db.session.query(db.func.sum(Payment.interest_amount)).filter_by(
+            loan_id=loan.id, 
+            status='verified'
+        ).scalar() or 0
+        
+        return total_interest - Decimal(str(verified_interest_payments))
+    except Exception as e:
+        print(f"Error calculating accumulated interest: {e}")
+        return Decimal('0')
+
+def process_payment(loan, payment_amount, payment_date=None, transaction_id=None, 
+                   payment_method=None, proof_filename=None):
+    """Process a payment for a loan"""
+    try:
+        if payment_date is None:
+            payment_date = datetime.utcnow()
+        
+        payment_amount = Decimal(str(payment_amount))
+        
+        if loan.loan_type == 'interest_only':
+            # For interest-only loans, calculate total pending interest
+            total_pending_interest = calculate_accumulated_interest(loan, payment_date.date())
+            
+            if payment_amount > total_pending_interest:
+                raise ValueError(f"Payment amount (₹{payment_amount}) exceeds pending interest (₹{total_pending_interest}) for interest-only loan")
+            
+            # All payment goes to interest
+            interest_amount = payment_amount
+            principal_amount = Decimal('0')
+        else:
+            # For regular loans, calculate immediate interest due
+            if loan.payment_frequency == 'daily':
+                interest_due = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+            else:  # monthly
+                interest_due = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+            
+            if payment_amount >= interest_due:
+                interest_amount = interest_due
+                principal_amount = payment_amount - interest_due
+            else:
+                interest_amount = payment_amount
+                principal_amount = Decimal('0')
+        
+        # Create payment record
+        payment = Payment(
+            loan_id=loan.id,
+            amount=payment_amount,
+            payment_date=payment_date,
+            payment_type='both' if principal_amount > 0 else 'interest',
+            interest_amount=interest_amount,
+            principal_amount=principal_amount,
+            transaction_id=transaction_id,
+            payment_method=payment_method,
+            proof_filename=proof_filename,
+            status='pending'  # All payments start as pending
+        )
+        
+        db.session.add(payment)
+        db.session.commit()
+        
+        return payment
+        
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def verify_payment(payment_id):
+    """Verify a payment and update loan balance"""
+    try:
+        payment = Payment.query.get_or_404(payment_id)
+        loan = payment.loan
+        
+        if payment.status == 'verified':
+            return  # Already verified
+        
+        # Update payment status
+        payment.status = 'verified'
+        
+        # Update loan balance (only for regular loans)
+        if loan.loan_type != 'interest_only':
+            loan.remaining_principal -= payment.principal_amount
+            if loan.remaining_principal < 0:
+                loan.remaining_principal = Decimal('0')
+        
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+# Routes
+@app.before_request
+def before_request():
+    """Configure app for current instance before each request"""
+    instance = get_current_instance()
+    configure_app_for_instance(instance)
+    g.current_instance = instance
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+@app.route('/')
+def index():
+    """Main index page - show instance selection"""
+    instances_info = {}
+    for instance in VALID_INSTANCES:
+        instances_info[instance] = {
+            'name': instance,
+            'database_exists': Path(f"instances/{instance}/database/lending_app_{instance}.db").exists(),
+            'database_size': 0
+        }
+        
+        db_path = Path(f"instances/{instance}/database/lending_app_{instance}.db")
+        if db_path.exists():
+            instances_info[instance]['database_size'] = db_path.stat().st_size
+    
+    return render_template('instance_selector.html', instances_info=instances_info)
+
+@app.route('/<instance_name>/')
+def instance_index(instance_name):
+    """Redirect to instance login"""
+    if instance_name in VALID_INSTANCES:
+        return redirect(f'/{instance_name}/login')
+    else:
+        return redirect('/')
+
+@app.route('/<instance_name>/login', methods=['GET', 'POST'])
+def login(instance_name):
+    """User login for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
+            next_page = request.args.get('next')
+            if user.is_admin:
+                return redirect(next_page) if next_page else redirect(url_for('admin_dashboard', instance_name=instance_name))
+            else:
+                return redirect(next_page) if next_page else redirect(url_for('customer_dashboard', instance_name=instance_name))
+        else:
+            flash('Invalid username or password')
+    
+    return render_template('login.html', instance_name=instance_name)
+
+@app.route('/<instance_name>/logout')
+@login_required
+def logout(instance_name):
+    """User logout"""
+    logout_user()
+    return redirect(url_for('login', instance_name=instance_name))
+
+@app.route('/<instance_name>/register', methods=['GET', 'POST'])
+def register(instance_name):
+    """User registration for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form.get('email', '')  # Email is optional
+        password = request.form['password']
+        
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists')
+            return render_template('register.html', instance_name=instance_name)
+        
+        user = User(
+            username=username,
+            email=email if email else None,
+            password_hash=generate_password_hash(password),
+            is_admin=False
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Registration successful! Please login.')
+        return redirect(url_for('login', instance_name=instance_name))
+    
+    return render_template('register.html', instance_name=instance_name)
+
+# Admin routes
+@app.route('/<instance_name>/admin')
+@login_required
+def admin_dashboard(instance_name):
+    """Admin dashboard for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Get statistics
+    total_loans = Loan.query.count()
+    total_principal = sum(loan.principal_amount for loan in Loan.query.all())
+    total_interest_earned = sum(payment.interest_amount for payment in Payment.query.filter_by(status='verified').all())
+    total_users = User.query.count()
+    
+    return render_template('admin/dashboard.html', 
+                         total_loans=total_loans,
+                         total_principal=total_principal,
+                         total_interest_earned=total_interest_earned,
+                         total_users=total_users,
+                         instance_name=instance_name)
+
+# Customer routes
+@app.route('/<instance_name>/customer')
+@login_required
+def customer_dashboard(instance_name):
+    """Customer dashboard for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard', instance_name=instance_name))
+    
+    # Get customer's loans
+    loans = Loan.query.filter_by(customer_id=current_user.id).all()
+    
+    loan_data = []
+    for loan in loans:
+        daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+        monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+        accumulated_interest = calculate_accumulated_interest(loan)
+        
+        loan_data.append({
+            'loan': loan,
+            'daily_interest': daily_interest,
+            'monthly_interest': monthly_interest,
+            'accumulated_interest': accumulated_interest
+        })
+    
+    # Calculate pending payments
+    pending_payments = Payment.query.join(Loan).filter(
+        Loan.customer_id == current_user.id,
+        Payment.status == 'pending'
+    ).all()
+    
+    pending_principal = sum(payment.principal_amount for payment in pending_payments)
+    pending_interest = sum(payment.interest_amount for payment in pending_payments)
+    pending_total = sum(payment.amount for payment in pending_payments)
+    
+    return render_template('customer/dashboard.html',
+                         loan_data=loan_data,
+                         pending_payments=pending_payments,
+                         pending_principal=pending_principal,
+                         pending_interest=pending_interest,
+                         pending_total=pending_total,
+                         instance_name=instance_name)
+
+# Initialize the app only when run directly
+if __name__ == '__main__':
+    init_app()
+    app.run(debug=True, port=8080)
