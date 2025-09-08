@@ -706,6 +706,9 @@ def customer_dashboard():
         daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
         monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
         
+        # Calculate accumulated interest from loan creation to now
+        accumulated_interest = calculate_accumulated_interest(loan)
+        
         # Calculate pending payment amounts
         pending_payments = Payment.query.filter_by(loan_id=loan.id, status='pending').all()
         pending_principal = sum(payment.principal_amount for payment in pending_payments)
@@ -721,6 +724,7 @@ def customer_dashboard():
             'loan': loan,
             'daily_interest': daily_interest,
             'monthly_interest': monthly_interest,
+            'accumulated_interest': accumulated_interest,
             'pending_principal': pending_principal,
             'pending_interest': pending_interest,
             'pending_total': pending_total,

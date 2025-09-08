@@ -93,17 +93,22 @@
 
                     <!-- Interest Information -->
                     <div class="row mb-3">
-                        <div class="col-6">
+                        <div class="col-4">
                             <h6 class="text-muted">Daily Interest</h6>
                             <h5 class="text-success">₹{{ "%.2f"|format(data.daily_interest) }}</h5>
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <h6 class="text-muted">Monthly Interest</h6>
                             <h5 class="text-info">₹{{ "%.2f"|format(data.monthly_interest) }}</h5>
                         </div>
+                        <div class="col-4">
+                            <h6 class="text-muted">Accumulated Interest</h6>
+                            <h5 class="text-danger">₹{{ "%.2f"|format(data.accumulated_interest) }}</h5>
+                        </div>
                     </div>
 
-                    <!-- Progress Bar -->
+                    <!-- Progress Bar (Only for Regular Loans) -->
+                    {% if data.loan.loan_type == 'regular' %}
                     <div class="mb-3">
                         {% set progress = ((data.loan.principal_amount - data.loan.remaining_principal) / data.loan.principal_amount * 100) %}
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -121,6 +126,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Pending Payments -->
                     {% if data.pending_total > 0 %}
