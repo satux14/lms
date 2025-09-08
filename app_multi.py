@@ -1123,6 +1123,9 @@ def customer_loan_detail(instance_name, loan_id):
     # Calculate total interest paid for this loan
     total_interest_paid = sum(payment.interest_amount for payment in payments if payment.status == 'verified')
     
+    # Calculate verified principal paid for this loan
+    verified_principal = sum(payment.principal_amount for payment in payments if payment.status == 'verified')
+    
     # Calculate days active
     days_active = (date.today() - loan.created_at.date()).days
     
@@ -1132,6 +1135,7 @@ def customer_loan_detail(instance_name, loan_id):
                          monthly_interest=monthly_interest,
                          accumulated_interest=accumulated_interest,
                          total_interest_paid=total_interest_paid,
+                         verified_principal=verified_principal,
                          payments=payments,
                          days_active=days_active,
                          instance_name=instance_name)
