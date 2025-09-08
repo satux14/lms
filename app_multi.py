@@ -28,10 +28,19 @@ from pathlib import Path
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lending_app.db'  # Default database
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
+db.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 # Database Models (same as original)
 class User(UserMixin, db.Model):
@@ -150,11 +159,6 @@ def init_app():
     """Initialize the application"""
     # Configure for default instance first
     configure_app_for_instance(DEFAULT_INSTANCE)
-    
-    # Initialize extensions
-    db.init_app(app)
-    login_manager.init_app(app)
-    login_manager.login_view = 'login'
     
     # Create all instance directories and databases
     for instance in VALID_INSTANCES:
@@ -323,10 +327,6 @@ def before_request():
     instance = get_current_instance()
     configure_app_for_instance(instance)
     g.current_instance = instance
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
 
 @app.route('/')
 def index():
