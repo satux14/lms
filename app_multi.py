@@ -721,6 +721,9 @@ def admin_payments(instance_name):
     
     payments = query.all()
     
+    # Calculate total interest paid
+    total_interest_paid = db.session.query(db.func.sum(Payment.interest_amount)).scalar() or 0
+    
     # Get unique customers and loans for filters
     customers = User.query.filter_by(is_admin=False).all()
     loans = Loan.query.all()
@@ -733,6 +736,7 @@ def admin_payments(instance_name):
     
     return render_template('admin/payments.html', 
                          payments=payments,
+                         total_interest_paid=total_interest_paid,
                          customers=customers,
                          loans=loans,
                          customer_filter=customer_filter,
@@ -818,8 +822,15 @@ def admin_backup(instance_name):
     backup_manager = BackupManager(instance_name)
     backup_info = backup_manager.get_backup_info()
     
+    # Calculate total size in MB
+    if backup_info and 'total_size' in backup_info:
+        total_size_mb = backup_info['total_size'] / (1024 * 1024)
+    else:
+        total_size_mb = 0
+    
     return render_template('admin/backup.html', 
                          backup_info=backup_info,
+                         total_size_mb=total_size_mb,
                          instance_name=instance_name)
 
 # Admin Edit Loan route
