@@ -233,21 +233,44 @@ def calculate_accumulated_interest(loan, as_of_date=None):
         if as_of_date is None:
             as_of_date = date.today()
         
-        # Calculate interest from loan creation to as_of_date
-        total_interest = calculate_interest_for_period(
-            loan.remaining_principal, 
-            loan.interest_rate, 
-            loan.created_at.date(), 
-            as_of_date
-        )
-        
-        # Subtract verified interest payments
-        verified_interest_payments = db.session.query(db.func.sum(Payment.interest_amount)).filter_by(
-            loan_id=loan.id, 
-            status='verified'
-        ).scalar() or 0
-        
-        return total_interest - Decimal(str(verified_interest_payments))
+        if loan.loan_type == 'interest_only':
+            # For interest-only loans, calculate interest on original principal
+            total_interest = calculate_interest_for_period(
+                loan.principal_amount, 
+                loan.interest_rate, 
+                loan.created_at.date(), 
+                as_of_date
+            )
+            
+            # Subtract verified interest payments
+            verified_interest_payments = db.session.query(db.func.sum(Payment.interest_amount)).filter_by(
+                loan_id=loan.id, 
+                status='verified'
+            ).scalar() or 0
+            
+            return total_interest - Decimal(str(verified_interest_payments))
+        else:
+            # For regular loans, accumulated interest is the interest on remaining principal
+            # from the last payment date (or loan creation) to today
+            last_payment = Payment.query.filter_by(
+                loan_id=loan.id, 
+                status='verified'
+            ).order_by(Payment.payment_date.desc()).first()
+            
+            if last_payment:
+                start_date = last_payment.payment_date
+            else:
+                start_date = loan.created_at.date()
+            
+            # Calculate interest on remaining principal from start_date to today
+            accumulated_interest = calculate_interest_for_period(
+                loan.remaining_principal, 
+                loan.interest_rate, 
+                start_date, 
+                as_of_date
+            )
+            
+            return accumulated_interest
     except Exception as e:
         print(f"Error calculating accumulated interest: {e}")
         return Decimal('0')
