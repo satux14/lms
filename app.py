@@ -1123,6 +1123,123 @@ def admin_add_payment(loan_id=None):
     loans = Loan.query.all()
     return render_template('admin/add_payment.html', loans=loans, loan_id=loan_id)
 
+# Backup Routes
+@app.route('/admin/backup')
+@login_required
+def admin_backup():
+    """Admin backup page"""
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard'))
+    
+    try:
+        from backup import BackupManager
+        backup_manager = BackupManager(app)
+        backup_info = backup_manager.get_backup_info()
+        
+        if backup_info:
+            total_size_mb = backup_info['total_size'] / (1024 * 1024)
+            return render_template('admin/backup.html', 
+                                 backup_info=backup_info,
+                                 total_size_mb=total_size_mb)
+        else:
+            flash('Failed to get backup information')
+            return render_template('admin/backup.html', 
+                                 backup_info=None,
+                                 total_size_mb=0)
+    except Exception as e:
+        flash(f'Error loading backup page: {str(e)}')
+        return render_template('admin/backup.html', 
+                             backup_info=None,
+                             total_size_mb=0)
+
+@app.route('/admin/backup/create', methods=['POST'])
+@login_required
+def admin_create_backup():
+    """Create backup from admin interface"""
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard'))
+    
+    backup_type = request.form.get('backup_type', 'full')
+    
+    try:
+        from backup import BackupManager
+        backup_manager = BackupManager(app)
+        
+        if backup_type == 'full':
+            backup_path = backup_manager.create_full_backup()
+            backup_name = "Full backup"
+        elif backup_type == 'database':
+            backup_path = backup_manager.create_database_backup()
+            backup_name = "Database backup"
+        elif backup_type == 'excel':
+            with app.app_context():
+                backup_path = backup_manager.export_to_excel()
+            backup_name = "Excel export"
+        else:
+            flash('Invalid backup type')
+            return redirect(url_for('admin_backup'))
+        
+        if backup_path:
+            size_mb = backup_path.stat().st_size / (1024 * 1024)
+            flash(f'{backup_name} created successfully! Size: {size_mb:.2f} MB')
+        else:
+            flash(f'Failed to create {backup_name.lower()}')
+            
+    except Exception as e:
+        flash(f'Error creating backup: {str(e)}')
+    
+    return redirect(url_for('admin_backup'))
+
+@app.route('/admin/backup/cleanup', methods=['POST'])
+@login_required
+def admin_cleanup_backups():
+    """Clean up old backups from admin interface"""
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard'))
+    
+    try:
+        days = int(request.form.get('days', 30))
+        from backup import BackupManager
+        backup_manager = BackupManager(app)
+        
+        cleaned_count = backup_manager.cleanup_old_backups(days)
+        flash(f'Cleaned up {cleaned_count} old backup files (older than {days} days)')
+        
+    except Exception as e:
+        flash(f'Error cleaning up backups: {str(e)}')
+    
+    return redirect(url_for('admin_backup'))
+
+@app.route('/admin/backup/download/<path:filename>')
+@login_required
+def admin_download_backup(filename):
+    """Download backup file"""
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard'))
+    
+    try:
+        from backup import BackupManager
+        backup_manager = BackupManager(app)
+        
+        # Check if file exists in any backup directory
+        for backup_dir in [backup_manager.db_backup_dir, 
+                          backup_manager.excel_backup_dir, 
+                          backup_manager.full_backup_dir]:
+            file_path = backup_dir / filename
+            if file_path.exists():
+                return send_from_directory(backup_dir, filename, as_attachment=True)
+        
+        flash('Backup file not found')
+        return redirect(url_for('admin_backup'))
+        
+    except Exception as e:
+        flash(f'Error downloading backup: {str(e)}')
+        return redirect(url_for('admin_backup'))
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()

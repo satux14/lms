@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Backup Management - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar"></i> All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card"></i> All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users"></i> Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus"></i> Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_user') }}">
+                            <i class="fas fa-user-plus"></i> Create User
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_add_payment') }}">
+                            <i class="fas fa-plus-circle"></i> Add Payment
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_backup') }}">
+                            <i class="fas fa-database"></i> Backup
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-database me-2"></i>Backup Management
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="location.reload()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Backups</h6>
+                                    <h4 class="mb-0">
+                                        {% if backup_info %}
+                                            {{ backup_info.database_backups|length + backup_info.excel_backups|length + backup_info.full_backups|length }}
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-archive fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Size</h6>
+                                    <h4 class="mb-0">{{ "%.2f"|format(total_size_mb) }} MB</h4>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-hdd fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Full Backups</h6>
+                                    <h4 class="mb-0">
+                                        {% if backup_info %}
+                                            {{ backup_info.full_backups|length }}
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-file-archive fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Database Backups</h6>
+                                    <h4 class="mb-0">
+                                        {% if backup_info %}
+                                            {{ backup_info.database_backups|length }}
+                                        {% else %}
+                                            0
+                                        {% endif %}
+                                    </h4>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-database fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Backup Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-plus-circle me-2"></i>Create New Backup
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+                                        <input type="hidden" name="backup_type" value="full">
+                                        <button type="submit" class="btn btn-primary btn-lg w-100 mb-2">
+                                            <i class="fas fa-file-archive me-2"></i>Full Backup
+                                        </button>
+                                        <small class="text-muted">Database + Excel export in ZIP</small>
+                                    </form>
+                                </div>
+                                <div class="col-md-4">
+                                    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+                                        <input type="hidden" name="backup_type" value="database">
+                                        <button type="submit" class="btn btn-success btn-lg w-100 mb-2">
+                                            <i class="fas fa-database me-2"></i>Database Only
+                                        </button>
+                                        <small class="text-muted">SQLite database file</small>
+                                    </form>
+                                </div>
+                                <div class="col-md-4">
+                                    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+                                        <input type="hidden" name="backup_type" value="excel">
+                                        <button type="submit" class="btn btn-info btn-lg w-100 mb-2">
+                                            <i class="fas fa-file-excel me-2"></i>Excel Export
+                                        </button>
+                                        <small class="text-muted">All data in Excel format</small>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cleanup Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-broom me-2"></i>Cleanup Old Backups
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('admin_cleanup_backups') }}" class="d-inline">
+                                <div class="row align-items-end">
+                                    <div class="col-md-3">
+                                        <label for="days" class="form-label">Keep backups newer than:</label>
+                                        <select class="form-select" name="days" id="days">
+                                            <option value="7">7 days</option>
+                                            <option value="15">15 days</option>
+                                            <option value="30" selected>30 days</option>
+                                            <option value="60">60 days</option>
+                                            <option value="90">90 days</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure you want to delete old backup files?')">
+                                            <i class="fas fa-trash me-2"></i>Cleanup
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            This will permanently delete backup files older than the selected period.
+                                        </small>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup Files List -->
+            {% if backup_info %}
+            <div class="row">
+                <!-- Full Backups -->
+                {% if backup_info.full_backups %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-archive me-2"></i>Full Backups
+                                <span class="badge bg-primary ms-2">{{ backup_info.full_backups|length }}</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>File</th>
+                                            <th>Size</th>
+                                            <th>Created</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for backup in backup_info.full_backups|sort(attribute='created', reverse=true) %}
+                                        <tr>
+                                            <td>
+                                                <small class="text-muted">{{ backup.filename }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ "%.1f"|format(backup.size / (1024*1024)) }} MB</span>
+                                            </td>
+                                            <td>
+                                                <small>{{ backup.created }}</small>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin_download_backup', filename=backup.filename) }}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Database Backups -->
+                {% if backup_info.database_backups %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-database me-2"></i>Database Backups
+                                <span class="badge bg-success ms-2">{{ backup_info.database_backups|length }}</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>File</th>
+                                            <th>Size</th>
+                                            <th>Created</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for backup in backup_info.database_backups|sort(attribute='created', reverse=true) %}
+                                        <tr>
+                                            <td>
+                                                <small class="text-muted">{{ backup.filename }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ "%.1f"|format(backup.size / (1024*1024)) }} MB</span>
+                                            </td>
+                                            <td>
+                                                <small>{{ backup.created }}</small>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin_download_backup', filename=backup.filename) }}" 
+                                                   class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Excel Exports -->
+                {% if backup_info.excel_backups %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-excel me-2"></i>Excel Exports
+                                <span class="badge bg-info ms-2">{{ backup_info.excel_backups|length }}</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>File</th>
+                                            <th>Size</th>
+                                            <th>Created</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for backup in backup_info.excel_backups|sort(attribute='created', reverse=true) %}
+                                        <tr>
+                                            <td>
+                                                <small class="text-muted">{{ backup.filename }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ "%.1f"|format(backup.size / (1024*1024)) }} MB</span>
+                                            </td>
+                                            <td>
+                                                <small>{{ backup.created }}</small>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin_download_backup', filename=backup.filename) }}" 
+                                                   class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No backup files found. Create your first backup using the buttons above.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Terminal Commands Help -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-terminal me-2"></i>Terminal Commands
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">You can also create backups from the terminal:</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Full Backup</h6>
+                                    <code class="d-block p-2 bg-light">python3 backup_script.py full</code>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Database Only</h6>
+                                    <code class="d-block p-2 bg-light">python3 backup_script.py database</code>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Excel Export</h6>
+                                    <code class="d-block p-2 bg-light">python3 backup_script.py excel</code>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-4">
+                                    <h6>Cleanup Old Files</h6>
+                                    <code class="d-block p-2 bg-light">python3 backup_script.py cleanup</code>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Show Info</h6>
+                                    <code class="d-block p-2 bg-light">python3 backup_script.py info</code>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Setup Daily Schedule</h6>
+                                    <code class="d-block p-2 bg-light">python3 backup_script.py schedule</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
