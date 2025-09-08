@@ -26,6 +26,10 @@ import os
 import uuid
 from pathlib import Path
 
+# Instance configuration
+DEFAULT_INSTANCE = 'prod'
+VALID_INSTANCES = ['prod', 'dev', 'testing']
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lending_app.db'  # Default database
@@ -97,8 +101,6 @@ class PendingInterest(db.Model):
     is_paid = db.Column(db.Boolean, default=False)
 
 # Instance management
-VALID_INSTANCES = ['prod', 'dev', 'testing']
-DEFAULT_INSTANCE = 'prod'
 
 def get_current_instance():
     """Get current instance from URL path"""
@@ -153,6 +155,16 @@ def configure_app_for_instance(instance):
     app.config['SQLALCHEMY_DATABASE_URI'] = get_database_uri(instance)
     app.config['UPLOAD_FOLDER'] = get_uploads_folder(instance)
     app.config['INSTANCE_NAME'] = instance
+
+# Custom database initialization function
+def init_database_for_instance(instance):
+    """Initialize database for specific instance"""
+    instance_uri = get_database_uri(instance)
+    app.config['SQLALCHEMY_DATABASE_URI'] = instance_uri
+    
+    # Create all tables
+    with app.app_context():
+        db.create_all()
 
 # Initialize app
 def init_app():
@@ -327,6 +339,31 @@ def before_request():
     instance = get_current_instance()
     configure_app_for_instance(instance)
     g.current_instance = instance
+    
+    # Force database reconnection for this instance
+    instance_uri = get_database_uri(instance)
+    if not hasattr(g, 'db_uri') or g.db_uri != instance_uri:
+        g.db_uri = instance_uri
+        
+        # Create new engine for this instance
+        from sqlalchemy import create_engine
+        new_engine = create_engine(instance_uri)
+        
+        # Store the engine in g for this request
+        g.db_engine = new_engine
+        
+        # Force session to use new engine by creating a new session
+        db.session.close()
+        db.session.bind = new_engine
+        
+        # Update the default engine in SQLAlchemy
+        db.engines[''] = new_engine
+        
+        # Create all tables
+        db.create_all()
+        
+        # Force a new session to be created with the new engine
+        db.session = db._make_scoped_session({'bind': new_engine})
 
 @app.route('/')
 def index():
@@ -1083,6 +1120,9 @@ def customer_loan_detail(instance_name, loan_id):
     # Get payment history
     payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
     
+    # Calculate total interest paid for this loan
+    total_interest_paid = sum(payment.interest_amount for payment in payments if payment.status == 'verified')
+    
     # Calculate days active
     days_active = (date.today() - loan.created_at.date()).days
     
@@ -1091,6 +1131,7 @@ def customer_loan_detail(instance_name, loan_id):
                          daily_interest=daily_interest,
                          monthly_interest=monthly_interest,
                          accumulated_interest=accumulated_interest,
+                         total_interest_paid=total_interest_paid,
                          payments=payments,
                          days_active=days_active,
                          instance_name=instance_name)
