@@ -683,7 +683,7 @@ def admin_payments(instance_name):
     payment_method = request.args.get('payment_method', '')
     
     # Build query
-    query = Payment.query.join(Loan).join(User)
+    query = db.session.query(Payment, Loan, User).join(Loan, Payment.loan_id == Loan.id).join(User, Loan.customer_id == User.id)
     
     if customer_filter:
         query = query.filter(User.username.contains(customer_filter))

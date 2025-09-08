@@ -162,7 +162,7 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-4">
-                                    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+                                    <form method="POST" action="{{ url_for('admin_create_backup', instance_name=instance_name) }}">
                                         <input type="hidden" name="backup_type" value="full">
                                         <button type="submit" class="btn btn-primary btn-lg w-100 mb-2">
                                             <i class="fas fa-file-archive me-2"></i>Full Backup
@@ -171,7 +171,7 @@
                                     </form>
                                 </div>
                                 <div class="col-md-4">
-                                    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+                                    <form method="POST" action="{{ url_for('admin_create_backup', instance_name=instance_name) }}">
                                         <input type="hidden" name="backup_type" value="database">
                                         <button type="submit" class="btn btn-success btn-lg w-100 mb-2">
                                             <i class="fas fa-database me-2"></i>Database Only
@@ -180,7 +180,7 @@
                                     </form>
                                 </div>
                                 <div class="col-md-4">
-                                    <form method="POST" action="{{ url_for('admin_create_backup') }}">
+                                    <form method="POST" action="{{ url_for('admin_create_backup', instance_name=instance_name) }}">
                                         <input type="hidden" name="backup_type" value="excel">
                                         <button type="submit" class="btn btn-info btn-lg w-100 mb-2">
                                             <i class="fas fa-file-excel me-2"></i>Excel Export
@@ -204,7 +204,7 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            <form method="POST" action="{{ url_for('admin_cleanup_backups') }}" class="d-inline">
+                            <form method="POST" action="{{ url_for('admin_cleanup_backups', instance_name=instance_name) }}" class="d-inline">
                                 <div class="row align-items-end">
                                     <div class="col-md-3">
                                         <label for="days" class="form-label">Keep backups newer than:</label>
@@ -271,7 +271,7 @@
                                                 <small>{{ backup.created }}</small>
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin_download_backup', filename=backup.filename) }}" 
+                                                <a href="{{ url_for('admin_download_backup', instance_name=instance_name, filename=backup.filename) }}" 
                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="fas fa-download"></i>
                                                 </a>
@@ -320,7 +320,7 @@
                                                 <small>{{ backup.created }}</small>
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin_download_backup', filename=backup.filename) }}" 
+                                                <a href="{{ url_for('admin_download_backup', instance_name=instance_name, filename=backup.filename) }}" 
                                                    class="btn btn-sm btn-outline-success">
                                                     <i class="fas fa-download"></i>
                                                 </a>
@@ -369,7 +369,7 @@
                                                 <small>{{ backup.created }}</small>
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin_download_backup', filename=backup.filename) }}" 
+                                                <a href="{{ url_for('admin_download_backup', instance_name=instance_name, filename=backup.filename) }}" 
                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="fas fa-download"></i>
                                                 </a>
