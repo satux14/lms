@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Loan Details - {{ loan.loan_name }} - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_interest_rate') }}">
+                            <i class="fas fa-percentage me-2"></i>Interest Rates
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus me-2"></i>Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card me-2"></i>All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>Users
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>Loan Details: {{ loan.loan_name }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i>Back to All Loans
+                    </a>
+                    <a href="{{ url_for('admin_edit_loan', loan_id=loan.id) }}" class="btn btn-warning me-2">
+                        <i class="fas fa-edit me-1"></i>Edit Loan
+                    </a>
+                    <a href="{{ url_for('admin_add_payment', loan_id=loan.id) }}" class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i>Add Payment
+                    </a>
+                </div>
+            </div>
+
+            <!-- Loan Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Loan Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Loan ID:</strong></td>
+                                            <td>#{{ loan.id }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Loan Name:</strong></td>
+                                            <td>{{ loan.loan_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Customer:</strong></td>
+                                            <td>{{ loan.customer.username }} ({{ loan.customer.email or 'No email' }})</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Status:</strong></td>
+                                            <td>
+                                                {% if loan.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Loan Type:</strong></td>
+                                            <td>
+                                                <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }}">
+                                                    {{ 'Regular Loan' if loan.loan_type == 'regular' else 'Interest-Only Loan' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Original Principal:</strong></td>
+                                            <td class="text-primary">₹{{ "%.2f"|format(loan.principal_amount) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Remaining Balance:</strong></td>
+                                            <td class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Interest Rate:</strong></td>
+                                            <td>{{ "%.2f"|format(loan.interest_rate * 100) }}% Annual</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Payment Frequency:</strong></td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }}">
+                                                    {{ loan.payment_frequency.title() }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Created Date:</strong></td>
+                                            <td>{{ loan.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Days Active:</strong></td>
+                                            <td>{{ days_active }} days</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Summary -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calculator me-2"></i>Interest Calculator
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <h6 class="text-muted">Daily Interest</h6>
+                                    <h4 class="text-success">₹{{ "%.2f"|format(daily_interest) }}</h4>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-muted">Monthly Interest</h6>
+                                    <h4 class="text-warning">₹{{ "%.2f"|format(monthly_interest) }}</h4>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-muted">Accumulated Interest</h6>
+                                    <h4 class="text-danger">₹{{ "%.2f"|format(accumulated_interest) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>Financial Summary
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h6 class="text-muted">Amount Paid</h6>
+                                    <h4 class="text-success">₹{{ "%.2f"|format(verified_principal + verified_interest) }}</h4>
+                                </div>
+                                <div class="col-6">
+                                    <h6 class="text-muted">Total Interest Paid</h6>
+                                    <h4 class="text-info">₹{{ "%.2f"|format(verified_interest) }}</h4>
+                                </div>
+                            </div>
+                            {% if pending_total > 0 %}
+                            <hr>
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-clock me-1"></i>Pending Payments
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Total Pending:</strong> ₹{{ "%.2f"|format(pending_total) }}<br>
+                                    <strong>Principal:</strong> ₹{{ "%.2f"|format(pending_principal) }}<br>
+                                    <strong>Interest:</strong> ₹{{ "%.2f"|format(pending_interest) }}
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Progress (Only for Regular Loans) -->
+            {% if loan.loan_type == 'regular' %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Payment Progress
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% set progress = ((loan.principal_amount - loan.remaining_principal) / loan.principal_amount * 100) %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-muted mb-0">Principal Paid</h6>
+                                <h6 class="text-success mb-0">{{ "%.1f"|format(progress) }}%</h6>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: {{ progress }}%"
+                                     aria-valuenow="{{ progress }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    {{ "%.1f"|format(progress) }}%
+                                </div>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h6 class="text-muted">₹{{ "%.2f"|format(loan.remaining_principal) }}</h6>
+                                    <small class="text-muted">Remaining</small>
+                                </div>
+                                <div class="col-6">
+                                    <h6 class="text-success">₹{{ "%.2f"|format(loan.principal_amount - loan.remaining_principal) }}</h6>
+                                    <small class="text-muted">Paid</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Notes Section -->
+            {% if loan.admin_notes or loan.customer_notes %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-sticky-note me-2"></i>Notes
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if loan.admin_notes %}
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-user-shield me-1"></i>Admin Notes
+                                </h6>
+                                <p class="mb-0">{{ loan.admin_notes }}</p>
+                            </div>
+                            {% endif %}
+                            {% if loan.customer_notes %}
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-user me-1"></i>Customer Notes
+                                </h6>
+                                <p class="mb-0">{{ loan.customer_notes }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Payment History -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>Payment History
+                            </h5>
+                            <span class="badge bg-primary">{{ payments|length }} payments</span>
+                        </div>
+                        <div class="card-body">
+                            {% if payments %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Interest</th>
+                                            <th>Principal</th>
+                                            <th>Method</th>
+                                            <th>Transaction ID</th>
+                                            <th>Status</th>
+                                            <th>Proof</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment in payments %}
+                                        <tr>
+                                            <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
+                                            <td>₹{{ "%.2f"|format(payment.interest_amount) }}</td>
+                                            <td>₹{{ "%.2f"|format(payment.principal_amount) }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'primary' if payment.payment_method == 'cash' else 'info' }}">
+                                                    {{ payment.payment_method.title() }}
+                                                </span>
+                                            </td>
+                                            <td>{{ payment.transaction_id or '-' }}</td>
+                                            <td>
+                                                {% if payment.status == 'verified' %}
+                                                    <span class="badge bg-success">Verified</span>
+                                                {% elif payment.status == 'pending' %}
+                                                    <span class="badge bg-warning">Pending</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Rejected</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if payment.proof_filename %}
+                                                    <a href="{{ url_for('uploaded_file', filename=payment.proof_filename) }}" 
+                                                       target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin_edit_payment', payment_id=payment.id) }}" 
+                                                   class="btn btn-sm btn-outline-warning" title="Edit Payment">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No payments yet</h5>
+                                <p class="text-muted">This loan doesn't have any payment history.</p>
+                                <a href="{{ url_for('admin_add_payment', loan_id=loan.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i>Add First Payment
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
