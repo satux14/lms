@@ -250,7 +250,7 @@
                                     <thead>
                                         <tr>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='id', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'id' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='id', order=('asc' if request.args.get('sort') == 'id' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Loan ID
                                                     {% if request.args.get('sort') == 'id' %}
@@ -261,7 +261,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='loan_name', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'loan_name' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='loan_name', order=('asc' if request.args.get('sort') == 'loan_name' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Loan Name
                                                     {% if request.args.get('sort') == 'loan_name' %}
@@ -272,7 +272,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='customer', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'customer' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='customer', order=('asc' if request.args.get('sort') == 'customer' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Customer
                                                     {% if request.args.get('sort') == 'customer' %}
@@ -283,7 +283,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='loan_type', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'loan_type' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='loan_type', order=('asc' if request.args.get('sort') == 'loan_type' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Type
                                                     {% if request.args.get('sort') == 'loan_type' %}
@@ -294,7 +294,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', sort='principal', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'principal' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', sort='principal', order=('asc' if request.args.get('sort') == 'principal' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Principal
                                                     {% if request.args.get('sort') == 'principal' %}
@@ -305,7 +305,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', sort='remaining', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'remaining' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', sort='remaining', order=('asc' if request.args.get('sort') == 'remaining' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Remaining
                                                     {% if request.args.get('sort') == 'remaining' %}
@@ -316,7 +316,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', sort='interest_rate', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'interest_rate' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', sort='interest_rate', order=('asc' if request.args.get('sort') == 'interest_rate' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Interest Rate
                                                     {% if request.args.get('sort') == 'interest_rate' %}
@@ -327,7 +327,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', sort='frequency', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'frequency' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', sort='frequency', order=('asc' if request.args.get('sort') == 'frequency' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Frequency
                                                     {% if request.args.get('sort') == 'frequency' %}
@@ -338,7 +338,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', sort='created', order=('asc' if request.args.get('sort', instance_name=instance_name) == 'created' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Created
                                                     {% if request.args.get('sort') == 'created' %}
