@@ -822,6 +822,183 @@ def admin_backup(instance_name):
                          backup_info=backup_info,
                          instance_name=instance_name)
 
+# Admin Edit Loan route
+@app.route('/<instance_name>/admin/edit-loan/<int:loan_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_loan(instance_name, loan_id):
+    """Admin edit loan page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    loan = Loan.query.get_or_404(loan_id)
+    
+    if request.method == 'POST':
+        loan.loan_name = request.form['loan_name']
+        loan.principal_amount = Decimal(request.form['principal_amount'])
+        loan.remaining_principal = Decimal(request.form['remaining_principal'])
+        loan.interest_rate = Decimal(request.form['interest_rate'])
+        loan.payment_frequency = request.form['payment_frequency']
+        loan.loan_type = request.form['loan_type']
+        loan.admin_notes = request.form.get('admin_notes', '')
+        loan.customer_notes = request.form.get('customer_notes', '')
+        
+        db.session.commit()
+        flash('Loan updated successfully')
+        return redirect(url_for('admin_loans', instance_name=instance_name))
+    
+    # Get payment history for this loan
+    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    
+    return render_template('admin/edit_loan.html', 
+                         loan=loan,
+                         payments=payments,
+                         instance_name=instance_name)
+
+# Admin View Loan route
+@app.route('/<instance_name>/admin/loan/<int:loan_id>')
+@login_required
+def admin_view_loan(instance_name, loan_id):
+    """Admin view loan details page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    loan = Loan.query.get_or_404(loan_id)
+    
+    # Calculate interest information
+    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+    accumulated_interest = calculate_accumulated_interest(loan)
+    
+    # Get payment history
+    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    
+    # Calculate days active
+    days_active = (date.today() - loan.created_at.date()).days
+    
+    return render_template('admin/view_loan.html', 
+                         loan=loan,
+                         daily_interest=daily_interest,
+                         monthly_interest=monthly_interest,
+                         accumulated_interest=accumulated_interest,
+                         payments=payments,
+                         days_active=days_active,
+                         instance_name=instance_name)
+
+# Admin Edit Payment route
+@app.route('/<instance_name>/admin/edit-payment/<int:payment_id>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_payment(instance_name, payment_id):
+    """Admin edit payment page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    payment = Payment.query.get_or_404(payment_id)
+    
+    if request.method == 'POST':
+        payment.amount = Decimal(request.form['amount'])
+        payment.payment_method = request.form['payment_method']
+        payment.transaction_id = request.form.get('transaction_id', '')
+        payment.payment_status = request.form['payment_status']
+        
+        # Parse payment date
+        payment_date_str = request.form.get('payment_date')
+        if payment_date_str:
+            try:
+                payment.payment_date = datetime.strptime(payment_date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash('Invalid date format')
+                return render_template('admin/edit_payment.html', 
+                                     payment=payment,
+                                     instance_name=instance_name)
+        
+        db.session.commit()
+        flash('Payment updated successfully')
+        return redirect(url_for('admin_payments', instance_name=instance_name))
+    
+    return render_template('admin/edit_payment.html', 
+                         payment=payment,
+                         instance_name=instance_name)
+
+# Admin Create Backup route
+@app.route('/<instance_name>/admin/backup/create')
+@login_required
+def admin_create_backup(instance_name):
+    """Admin create backup for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from backup import BackupManager
+    backup_manager = BackupManager(instance_name)
+    
+    try:
+        backup_manager.create_full_backup()
+        flash('Backup created successfully')
+    except Exception as e:
+        flash(f'Backup failed: {str(e)}')
+    
+    return redirect(url_for('admin_backup', instance_name=instance_name))
+
+# Admin Cleanup Backups route
+@app.route('/<instance_name>/admin/backup/cleanup', methods=['POST'])
+@login_required
+def admin_cleanup_backups(instance_name):
+    """Admin cleanup old backups for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from backup import BackupManager
+    backup_manager = BackupManager(instance_name)
+    
+    try:
+        days = int(request.form.get('days', 30))
+        backup_manager.cleanup_old_backups(days)
+        flash(f'Cleaned up backups older than {days} days')
+    except Exception as e:
+        flash(f'Cleanup failed: {str(e)}')
+    
+    return redirect(url_for('admin_backup', instance_name=instance_name))
+
+# Admin Download Backup route
+@app.route('/<instance_name>/admin/backup/download/<filename>')
+@login_required
+def admin_download_backup(instance_name, filename):
+    """Admin download backup file for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from backup import BackupManager
+    backup_manager = BackupManager(instance_name)
+    
+    try:
+        return backup_manager.download_backup(filename)
+    except Exception as e:
+        flash(f'Download failed: {str(e)}')
+        return redirect(url_for('admin_backup', instance_name=instance_name))
+
 # Customer routes
 @app.route('/<instance_name>/customer')
 @login_required
@@ -842,29 +1019,31 @@ def customer_dashboard(instance_name):
         monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
         accumulated_interest = calculate_accumulated_interest(loan)
         
+        # Calculate pending payments for this specific loan
+        pending_payments = Payment.query.filter_by(loan_id=loan.id, payment_status='pending').all()
+        pending_principal = sum(payment.principal_amount for payment in pending_payments)
+        pending_interest = sum(payment.interest_amount for payment in pending_payments)
+        pending_total = sum(payment.amount for payment in pending_payments)
+        
+        # Calculate verified payments for this specific loan
+        verified_payments = Payment.query.filter_by(loan_id=loan.id, payment_status='verified').all()
+        verified_principal = sum(payment.principal_amount for payment in verified_payments)
+        verified_interest = sum(payment.interest_amount for payment in verified_payments)
+        
         loan_data.append({
             'loan': loan,
             'daily_interest': daily_interest,
             'monthly_interest': monthly_interest,
-            'accumulated_interest': accumulated_interest
+            'accumulated_interest': accumulated_interest,
+            'pending_principal': pending_principal,
+            'pending_interest': pending_interest,
+            'pending_total': pending_total,
+            'verified_principal': verified_principal,
+            'verified_interest': verified_interest
         })
-    
-    # Calculate pending payments
-    pending_payments = Payment.query.join(Loan).filter(
-        Loan.customer_id == current_user.id,
-        Payment.status == 'pending'
-    ).all()
-    
-    pending_principal = sum(payment.principal_amount for payment in pending_payments)
-    pending_interest = sum(payment.interest_amount for payment in pending_payments)
-    pending_total = sum(payment.amount for payment in pending_payments)
     
     return render_template('customer/dashboard.html',
                          loan_data=loan_data,
-                         pending_payments=pending_payments,
-                         pending_principal=pending_principal,
-                         pending_interest=pending_interest,
-                         pending_total=pending_total,
                          instance_name=instance_name)
 
 # Customer Loan Detail route
