@@ -36,7 +36,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 db.init_app(app)
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login_redirect'
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -330,7 +330,12 @@ def before_request():
 
 @app.route('/')
 def index():
-    """Main index page - show instance selection"""
+    """Default route - redirect to production instance"""
+    return redirect(url_for('login', instance_name='prod'))
+
+@app.route('/instances')
+def instances():
+    """Instance selector page - show all instances"""
     instances_info = {}
     for instance in VALID_INSTANCES:
         instances_info[instance] = {
@@ -344,6 +349,12 @@ def index():
             instances_info[instance]['database_size'] = db_path.stat().st_size
     
     return render_template('instance_selector.html', instances_info=instances_info)
+
+@app.route('/login_redirect')
+def login_redirect():
+    """Redirect to login for current instance"""
+    instance = get_current_instance()
+    return redirect(url_for('login', instance_name=instance))
 
 @app.route('/<instance_name>/')
 def instance_index(instance_name):
