@@ -867,6 +867,135 @@ def customer_dashboard(instance_name):
                          pending_total=pending_total,
                          instance_name=instance_name)
 
+# Customer Loan Detail route
+@app.route('/<instance_name>/customer/loan/<int:loan_id>')
+@login_required
+def customer_loan_detail(instance_name, loan_id):
+    """Customer loan detail page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard', instance_name=instance_name))
+    
+    loan = Loan.query.get_or_404(loan_id)
+    
+    # Check if loan belongs to current user
+    if loan.customer_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Calculate interest information
+    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+    accumulated_interest = calculate_accumulated_interest(loan)
+    
+    # Get payment history
+    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    
+    # Calculate days active
+    days_active = (date.today() - loan.created_at.date()).days
+    
+    return render_template('customer/loan_detail.html', 
+                         loan=loan,
+                         daily_interest=daily_interest,
+                         monthly_interest=monthly_interest,
+                         accumulated_interest=accumulated_interest,
+                         payments=payments,
+                         days_active=days_active,
+                         instance_name=instance_name)
+
+# Customer Make Payment route
+@app.route('/<instance_name>/customer/loan/<int:loan_id>/payment', methods=['GET', 'POST'])
+@login_required
+def customer_make_payment(instance_name, loan_id):
+    """Customer make payment page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard', instance_name=instance_name))
+    
+    loan = Loan.query.get_or_404(loan_id)
+    
+    # Check if loan belongs to current user
+    if loan.customer_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        amount = Decimal(request.form['amount'])
+        payment_method = request.form['payment_method']
+        transaction_id = request.form.get('transaction_id', '')
+        payment_date_str = request.form.get('payment_date')
+        
+        # Parse payment date
+        if payment_date_str:
+            try:
+                payment_date = datetime.strptime(payment_date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash('Invalid date format')
+                return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
+        else:
+            payment_date = datetime.utcnow()
+        
+        # Process payment
+        payment = Payment(
+            loan_id=loan_id,
+            amount=amount,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            payment_date=payment_date,
+            payment_status='pending'  # All payments start as pending
+        )
+        db.session.add(payment)
+        db.session.commit()
+        
+        flash('Payment submitted successfully. It will be verified by admin.')
+        return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
+    
+    # Calculate interest information
+    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+    accumulated_interest = calculate_accumulated_interest(loan)
+    
+    return render_template('customer/make_payment.html', 
+                         loan=loan,
+                         daily_interest=daily_interest,
+                         monthly_interest=monthly_interest,
+                         accumulated_interest=accumulated_interest,
+                         instance_name=instance_name)
+
+# Customer Edit Notes route
+@app.route('/<instance_name>/customer/loan/<int:loan_id>/edit-notes', methods=['GET', 'POST'])
+@login_required
+def customer_edit_notes(instance_name, loan_id):
+    """Customer edit notes page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard', instance_name=instance_name))
+    
+    loan = Loan.query.get_or_404(loan_id)
+    
+    # Check if loan belongs to current user
+    if loan.customer_id != current_user.id:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        customer_notes = request.form.get('customer_notes', '')
+        loan.customer_notes = customer_notes
+        db.session.commit()
+        
+        flash('Notes updated successfully')
+        return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
+    
+    return render_template('customer/edit_notes.html', 
+                         loan=loan,
+                         instance_name=instance_name)
+
 # Initialize the app only when run directly
 if __name__ == '__main__':
     init_app()
