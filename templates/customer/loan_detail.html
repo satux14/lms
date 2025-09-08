@@ -253,7 +253,7 @@
                         {% endif %}
                     </div>
                     <div id="notesEdit" style="display: none;">
-                        <form method="POST" action="{{ url_for('customer_edit_notes', loan_id=loan.id) }}">
+                        <form method="POST" action="{{ url_for('customer_edit_notes', instance_name=instance_name, loan_id=loan.id) }}">
                             <textarea class="form-control" 
                                       name="customer_notes" 
                                       rows="3" 
@@ -322,7 +322,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('customer_make_payment', loan_id=loan.id) }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ url_for('customer_make_payment', instance_name=instance_name, loan_id=loan.id) }}" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="amount" class="form-label">Payment Amount</label>
                             <div class="input-group">
