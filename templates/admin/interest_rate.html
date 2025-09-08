@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Interest Rate Information - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_interest_rate') }}">
+                            <i class="fas fa-percentage me-2"></i>Interest Rates
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus me-2"></i>Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card me-2"></i>All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>Users
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-percentage me-2"></i>Interest Rate Information
+                </h1>
+            </div>
+
+            <!-- Information Card -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>How Interest Rates Work
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-lightbulb me-2"></i>Individual Loan Rates
+                                </h6>
+                                <p class="mb-0">
+                                    Each loan now has its own specific interest rate. You can set different rates for different customers and loan types when creating or editing loans.
+                                </p>
+                            </div>
+                            
+                            <h6 class="mt-4">Key Features:</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Flexible Rates:</strong> Set different interest rates for each loan
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Easy Management:</strong> Change rates when creating or editing loans
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Customer-Specific:</strong> Offer different rates based on customer risk profile
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success me-2"></i>
+                                    <strong>Loan-Type Specific:</strong> Different rates for personal, business, or emergency loans
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How to Set Interest Rates -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-plus-circle me-2"></i>Creating New Loans
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p>When creating a new loan:</p>
+                            <ol>
+                                <li>Go to <strong>Create Loan</strong> page</li>
+                                <li>Enter the loan details</li>
+                                <li>Set the <strong>Annual Interest Rate</strong> (e.g., 21.00 for 21%)</li>
+                                <li>Choose payment frequency (Daily/Monthly)</li>
+                                <li>Save the loan</li>
+                            </ol>
+                            <a href="{{ url_for('admin_create_loan') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Create New Loan
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-edit me-2"></i>Editing Existing Loans
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p>To change an existing loan's interest rate:</p>
+                            <ol>
+                                <li>Go to <strong>All Loans</strong> page</li>
+                                <li>Click the <strong>Edit</strong> button (pencil icon)</li>
+                                <li>Modify the <strong>Annual Interest Rate</strong></li>
+                                <li>Update other details if needed</li>
+                                <li>Save changes</li>
+                            </ol>
+                            <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>View All Loans
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interest Rate Examples -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calculator me-2"></i>Interest Rate Examples
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6 class="text-primary">Low Risk (8-12%)</h6>
+                                    <ul class="list-unstyled">
+                                        <li>• Established customers</li>
+                                        <li>• Short-term loans</li>
+                                        <li>• Collateral-backed loans</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-warning">Medium Risk (12-18%)</h6>
+                                    <ul class="list-unstyled">
+                                        <li>• Regular customers</li>
+                                        <li>• Medium-term loans</li>
+                                        <li>• Business loans</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-danger">High Risk (18-25%)</h6>
+                                    <ul class="list-unstyled">
+                                        <li>• New customers</li>
+                                        <li>• Emergency loans</li>
+                                        <li>• Unsecured loans</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

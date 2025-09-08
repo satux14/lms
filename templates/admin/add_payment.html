@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Add Payment - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar"></i> All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card"></i> All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users"></i> Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus"></i> Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_user') }}">
+                            <i class="fas fa-user-plus"></i> Create User
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_add_payment') }}">
+                            <i class="fas fa-plus-circle"></i> Add Payment
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Add Payment</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_payments') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Payments
+                    </a>
+                </div>
+            </div>
+
+            <!-- Add Payment Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Payment Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="loan_id" class="form-label">Select Loan</label>
+                                    <select class="form-select" id="loan_id" name="loan_id" required>
+                                        <option value="">Choose a loan...</option>
+                                        {% for loan in loans %}
+                                        <option value="{{ loan.id }}" {% if loan_id and loan.id == loan_id %}selected{% endif %} 
+                                                data-loan-type="{{ loan.loan_type }}">
+                                            {{ loan.customer.username }} - {{ loan.loan_name }} 
+                                            ({{ 'Regular' if loan.loan_type == 'regular' else 'Interest-Only' }} - ₹{{ "%.2f"|format(loan.remaining_principal) }} remaining)
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="payment_date" class="form-label">Payment Date & Time</label>
+                                    <input type="datetime-local" class="form-control" id="payment_date" name="payment_date">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="amount" class="form-label">Payment Amount (₹)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" 
+                                               placeholder="0.00" required>
+                                    </div>
+                                    <div class="form-text" id="amount-help">
+                                        Enter the total payment amount. Interest will be calculated automatically.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method</label>
+                                    <select class="form-select" id="payment_method" name="payment_method" required>
+                                        <option value="">Select payment method...</option>
+                                        <option value="gpay">Google Pay (GPay)</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="phonepay">PhonePe</option>
+                                        <option value="bank_transfer">Bank Transfer</option>
+                                        <option value="cash">Cash</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Auto-calculated amounts (hidden fields) -->
+                        <input type="hidden" id="interest_amount" name="interest_amount" value="0">
+                        <input type="hidden" id="principal_amount" name="principal_amount" value="0">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="transaction_id" class="form-label">Transaction ID / UPI Reference</label>
+                                    <input type="text" class="form-control" id="transaction_id" name="transaction_id" 
+                                           placeholder="Enter transaction reference">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Quick Actions</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                                            <i class="fas fa-eraser"></i> Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Preview -->
+                        <div class="alert alert-info" id="paymentPreview" style="display: none;">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-calculator me-1"></i>Payment Breakdown
+                            </h6>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <h6 class="text-muted">Total Amount</h6>
+                                    <h5 class="text-primary" id="previewTotal">₹0.00</h5>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-muted">Interest Amount</h6>
+                                    <h5 class="text-info" id="previewInterest">₹0.00</h5>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="text-muted">Principal Amount</h6>
+                                    <h5 class="text-success" id="previewPrincipal">₹0.00</h5>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Note:</strong> The total amount must equal the sum of interest and principal amounts. 
+                            The system will automatically update the loan's remaining principal balance.
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('admin_payments') }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Add Payment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current date/time as default
+    const now = new Date();
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('payment_date').value = localDateTime;
+    
+    const amountInput = document.getElementById('amount');
+    const interestInput = document.getElementById('interest_amount');
+    const principalInput = document.getElementById('principal_amount');
+    const loanSelect = document.getElementById('loan_id');
+    const previewDiv = document.getElementById('paymentPreview');
+    
+    // Calculate interest and principal when amount changes
+    function calculatePaymentBreakdown() {
+        const totalAmount = parseFloat(amountInput.value) || 0;
+        const loanId = loanSelect.value;
+        
+        if (totalAmount > 0 && loanId) {
+            // Fetch loan details from server
+            fetch(`/api/loan/${loanId}/details`)
+                .then(response => response.json())
+                .then(data => {
+                    // Calculate interest based on payment frequency
+                    let interestDue;
+                    if (data.payment_frequency === 'daily') {
+                        interestDue = data.daily_interest;
+                    } else {
+                        interestDue = data.monthly_interest;
+                    }
+                    
+                    // Calculate interest and principal
+                    const interestAmount = Math.min(totalAmount, interestDue);
+                    const principalAmount = Math.max(0, totalAmount - interestAmount);
+                    
+                    // Update hidden fields
+                    interestInput.value = interestAmount.toFixed(2);
+                    principalInput.value = principalAmount.toFixed(2);
+                    
+                    // Show preview
+                    document.getElementById('previewTotal').textContent = `₹${totalAmount.toFixed(2)}`;
+                    document.getElementById('previewInterest').textContent = `₹${interestAmount.toFixed(2)}`;
+                    document.getElementById('previewPrincipal').textContent = `₹${principalAmount.toFixed(2)}`;
+                    previewDiv.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching loan details:', error);
+                    previewDiv.style.display = 'none';
+                });
+        } else {
+            previewDiv.style.display = 'none';
+        }
+    }
+    
+    amountInput.addEventListener('input', calculatePaymentBreakdown);
+    loanSelect.addEventListener('change', function() {
+        updateLoanTypeInfo();
+        calculatePaymentBreakdown();
+    });
+    
+    function updateLoanTypeInfo() {
+        const selectedOption = loanSelect.options[loanSelect.selectedIndex];
+        const loanType = selectedOption.getAttribute('data-loan-type');
+        const helpText = document.getElementById('amount-help');
+        
+        if (loanType === 'interest_only') {
+            helpText.innerHTML = '<strong>Interest-Only Loan:</strong> Customer can only pay interest. Principal amount remains fixed.';
+            helpText.className = 'form-text text-info';
+        } else {
+            helpText.innerHTML = 'Enter the total payment amount. Interest will be calculated automatically.';
+            helpText.className = 'form-text';
+        }
+    }
+});
+
+function clearForm() {
+    document.getElementById('amount').value = '';
+    document.getElementById('interest_amount').value = '0';
+    document.getElementById('principal_amount').value = '0';
+    document.getElementById('transaction_id').value = '';
+    document.getElementById('loan_id').value = '';
+    document.getElementById('payment_method').value = '';
+    document.getElementById('paymentPreview').style.display = 'none';
+}
+</script>
+{% endblock %}

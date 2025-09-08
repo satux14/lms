@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Loan - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_interest_rate') }}">
+                            <i class="fas fa-percentage me-2"></i>Interest Rates
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus me-2"></i>Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card me-2"></i>All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>Users
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-edit me-2"></i>Edit Loan: {{ loan.loan_name }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Loans
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-edit me-2"></i>Loan Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customer_id" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Customer
+                                        </label>
+                                        <select class="form-select" id="customer_id" name="customer_id" disabled>
+                                            <option value="{{ loan.customer_id }}" selected>
+                                                {{ loan.customer.username }} ({{ loan.customer.email or 'No email' }})
+                                            </option>
+                                        </select>
+                                        <div class="form-text">Customer cannot be changed after loan creation</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_name" class="form-label">
+                                            <i class="fas fa-tag me-1"></i>Loan Name
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="loan_name" 
+                                               name="loan_name" 
+                                               value="{{ loan.loan_name }}"
+                                               placeholder="e.g., Personal Loan, Business Loan"
+                                               required>
+                                        <div class="form-text">Give this loan a descriptive name</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="principal" class="form-label">
+                                            <i class="fas fa-rupee-sign me-1"></i>Principal Amount
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" 
+                                                   class="form-control" 
+                                                   id="principal" 
+                                                   name="principal" 
+                                                   step="0.01" 
+                                                   min="0.01" 
+                                                   value="{{ loan.principal_amount }}"
+                                                   required>
+                                        </div>
+                                        <div class="form-text">Enter the new loan amount in Indian Rupees</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="interest_rate" class="form-label">
+                                            <i class="fas fa-percentage me-1"></i>Annual Interest Rate
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" 
+                                                   class="form-control" 
+                                                   id="interest_rate" 
+                                                   name="interest_rate" 
+                                                   step="0.01" 
+                                                   min="0.01" 
+                                                   max="100" 
+                                                   value="{{ "%.2f"|format(loan.interest_rate * 100) }}"
+                                                   required>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <div class="form-text">Enter the annual interest rate (e.g., 21.00 for 21%)</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="payment_frequency" class="form-label">
+                                            <i class="fas fa-calendar me-1"></i>Payment Frequency
+                                        </label>
+                                        <select class="form-select" id="payment_frequency" name="payment_frequency" required>
+                                            <option value="">Select frequency...</option>
+                                            <option value="daily" {% if loan.payment_frequency == 'daily' %}selected{% endif %}>Daily</option>
+                                            <option value="monthly" {% if loan.payment_frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+                                        </select>
+                                        <div class="form-text">How often the customer will make payments</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_type" class="form-label">
+                                            <i class="fas fa-tags me-1"></i>Loan Type
+                                        </label>
+                                        <select class="form-select" id="loan_type" name="loan_type" required>
+                                            <option value="">Select loan type...</option>
+                                            <option value="regular" {% if loan.loan_type == 'regular' %}selected{% endif %}>Regular Loan</option>
+                                            <option value="interest_only" {% if loan.loan_type == 'interest_only' %}selected{% endif %}>Interest-Only Loan</option>
+                                        </select>
+                                        <div class="form-text">
+                                            <strong>Regular:</strong> Customer can pay both principal and interest<br>
+                                            <strong>Interest-Only:</strong> Customer can only pay interest, principal stays fixed
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-info-circle me-1"></i>Current Status
+                                        </label>
+                                        <div class="form-control-plaintext">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <small class="text-muted">Remaining:</small><br>
+                                                    <strong>₹{{ "%.2f"|format(loan.remaining_principal) }}</strong>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">Paid:</small><br>
+                                                    <strong>₹{{ "%.2f"|format(loan.principal_amount - loan.remaining_principal) }}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_created_date" class="form-label">
+                                            <i class="fas fa-calendar me-1"></i>Loan Creation Date
+                                        </label>
+                                        <input type="date" 
+                                               class="form-control" 
+                                               id="loan_created_date" 
+                                               name="loan_created_date"
+                                               value="{{ loan.created_at.date().isoformat() }}">
+                                        <div class="form-text">
+                                            Change the loan creation date to recalculate interest correctly
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_created_time" class="form-label">
+                                            <i class="fas fa-clock me-1"></i>Creation Time
+                                        </label>
+                                        <input type="time" 
+                                               class="form-control" 
+                                               id="loan_created_time" 
+                                               name="loan_created_time"
+                                               value="{{ loan.created_at.time().strftime('%H:%M') }}">
+                                        <div class="form-text">
+                                            Time when the loan was created
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="admin_notes" class="form-label">
+                                            <i class="fas fa-user-shield me-1"></i>Admin Notes
+                                        </label>
+                                        <textarea class="form-control" 
+                                                  id="admin_notes" 
+                                                  name="admin_notes" 
+                                                  rows="3" 
+                                                  placeholder="Private admin notes (not visible to customer)...">{{ loan.admin_notes or '' }}</textarea>
+                                        <div class="form-text">Private notes for admin use only</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customer_notes" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Customer Notes
+                                        </label>
+                                        <textarea class="form-control" 
+                                                  id="customer_notes" 
+                                                  name="customer_notes" 
+                                                  rows="3" 
+                                                  placeholder="Notes visible to customer...">{{ loan.customer_notes or '' }}</textarea>
+                                        <div class="form-text">Notes visible to both admin and customer</div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Warning:</strong> Changing the principal amount will adjust the remaining balance accordingly. 
+                                    This action will affect future interest calculations.
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-save me-1"></i>Update Loan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Loan Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i>Updated Loan Preview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="loanPreview">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-file-invoice fa-3x mb-3"></i>
+                                    <p>Changes will be reflected here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Notes -->
+                    {% if loan.admin_notes %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-shield me-2"></i>Admin Notes
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded">
+                                <p class="mb-0">{{ loan.admin_notes }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Customer Notes -->
+                    {% if loan.customer_notes %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user me-2"></i>Customer Notes
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-info bg-opacity-10 p-3 rounded">
+                                <p class="mb-0">{{ loan.customer_notes }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Interest Calculation -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calculator me-2"></i>Interest Calculation
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="interestCalculation">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                                    <p>Select amount and interest rate to see calculations</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment History -->
+                    <div class="card mt-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>Payment History
+                            </h5>
+                            <a href="{{ url_for('admin_add_payment', loan_id=loan.id) }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus"></i> Add Payment
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if payments %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Interest</th>
+                                            <th>Principal</th>
+                                            <th>Method</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment in payments %}
+                                        <tr>
+                                            <td>
+                                                <small>{{ payment.payment_date.strftime('%m/%d/%Y') }}</small><br>
+                                                <small class="text-muted">{{ payment.payment_date.strftime('%H:%M') }}</small>
+                                            </td>
+                                            <td><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
+                                            <td>₹{{ "%.2f"|format(payment.interest_amount) }}</td>
+                                            <td>₹{{ "%.2f"|format(payment.principal_amount) }}</td>
+                                            <td>
+                                                <span class="badge bg-info">{{ payment.payment_method.title() }}</span>
+                                            </td>
+                                            <td>
+                                                {% if payment.status == 'verified' %}
+                                                    <span class="badge bg-success">Verified</span>
+                                                {% elif payment.status == 'pending' %}
+                                                    <span class="badge bg-warning">Pending</span>
+                                                {% elif payment.status == 'rejected' %}
+                                                    <span class="badge bg-danger">Rejected</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ payment.status.title() }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('admin_edit_payment', payment_id=payment.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary" title="Edit Payment">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-credit-card fa-2x text-muted mb-2"></i>
+                                <p class="text-muted mb-3">No payments yet</p>
+                                <a href="{{ url_for('admin_add_payment', loan_id=loan.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> Add First Payment
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Real-time loan preview and interest calculation
+document.addEventListener('DOMContentLoaded', function() {
+    const principalInput = document.getElementById('principal');
+    const frequencySelect = document.getElementById('payment_frequency');
+    const loanNameInput = document.getElementById('loan_name');
+    const interestRateInput = document.getElementById('interest_rate');
+    
+    function updatePreview() {
+        const principal = parseFloat(principalInput.value) || 0;
+        const frequency = frequencySelect.value;
+        const loanName = loanNameInput.value;
+        const interestRate = parseFloat(interestRateInput.value) || 0;
+        
+        // Update loan preview
+        const previewDiv = document.getElementById('loanPreview');
+        if (principal > 0 && frequency && loanName) {
+            previewDiv.innerHTML = `
+                <div class="mb-3">
+                    <h6>Customer:</h6>
+                    <p class="mb-1"><strong>{{ loan.customer.username }}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Loan Name:</h6>
+                    <p class="mb-1"><strong>${loanName}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Principal Amount:</h6>
+                    <p class="mb-1"><strong>₹${principal.toFixed(2)}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Payment Frequency:</h6>
+                    <p class="mb-1">
+                        <span class="badge bg-${frequency === 'daily' ? 'success' : 'warning'}">
+                            ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                        </span>
+                    </p>
+                </div>
+                <div class="mb-3">
+                    <h6>Interest Rate:</h6>
+                    <p class="mb-1"><span class="badge bg-info">${interestRate}% Annual</span></p>
+                </div>
+            `;
+        } else {
+            previewDiv.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-file-invoice fa-3x mb-3"></i>
+                    <p>Changes will be reflected here</p>
+                </div>
+            `;
+        }
+        
+        // Update interest calculation
+        const interestDiv = document.getElementById('interestCalculation');
+        if (principal > 0 && interestRate > 0) {
+            const annualRate = interestRate / 100;
+            const dailyRate = annualRate / 365;
+            const monthlyRate = annualRate / 12;
+            
+            const dailyInterest = principal * dailyRate;
+            const monthlyInterest = principal * monthlyRate;
+            
+            interestDiv.innerHTML = `
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h6>Daily Interest</h6>
+                        <h5 class="text-success">₹${dailyInterest.toFixed(2)}</h5>
+                    </div>
+                    <div class="col-6">
+                        <h6>Monthly Interest</h6>
+                        <h5 class="text-warning">₹${monthlyInterest.toFixed(2)}</h5>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <h6>Selected Frequency:</h6>
+                    <h4 class="text-primary">
+                        ₹${frequency === 'daily' ? dailyInterest.toFixed(2) : monthlyInterest.toFixed(2)}
+                    </h4>
+                    <small class="text-muted">per ${frequency === 'daily' ? 'day' : 'month'}</small>
+                </div>
+            `;
+        } else {
+            interestDiv.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                    <p>Select amount and interest rate to see calculations</p>
+                </div>
+            `;
+        }
+    }
+    
+    principalInput.addEventListener('input', updatePreview);
+    frequencySelect.addEventListener('change', updatePreview);
+    loanNameInput.addEventListener('input', updatePreview);
+    interestRateInput.addEventListener('input', updatePreview);
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const principal = parseFloat(principalInput.value);
+        const frequency = frequencySelect.value;
+        const loanName = loanNameInput.value;
+        const interestRate = parseFloat(interestRateInput.value);
+        
+        if (!loanName.trim()) {
+            e.preventDefault();
+            alert('Please enter a loan name');
+            return;
+        }
+        
+        if (!principal || principal <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid principal amount');
+            return;
+        }
+        
+        if (!frequency) {
+            e.preventDefault();
+            alert('Please select a payment frequency');
+            return;
+        }
+        
+        if (!interestRate || interestRate <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid interest rate');
+            return;
+        }
+        
+        // Confirmation
+        if (!confirm(`Update loan "${loanName}" with principal ₹${principal.toFixed(2)} and ${frequency} payments?`)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

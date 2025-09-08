@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold text-primary mb-3">
+                    <i class="fas fa-university me-3"></i>Lending Management System
+                </h1>
+                <p class="lead text-muted">
+                    Professional loan management with flexible interest rates and payment options
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-user-tie fa-4x text-primary"></i>
+                    </div>
+                    <h3 class="card-title mb-3">For Administrators</h3>
+                    <p class="card-text text-muted mb-4">
+                        Manage interest rates, create loans, and monitor all customer accounts with comprehensive admin tools.
+                    </p>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-check text-success me-2"></i>Set and modify interest rates</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Create new loans for customers</li>
+                        <li><i class="fas fa-check text-success me-2"></i>View all loan accounts</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Monitor payment activities</li>
+                    </ul>
+                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg mt-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Admin Login
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-users fa-4x text-success"></i>
+                    </div>
+                    <h3 class="card-title mb-3">For Customers</h3>
+                    <p class="card-text text-muted mb-4">
+                        Track your loans, make payments, and monitor daily interest calculations with real-time updates.
+                    </p>
+                    <ul class="list-unstyled text-start">
+                        <li><i class="fas fa-check text-success me-2"></i>View loan details and balances</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Make payments anytime</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Track daily interest accumulation</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Payment history and records</li>
+                    </ul>
+                    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg mt-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Customer Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-star me-2"></i>Key Features</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-3 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-percentage fa-3x text-warning"></i>
+                            </div>
+                            <h5>Flexible Interest Rates</h5>
+                            <p class="text-muted">Admins can adjust interest rates anytime to respond to market conditions.</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-calendar-day fa-3x text-info"></i>
+                            </div>
+                            <h5>Daily Interest Tracking</h5>
+                            <p class="text-muted">Real-time daily interest calculations to encourage frequent payments.</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-credit-card fa-3x text-success"></i>
+                            </div>
+                            <h5>Flexible Payments</h5>
+                            <p class="text-muted">Customers can pay daily or monthly based on their preference.</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-chart-line fa-3x text-primary"></i>
+                            </div>
+                            <h5>Smart Payment Processing</h5>
+                            <p class="text-muted">Automatic principal reduction when payments exceed interest due.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not current_user.is_authenticated %}
+    <div class="row mt-5">
+        <div class="col-12 text-center">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="mb-3">New to our system?</h4>
+                    <p class="text-muted mb-4">Register as a customer to start managing your loans</p>
+                    <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-user-plus me-2"></i>Create Account
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

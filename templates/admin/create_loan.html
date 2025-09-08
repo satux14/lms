@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Loan - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_interest_rate') }}">
+                            <i class="fas fa-percentage me-2"></i>Interest Rates
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans') }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_create_loan') }}">
+                            <i class="fas fa-plus me-2"></i>Create Loan
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments') }}">
+                            <i class="fas fa-credit-card me-2"></i>All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users') }}">
+                            <i class="fas fa-users me-2"></i>Users
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-plus me-2"></i>Create New Loan
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Loans
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-invoice-dollar me-2"></i>Loan Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customer_id" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Customer
+                                        </label>
+                                        <select class="form-select" id="customer_id" name="customer_id" required>
+                                            <option value="">Select a customer...</option>
+                                            {% for customer in customers %}
+                                            <option value="{{ customer.id }}">
+                                                {{ customer.username }} ({{ customer.email or 'No email' }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">Choose the customer for this loan</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_name" class="form-label">
+                                            <i class="fas fa-tag me-1"></i>Loan Name
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="loan_name" 
+                                               name="loan_name" 
+                                               placeholder="e.g., Personal Loan, Business Loan"
+                                               required>
+                                        <div class="form-text">Give this loan a descriptive name</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="principal" class="form-label">
+                                            <i class="fas fa-rupee-sign me-1"></i>Principal Amount
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" 
+                                                   class="form-control" 
+                                                   id="principal" 
+                                                   name="principal" 
+                                                   step="0.01" 
+                                                   min="0.01" 
+                                                   required>
+                                        </div>
+                                        <div class="form-text">Enter the loan amount in Indian Rupees</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="interest_rate" class="form-label">
+                                            <i class="fas fa-percentage me-1"></i>Annual Interest Rate
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" 
+                                                   class="form-control" 
+                                                   id="interest_rate" 
+                                                   name="interest_rate" 
+                                                   step="0.01" 
+                                                   min="0.01" 
+                                                   max="100" 
+                                                   value="21.00"
+                                                   required>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <div class="form-text">Enter the annual interest rate (e.g., 21.00 for 21%)</div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="payment_frequency" class="form-label">
+                                            <i class="fas fa-calendar me-1"></i>Payment Frequency
+                                        </label>
+                                        <select class="form-select" id="payment_frequency" name="payment_frequency" required>
+                                            <option value="">Select frequency...</option>
+                                            <option value="daily">Daily</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                        <div class="form-text">How often the customer will make payments</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_type" class="form-label">
+                                            <i class="fas fa-tags me-1"></i>Loan Type
+                                        </label>
+                                        <select class="form-select" id="loan_type" name="loan_type" required>
+                                            <option value="">Select loan type...</option>
+                                            <option value="regular">Regular Loan</option>
+                                            <option value="interest_only">Interest-Only Loan</option>
+                                        </select>
+                                        <div class="form-text">
+                                            <strong>Regular:</strong> Customer can pay both principal and interest<br>
+                                            <strong>Interest-Only:</strong> Customer can only pay interest, principal stays fixed
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_created_date" class="form-label">
+                                            <i class="fas fa-calendar me-1"></i>Loan Creation Date
+                                        </label>
+                                        <input type="date" 
+                                               class="form-control" 
+                                               id="loan_created_date" 
+                                               name="loan_created_date">
+                                        <div class="form-text">
+                                            Leave empty to use current date, or select when the loan was actually created
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="loan_created_time" class="form-label">
+                                            <i class="fas fa-clock me-1"></i>Creation Time (Optional)
+                                        </label>
+                                        <input type="time" 
+                                               class="form-control" 
+                                               id="loan_created_time" 
+                                               name="loan_created_time">
+                                        <div class="form-text">
+                                            Optional: Specify exact time of loan creation
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="admin_notes" class="form-label">
+                                            <i class="fas fa-user-shield me-1"></i>Admin Notes
+                                        </label>
+                                        <textarea class="form-control" 
+                                                  id="admin_notes" 
+                                                  name="admin_notes" 
+                                                  rows="3" 
+                                                  placeholder="Private admin notes (not visible to customer)..."></textarea>
+                                        <div class="form-text">Private notes for admin use only</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customer_notes" class="form-label">
+                                            <i class="fas fa-user me-1"></i>Customer Notes
+                                        </label>
+                                        <textarea class="form-control" 
+                                                  id="customer_notes" 
+                                                  name="customer_notes" 
+                                                  rows="3" 
+                                                  placeholder="Notes visible to customer..."></textarea>
+                                        <div class="form-text">Notes visible to both admin and customer</div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> Each loan can have a different interest rate. 
+                                    You can create new interest rates from the Interest Rates page if needed.
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_loans') }}" class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i>Create Loan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Loan Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i>Loan Preview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="loanPreview">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-file-invoice fa-3x mb-3"></i>
+                                    <p>Fill in the form to see loan preview</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interest Calculation -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calculator me-2"></i>Interest Calculation
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="interestCalculation">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                                    <p>Select amount and frequency to see calculations</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Help -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-question-circle me-2"></i>Help
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>Payment Frequencies:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i><strong>Daily:</strong> Customer pays interest daily</li>
+                                <li><i class="fas fa-check text-success me-2"></i><strong>Monthly:</strong> Customer pays interest monthly</li>
+                            </ul>
+                            
+                            <h6 class="mt-3">Interest Calculation:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-info text-info me-2"></i>Daily: Annual Rate ÷ 365</li>
+                                <li><i class="fas fa-info text-info me-2"></i>Monthly: Annual Rate ÷ 12</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Real-time loan preview and interest calculation
+document.addEventListener('DOMContentLoaded', function() {
+    const principalInput = document.getElementById('principal');
+    const frequencySelect = document.getElementById('payment_frequency');
+    const customerSelect = document.getElementById('customer_id');
+    const loanNameInput = document.getElementById('loan_name');
+    const interestRateInput = document.getElementById('interest_rate');
+    
+    function updatePreview() {
+        const principal = parseFloat(principalInput.value) || 0;
+        const frequency = frequencySelect.value;
+        const customer = customerSelect.options[customerSelect.selectedIndex];
+        const loanName = loanNameInput.value;
+        const interestRate = parseFloat(interestRateInput.value) || 0;
+        
+        // Update loan preview
+        const previewDiv = document.getElementById('loanPreview');
+        if (principal > 0 && frequency && customer.value && loanName) {
+            previewDiv.innerHTML = `
+                <div class="mb-3">
+                    <h6>Customer:</h6>
+                    <p class="mb-1"><strong>${customer.text}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Loan Name:</h6>
+                    <p class="mb-1"><strong>${loanName}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Principal Amount:</h6>
+                    <p class="mb-1"><strong>₹${principal.toFixed(2)}</strong></p>
+                </div>
+                <div class="mb-3">
+                    <h6>Payment Frequency:</h6>
+                    <p class="mb-1">
+                        <span class="badge bg-${frequency === 'daily' ? 'success' : 'warning'}">
+                            ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                        </span>
+                    </p>
+                </div>
+                <div class="mb-3">
+                    <h6>Interest Rate:</h6>
+                    <p class="mb-1"><span class="badge bg-info">${interestRate}% Annual</span></p>
+                </div>
+            `;
+        } else {
+            previewDiv.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-file-invoice fa-3x mb-3"></i>
+                    <p>Fill in the form to see loan preview</p>
+                </div>
+            `;
+        }
+        
+        // Update interest calculation
+        const interestDiv = document.getElementById('interestCalculation');
+        if (principal > 0 && frequency && interestRate > 0) {
+            const annualRate = interestRate / 100;
+            const dailyRate = annualRate / 365;
+            const monthlyRate = annualRate / 12;
+            
+            const dailyInterest = principal * dailyRate;
+            const monthlyInterest = principal * monthlyRate;
+            
+            interestDiv.innerHTML = `
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h6>Daily Interest</h6>
+                        <h5 class="text-success">₹${dailyInterest.toFixed(2)}</h5>
+                    </div>
+                    <div class="col-6">
+                        <h6>Monthly Interest</h6>
+                        <h5 class="text-warning">₹${monthlyInterest.toFixed(2)}</h5>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <h6>Selected Frequency:</h6>
+                    <h4 class="text-primary">
+                        ₹${frequency === 'daily' ? dailyInterest.toFixed(2) : monthlyInterest.toFixed(2)}
+                    </h4>
+                    <small class="text-muted">per ${frequency === 'daily' ? 'day' : 'month'}</small>
+                </div>
+            `;
+        } else {
+            interestDiv.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                    <p>Select amount, frequency, and interest rate to see calculations</p>
+                </div>
+            `;
+        }
+    }
+    
+    principalInput.addEventListener('input', updatePreview);
+    frequencySelect.addEventListener('change', updatePreview);
+    customerSelect.addEventListener('change', updatePreview);
+    loanNameInput.addEventListener('input', updatePreview);
+    interestRateInput.addEventListener('input', updatePreview);
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const principal = parseFloat(principalInput.value);
+        const frequency = frequencySelect.value;
+        const customer = customerSelect.value;
+        const loanName = loanNameInput.value;
+        const interestRate = parseFloat(interestRateInput.value);
+        
+        if (!customer) {
+            e.preventDefault();
+            alert('Please select a customer');
+            return;
+        }
+        
+        if (!loanName.trim()) {
+            e.preventDefault();
+            alert('Please enter a loan name');
+            return;
+        }
+        
+        if (!principal || principal <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid principal amount');
+            return;
+        }
+        
+        if (!frequency) {
+            e.preventDefault();
+            alert('Please select a payment frequency');
+            return;
+        }
+        
+        if (!interestRate || interestRate <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid interest rate');
+            return;
+        }
+        
+        // Confirmation
+        if (!confirm(`Create loan "${loanName}" for ${customerSelect.options[customerSelect.selectedIndex].text} with principal ₹${principal.toFixed(2)} and ${frequency} payments?`)) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}
