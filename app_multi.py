@@ -449,6 +449,379 @@ def admin_dashboard(instance_name):
                          total_users=total_users,
                          instance_name=instance_name)
 
+# Admin Interest Rate route
+@app.route('/<instance_name>/admin/interest-rate')
+@login_required
+def admin_interest_rate(instance_name):
+    """Admin interest rate page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # This page is now informational only since each loan has its own rate
+    return render_template('admin/interest_rate.html', instance_name=instance_name)
+
+# Admin Loans route
+@app.route('/<instance_name>/admin/loans')
+@login_required
+def admin_loans(instance_name):
+    """Admin loans page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Get filter parameters
+    loan_type = request.args.get('loan_type', '')
+    frequency = request.args.get('frequency', '')
+    customer_id = request.args.get('customer', '')
+    loan_name = request.args.get('loan_name', '')
+    min_rate = request.args.get('min_rate', '')
+    max_rate = request.args.get('max_rate', '')
+    
+    # Build query
+    query = Loan.query
+    
+    if loan_type:
+        query = query.filter(Loan.loan_type == loan_type)
+    if frequency:
+        query = query.filter(Loan.payment_frequency == frequency)
+    if customer_id:
+        query = query.filter(Loan.customer_id == customer_id)
+    if loan_name:
+        query = query.filter(Loan.loan_name.contains(loan_name))
+    if min_rate:
+        query = query.filter(Loan.interest_rate >= float(min_rate))
+    if max_rate:
+        query = query.filter(Loan.interest_rate <= float(max_rate))
+    
+    # Get sorting parameters
+    sort_by = request.args.get('sort', 'created_at')
+    sort_order = request.args.get('order', 'desc')
+    
+    if sort_by == 'customer':
+        if sort_order == 'asc':
+            query = query.join(User).order_by(User.username.asc())
+        else:
+            query = query.join(User).order_by(User.username.desc())
+    elif sort_by == 'loan_name':
+        if sort_order == 'asc':
+            query = query.order_by(Loan.loan_name.asc())
+        else:
+            query = query.order_by(Loan.loan_name.desc())
+    elif sort_by == 'principal':
+        if sort_order == 'asc':
+            query = query.order_by(Loan.principal_amount.asc())
+        else:
+            query = query.order_by(Loan.principal_amount.desc())
+    elif sort_by == 'rate':
+        if sort_order == 'asc':
+            query = query.order_by(Loan.interest_rate.asc())
+        else:
+            query = query.order_by(Loan.interest_rate.desc())
+    else:  # created_at
+        if sort_order == 'asc':
+            query = query.order_by(Loan.created_at.asc())
+        else:
+            query = query.order_by(Loan.created_at.desc())
+    
+    loans = query.all()
+    customers = User.query.filter_by(is_admin=False).all()
+    
+    return render_template('admin/loans.html', 
+                         loans=loans, 
+                         customers=customers,
+                         loan_type=loan_type,
+                         frequency=frequency,
+                         customer_id=customer_id,
+                         loan_name=loan_name,
+                         min_rate=min_rate,
+                         max_rate=max_rate,
+                         sort_by=sort_by,
+                         sort_order=sort_order,
+                         instance_name=instance_name)
+
+# Admin Users route
+@app.route('/<instance_name>/admin/users')
+@login_required
+def admin_users(instance_name):
+    """Admin users page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    users = User.query.all()
+    total_loans = sum(len(user.loans) for user in users)
+    admin_count = sum(1 for user in users if user.is_admin)
+    customer_count = len(users) - admin_count
+    
+    return render_template('admin/users.html', 
+                         users=users, 
+                         total_loans=total_loans,
+                         admin_count=admin_count,
+                         customer_count=customer_count,
+                         instance_name=instance_name)
+
+# Admin Create User route
+@app.route('/<instance_name>/admin/create-user', methods=['GET', 'POST'])
+@login_required
+def admin_create_user(instance_name):
+    """Admin create user page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form.get('email', '')  # Email is optional
+        password = request.form['password']
+        is_admin = 'is_admin' in request.form
+        
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists')
+            return render_template('admin/create_user.html', instance_name=instance_name)
+        
+        user = User(
+            username=username,
+            email=email if email else None,
+            password_hash=generate_password_hash(password),
+            is_admin=is_admin
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        flash(f'User {username} created successfully')
+        return redirect(url_for('admin_users', instance_name=instance_name))
+    
+    return render_template('admin/create_user.html', instance_name=instance_name)
+
+# Admin Create Loan route
+@app.route('/<instance_name>/admin/create-loan', methods=['GET', 'POST'])
+@login_required
+def admin_create_loan(instance_name):
+    """Admin create loan page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        customer_id = request.form['customer_id']
+        loan_name = request.form['loan_name']
+        principal_amount = Decimal(request.form['principal_amount'])
+        interest_rate = Decimal(request.form['interest_rate'])
+        payment_frequency = request.form['payment_frequency']
+        loan_type = request.form['loan_type']
+        admin_notes = request.form.get('admin_notes', '')
+        customer_notes = request.form.get('customer_notes', '')
+        custom_created_at = request.form.get('custom_created_at')
+        
+        # Parse custom creation date if provided
+        if custom_created_at:
+            try:
+                created_at = datetime.strptime(custom_created_at, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash('Invalid date format')
+                return render_template('admin/create_loan.html', 
+                                     customers=User.query.filter_by(is_admin=False).all(),
+                                     instance_name=instance_name)
+        else:
+            created_at = datetime.utcnow()
+        
+        loan = Loan(
+            customer_id=customer_id,
+            loan_name=loan_name,
+            principal_amount=principal_amount,
+            remaining_principal=principal_amount,
+            interest_rate=interest_rate,
+            payment_frequency=payment_frequency,
+            loan_type=loan_type,
+            admin_notes=admin_notes,
+            customer_notes=customer_notes,
+            created_at=created_at
+        )
+        db.session.add(loan)
+        db.session.commit()
+        
+        flash('Loan created successfully')
+        return redirect(url_for('admin_loans', instance_name=instance_name))
+    
+    customers = User.query.filter_by(is_admin=False).all()
+    return render_template('admin/create_loan.html', 
+                         customers=customers,
+                         instance_name=instance_name)
+
+# Admin Payments route
+@app.route('/<instance_name>/admin/payments')
+@login_required
+def admin_payments(instance_name):
+    """Admin payments page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Get filter parameters
+    customer_filter = request.args.get('customer', '')
+    loan_filter = request.args.get('loan', '')
+    status_filter = request.args.get('status', '')
+    payment_method = request.args.get('payment_method', '')
+    
+    # Build query
+    query = Payment.query.join(Loan).join(User)
+    
+    if customer_filter:
+        query = query.filter(User.username.contains(customer_filter))
+    if loan_filter:
+        query = query.filter(Loan.loan_name.contains(loan_filter))
+    if status_filter:
+        query = query.filter(Payment.payment_status == status_filter)
+    if payment_method:
+        query = query.filter(Payment.payment_method == payment_method)
+    
+    # Get sorting parameters
+    sort_by = request.args.get('sort', 'payment_date')
+    sort_order = request.args.get('order', 'desc')
+    
+    if sort_by == 'customer':
+        if sort_order == 'asc':
+            query = query.order_by(User.username.asc())
+        else:
+            query = query.order_by(User.username.desc())
+    elif sort_by == 'loan':
+        if sort_order == 'asc':
+            query = query.order_by(Loan.loan_name.asc())
+        else:
+            query = query.order_by(Loan.loan_name.desc())
+    elif sort_by == 'amount':
+        if sort_order == 'asc':
+            query = query.order_by(Payment.amount.asc())
+        else:
+            query = query.order_by(Payment.amount.desc())
+    else:  # payment_date
+        if sort_order == 'asc':
+            query = query.order_by(Payment.payment_date.asc())
+        else:
+            query = query.order_by(Payment.payment_date.desc())
+    
+    payments = query.all()
+    
+    # Get unique customers and loans for filters
+    customers = User.query.filter_by(is_admin=False).all()
+    loans = Loan.query.all()
+    
+    # Handle Excel export
+    if request.args.get('export') == 'excel':
+        from backup import BackupManager
+        backup_manager = BackupManager(instance_name)
+        return backup_manager.export_to_excel()
+    
+    return render_template('admin/payments.html', 
+                         payments=payments,
+                         customers=customers,
+                         loans=loans,
+                         customer_filter=customer_filter,
+                         loan_filter=loan_filter,
+                         status_filter=status_filter,
+                         payment_method=payment_method,
+                         sort_by=sort_by,
+                         sort_order=sort_order,
+                         instance_name=instance_name)
+
+# Admin Add Payment route
+@app.route('/<instance_name>/admin/add-payment', methods=['GET', 'POST'])
+@app.route('/<instance_name>/admin/add-payment/<int:loan_id>', methods=['GET', 'POST'])
+@login_required
+def admin_add_payment(instance_name, loan_id=None):
+    """Admin add payment page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        loan_id = request.form['loan_id']
+        amount = Decimal(request.form['amount'])
+        payment_method = request.form['payment_method']
+        transaction_id = request.form.get('transaction_id', '')
+        payment_date_str = request.form.get('payment_date')
+        
+        # Parse payment date
+        if payment_date_str:
+            try:
+                payment_date = datetime.strptime(payment_date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash('Invalid date format')
+                return render_template('admin/add_payment.html', 
+                                     loans=Loan.query.all(),
+                                     selected_loan_id=loan_id,
+                                     instance_name=instance_name)
+        else:
+            payment_date = datetime.utcnow()
+        
+        loan = Loan.query.get(loan_id)
+        if not loan:
+            flash('Loan not found')
+            return redirect(url_for('admin_payments', instance_name=instance_name))
+        
+        # Process payment similar to customer payment
+        payment = Payment(
+            loan_id=loan_id,
+            amount=amount,
+            payment_method=payment_method,
+            transaction_id=transaction_id,
+            payment_date=payment_date,
+            payment_status='pending'  # All payments start as pending
+        )
+        db.session.add(payment)
+        db.session.commit()
+        
+        flash('Payment added successfully. It will be verified by admin.')
+        return redirect(url_for('admin_payments', instance_name=instance_name))
+    
+    loans = Loan.query.all()
+    return render_template('admin/add_payment.html', 
+                         loans=loans,
+                         selected_loan_id=loan_id,
+                         instance_name=instance_name)
+
+# Admin Backup route
+@app.route('/<instance_name>/admin/backup')
+@login_required
+def admin_backup(instance_name):
+    """Admin backup page for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from backup import BackupManager
+    backup_manager = BackupManager(instance_name)
+    backup_info = backup_manager.get_backup_info()
+    
+    return render_template('admin/backup.html', 
+                         backup_info=backup_info,
+                         instance_name=instance_name)
+
 # Customer routes
 @app.route('/<instance_name>/customer')
 @login_required
