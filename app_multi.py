@@ -845,17 +845,19 @@ def admin_add_payment(instance_name, loan_id=None):
             flash('Loan not found')
             return redirect(url_for('admin_payments', instance_name=instance_name))
         
-        # Process payment similar to customer payment
-        payment = Payment(
-            loan_id=loan_id,
-            amount=amount,
-            payment_method=payment_method,
-            transaction_id=transaction_id,
-            payment_date=payment_date,
-            status='pending'  # All payments start as pending
-        )
-        db.session.add(payment)
-        db.session.commit()
+        # Process payment using the process_payment function
+        try:
+            payment = process_payment(
+                loan=loan,
+                payment_amount=amount,
+                payment_date=payment_date,
+                transaction_id=transaction_id,
+                payment_method=payment_method,
+                proof_filename=None
+            )
+        except ValueError as e:
+            flash(str(e))
+            return redirect(url_for('admin_add_payment', instance_name=instance_name, loan_id=loan_id))
         
         flash('Payment added successfully. It will be verified by admin.')
         return redirect(url_for('admin_payments', instance_name=instance_name))
@@ -1205,17 +1207,19 @@ def customer_make_payment(instance_name, loan_id):
         else:
             payment_date = datetime.utcnow()
         
-        # Process payment
-        payment = Payment(
-            loan_id=loan_id,
-            amount=amount,
-            payment_method=payment_method,
-            transaction_id=transaction_id,
-            payment_date=payment_date,
-            status='pending'  # All payments start as pending
-        )
-        db.session.add(payment)
-        db.session.commit()
+        # Process payment using the process_payment function
+        try:
+            payment = process_payment(
+                loan=loan,
+                payment_amount=amount,
+                payment_date=payment_date,
+                transaction_id=transaction_id,
+                payment_method=payment_method,
+                proof_filename=None
+            )
+        except ValueError as e:
+            flash(str(e))
+            return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
         
         flash('Payment submitted successfully. It will be verified by admin.')
         return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
