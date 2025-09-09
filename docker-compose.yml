@@ -1,0 +1,38 @@
+# Docker Compose for Multi-Instance Lending Management System
+# ===========================================================
+# This compose file sets up the lending management system with proper
+# volume mounts for data persistence and easy configuration.
+
+version: '3.8'
+
+services:
+  lending-app:
+    build: .
+    container_name: lending-management-system
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persist database files
+      - lending_data:/app/instances
+      # Persist backup files
+      - lending_backups:/app/backups
+      # Persist upload files
+      - lending_uploads:/app/uploads
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  lending_data:
+    driver: local
+  lending_backups:
+    driver: local
+  lending_uploads:
+    driver: local
