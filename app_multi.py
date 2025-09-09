@@ -216,27 +216,6 @@ class DatabaseManager:
         
         return self.sessions[instance]
     
-    def switch_to_instance(self, instance):
-        """Switch to specific instance database"""
-        if instance not in VALID_INSTANCES:
-            return False
-        
-        # Configure app for this instance
-        configure_app_for_instance(instance)
-        
-        # Get engine and session for this instance
-        engine = self.get_engine_for_instance(instance)
-        session = self.get_session_for_instance(instance)
-        
-        # Update the global db object to use this instance's engine and session
-        global db
-        db.session.bind = engine
-        db.engines[''] = engine
-        
-        # Store current instance in g for easy access
-        g.current_instance = instance
-        
-        return True
     
     def get_query_for_instance(self, instance, model_class):
         """Get query object for specific instance and model"""
@@ -291,8 +270,8 @@ def init_app():
     # Create default data for all instances
     with app.app_context():
         for instance in VALID_INSTANCES:
-            # Switch to this instance
-            db_manager.switch_to_instance(instance)
+            # Set the instance in g for create_default_data
+            g.current_instance = instance
             create_default_data(instance)
     
     return app
@@ -514,9 +493,9 @@ def before_request():
     instance = get_current_instance()
     g.current_instance = instance
     
-    # Use database manager to switch to correct instance
-    success = db_manager.switch_to_instance(instance)
-    if not success:
+    # Just store the instance in g - don't modify the global db object
+    # The helper functions will handle instance-specific database access
+    if instance not in VALID_INSTANCES:
         flash('Invalid instance', 'error')
         return redirect('/')
 
