@@ -978,6 +978,7 @@ def admin_edit_payment(instance_name, payment_id):
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
     payment = Payment.query.get_or_404(payment_id)
+    loan = payment.loan  # Get the loan associated with this payment
     
     if request.method == 'POST':
         payment.amount = Decimal(request.form['amount'])
@@ -994,6 +995,7 @@ def admin_edit_payment(instance_name, payment_id):
                 flash('Invalid date format')
                 return render_template('admin/edit_payment.html', 
                                      payment=payment,
+                                     loan=loan,
                                      instance_name=instance_name)
         
         db.session.commit()
@@ -1002,6 +1004,7 @@ def admin_edit_payment(instance_name, payment_id):
     
     return render_template('admin/edit_payment.html', 
                          payment=payment,
+                         loan=loan,
                          instance_name=instance_name)
 
 # Admin Create Backup route
