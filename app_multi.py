@@ -694,6 +694,7 @@ def admin_loans(instance_name):
     loan_name = request.args.get('loan_name', '')
     min_rate = request.args.get('min_rate', '')
     max_rate = request.args.get('max_rate', '')
+    status = request.args.get('status', '')
     
     # Build query
     query = get_loan_query()
@@ -707,9 +708,18 @@ def admin_loans(instance_name):
     if loan_name:
         query = query.filter(Loan.loan_name.contains(loan_name))
     if min_rate:
-        query = query.filter(Loan.interest_rate >= float(min_rate))
+        # Convert percentage to decimal for comparison
+        min_rate_decimal = float(min_rate) / 100
+        query = query.filter(Loan.interest_rate >= min_rate_decimal)
     if max_rate:
-        query = query.filter(Loan.interest_rate <= float(max_rate))
+        # Convert percentage to decimal for comparison
+        max_rate_decimal = float(max_rate) / 100
+        query = query.filter(Loan.interest_rate <= max_rate_decimal)
+    if status:
+        if status == 'active':
+            query = query.filter(Loan.is_active == True)
+        elif status == 'paid_off':
+            query = query.filter(Loan.is_active == False)
     
     # Get sorting parameters
     sort_by = request.args.get('sort', 'created_at')
@@ -742,7 +752,7 @@ def admin_loans(instance_name):
             query = query.order_by(Loan.created_at.desc())
     
     loans = query.all()
-    customers = [user.username for user in get_user_query().filter_by(is_admin=False).all()]
+    customers = get_user_query().filter_by(is_admin=False).all()
     
     return render_template('admin/loans.html', 
                          loans=loans, 
@@ -753,6 +763,7 @@ def admin_loans(instance_name):
                          loan_name=loan_name,
                          min_rate=min_rate,
                          max_rate=max_rate,
+                         status=status,
                          sort_by=sort_by,
                          sort_order=sort_order,
                          instance_name=instance_name)
@@ -947,9 +958,9 @@ def admin_payments(instance_name):
     
     # Handle Excel export
     if request.args.get('export') == 'excel':
-        from backup import BackupManager
-        backup_manager = BackupManager(instance_name)
-        return backup_manager.export_to_excel()
+        from backup_multi import MultiInstanceBackupManager
+        backup_manager = MultiInstanceBackupManager(app)
+        return backup_manager.export_to_excel(instance_name)
     
     return render_template('admin/payments.html', 
                          payments=payments,
@@ -1040,19 +1051,22 @@ def admin_backup(instance_name):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    from backup import BackupManager
-    backup_manager = BackupManager(instance_name)
-    backup_info = backup_manager.get_backup_info()
+    from backup_multi import MultiInstanceBackupManager
+    backup_manager = MultiInstanceBackupManager(app)
+    backup_info = backup_manager.get_backup_info(instance_name)
     
     # Calculate total size in MB
-    if backup_info and 'total_size' in backup_info:
-        total_size_mb = backup_info['total_size'] / (1024 * 1024)
-    else:
-        total_size_mb = 0
+    total_size_mb = 0
+    if backup_info and 'instances' in backup_info and instance_name in backup_info['instances']:
+        total_size_mb = backup_info['instances'][instance_name].get('total_size', 0) / (1024 * 1024)
+    
+    # Get database size for current instance
+    db_size_mb = backup_manager.get_instance_database_size(instance_name) / (1024 * 1024)
     
     return render_template('admin/backup.html', 
                          backup_info=backup_info,
                          total_size_mb=total_size_mb,
+                         db_size_mb=db_size_mb,
                          instance_name=instance_name)
 
 # Admin Edit Loan route
@@ -1179,14 +1193,17 @@ def admin_create_backup(instance_name):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    from backup import BackupManager
-    backup_manager = BackupManager(instance_name)
+    from backup_multi import MultiInstanceBackupManager
+    backup_manager = MultiInstanceBackupManager(app)
     
     try:
-        backup_manager.create_full_backup()
-        flash('Backup created successfully')
+        backup_path = backup_manager.create_full_backup(instance_name)
+        if backup_path:
+            flash(f'Backup created successfully for {instance_name}: {backup_path.name}')
+        else:
+            flash(f'Backup failed for {instance_name}')
     except Exception as e:
-        flash(f'Backup failed: {str(e)}')
+        flash(f'Backup failed for {instance_name}: {str(e)}')
     
     return redirect(url_for('admin_backup', instance_name=instance_name))
 
@@ -1202,15 +1219,15 @@ def admin_cleanup_backups(instance_name):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    from backup import BackupManager
-    backup_manager = BackupManager(instance_name)
+    from backup_multi import MultiInstanceBackupManager
+    backup_manager = MultiInstanceBackupManager(app)
     
     try:
         days = int(request.form.get('days', 30))
-        backup_manager.cleanup_old_backups(days)
-        flash(f'Cleaned up backups older than {days} days')
+        cleaned_count = backup_manager.cleanup_old_backups(instance_name, days)
+        flash(f'Cleaned up {cleaned_count} backup files older than {days} days for {instance_name}')
     except Exception as e:
-        flash(f'Cleanup failed: {str(e)}')
+        flash(f'Cleanup failed for {instance_name}: {str(e)}')
     
     return redirect(url_for('admin_backup', instance_name=instance_name))
 
@@ -1226,13 +1243,13 @@ def admin_download_backup(instance_name, filename):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    from backup import BackupManager
-    backup_manager = BackupManager(instance_name)
+    from backup_multi import MultiInstanceBackupManager
+    backup_manager = MultiInstanceBackupManager(app)
     
     try:
-        return backup_manager.download_backup(filename)
+        return backup_manager.download_backup(instance_name, filename)
     except Exception as e:
-        flash(f'Download failed: {str(e)}')
+        flash(f'Download failed for {instance_name}: {str(e)}')
         return redirect(url_for('admin_backup', instance_name=instance_name))
 
 # Customer routes

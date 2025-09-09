@@ -206,26 +206,26 @@
                             {% endif %}
                             {% if request.args.get('customer') %}
                             <span class="badge bg-primary">
-                                Customer: {{ customers|selectattr('id', 'equalto', request.args.get('customer')|int)|first.username }}
+                                Customer: {{ (customers|selectattr('id', 'equalto', request.args.get('customer')|int)|first).username }}
                                 <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
                             </span>
                             {% endif %}
                             {% if request.args.get('status') %}
                             <span class="badge bg-primary">
                                 Status: {{ 'Active' if request.args.get('status') == 'active' else 'Paid Off' }}
-                                <a href="{{ url_for('admin_loans', loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
+                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
                             </span>
                             {% endif %}
                             {% if request.args.get('loan_name') %}
                             <span class="badge bg-primary">
                                 Name: "{{ request.args.get('loan_name') }}"
-                                <a href="{{ url_for('admin_loans', loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
+                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
                             </span>
                             {% endif %}
                             {% if request.args.get('min_rate') or request.args.get('max_rate') %}
                             <span class="badge bg-primary">
                                 Rate: {{ request.args.get('min_rate', '0') }}% - {{ request.args.get('max_rate', '∞') }}%
-                                <a href="{{ url_for('admin_loans', loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
+                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
                             </span>
                             {% endif %}
                         </div>

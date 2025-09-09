@@ -77,8 +77,8 @@
                                 <div>
                                     <h6 class="card-title">Total Backups</h6>
                                     <h4 class="mb-0">
-                                        {% if backup_info %}
-                                            {{ backup_info.database_backups|length + backup_info.excel_backups|length + backup_info.full_backups|length }}
+                                        {% if backup_info and backup_info.instances and backup_info.instances[instance_name] %}
+                                            {{ backup_info.instances[instance_name].database_backups|length + backup_info.instances[instance_name].excel_backups|length + backup_info.instances[instance_name].full_backups|length }}
                                         {% else %}
                                             0
                                         {% endif %}
@@ -113,8 +113,8 @@
                                 <div>
                                     <h6 class="card-title">Full Backups</h6>
                                     <h4 class="mb-0">
-                                        {% if backup_info %}
-                                            {{ backup_info.full_backups|length }}
+                                        {% if backup_info and backup_info.instances and backup_info.instances[instance_name] %}
+                                            {{ backup_info.instances[instance_name].full_backups|length }}
                                         {% else %}
                                             0
                                         {% endif %}
@@ -134,8 +134,8 @@
                                 <div>
                                     <h6 class="card-title">Database Backups</h6>
                                     <h4 class="mb-0">
-                                        {% if backup_info %}
-                                            {{ backup_info.database_backups|length }}
+                                        {% if backup_info and backup_info.instances and backup_info.instances[instance_name] %}
+                                            {{ backup_info.instances[instance_name].database_backups|length }}
                                         {% else %}
                                             0
                                         {% endif %}
@@ -235,16 +235,17 @@
             </div>
 
             <!-- Backup Files List -->
-            {% if backup_info %}
+            {% if backup_info and backup_info.instances and backup_info.instances[instance_name] %}
+            {% set instance_backups = backup_info.instances[instance_name] %}
             <div class="row">
                 <!-- Full Backups -->
-                {% if backup_info.full_backups %}
+                {% if instance_backups.full_backups %}
                 <div class="col-md-6 mb-4">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">
                                 <i class="fas fa-file-archive me-2"></i>Full Backups
-                                <span class="badge bg-primary ms-2">{{ backup_info.full_backups|length }}</span>
+                                <span class="badge bg-primary ms-2">{{ instance_backups.full_backups|length }}</span>
                             </h5>
                         </div>
                         <div class="card-body">
@@ -259,7 +260,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for backup in backup_info.full_backups|sort(attribute='created', reverse=true) %}
+                                        {% for backup in instance_backups.full_backups|sort(attribute='created', reverse=true) %}
                                         <tr>
                                             <td>
                                                 <small class="text-muted">{{ backup.filename }}</small>
@@ -287,13 +288,13 @@
                 {% endif %}
 
                 <!-- Database Backups -->
-                {% if backup_info.database_backups %}
+                {% if instance_backups.database_backups %}
                 <div class="col-md-6 mb-4">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">
                                 <i class="fas fa-database me-2"></i>Database Backups
-                                <span class="badge bg-success ms-2">{{ backup_info.database_backups|length }}</span>
+                                <span class="badge bg-success ms-2">{{ instance_backups.database_backups|length }}</span>
                             </h5>
                         </div>
                         <div class="card-body">
@@ -308,7 +309,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for backup in backup_info.database_backups|sort(attribute='created', reverse=true) %}
+                                        {% for backup in instance_backups.database_backups|sort(attribute='created', reverse=true) %}
                                         <tr>
                                             <td>
                                                 <small class="text-muted">{{ backup.filename }}</small>
@@ -336,13 +337,13 @@
                 {% endif %}
 
                 <!-- Excel Exports -->
-                {% if backup_info.excel_backups %}
+                {% if instance_backups.excel_backups %}
                 <div class="col-md-6 mb-4">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">
                                 <i class="fas fa-file-excel me-2"></i>Excel Exports
-                                <span class="badge bg-info ms-2">{{ backup_info.excel_backups|length }}</span>
+                                <span class="badge bg-info ms-2">{{ instance_backups.excel_backups|length }}</span>
                             </h5>
                         </div>
                         <div class="card-body">
@@ -357,7 +358,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for backup in backup_info.excel_backups|sort(attribute='created', reverse=true) %}
+                                        {% for backup in instance_backups.excel_backups|sort(attribute='created', reverse=true) %}
                                         <tr>
                                             <td>
                                                 <small class="text-muted">{{ backup.filename }}</small>
