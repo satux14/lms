@@ -784,6 +784,11 @@ def admin_payments(instance_name):
     # Calculate total interest paid
     total_interest_paid = db.session.query(db.func.sum(Payment.interest_amount)).scalar() or 0
     
+    # Calculate filtered totals
+    filtered_principal = sum(payment.principal_amount for payment, loan, user in payments)
+    filtered_interest = sum(payment.interest_amount for payment, loan, user in payments)
+    filtered_total = sum(payment.amount for payment, loan, user in payments)
+    
     # Get unique customers and loans for filters
     customers = User.query.filter_by(is_admin=False).all()
     loans = Loan.query.all()
@@ -797,6 +802,9 @@ def admin_payments(instance_name):
     return render_template('admin/payments.html', 
                          payments=payments,
                          total_interest_paid=total_interest_paid,
+                         filtered_principal=filtered_principal,
+                         filtered_interest=filtered_interest,
+                         filtered_total=filtered_total,
                          customers=customers,
                          loans=loans,
                          customer_filter=customer_filter,
