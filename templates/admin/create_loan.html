@@ -119,7 +119,7 @@
                                             <option value="">Select a customer...</option>
                                             {% for customer in customers %}
                                             <option value="{{ customer.id }}">
-                                                {{ customer.username }} ({{ customer.email or 'No email' }})
+                                                {{ customer.username }}{% if customer.email %} - {{ customer.email }}{% else %} (No email){% endif %}
                                             </option>
                                             {% endfor %}
                                         </select>

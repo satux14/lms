@@ -879,7 +879,7 @@ def admin_create_loan(instance_name):
         flash('Loan created successfully')
         return redirect(url_for('admin_loans', instance_name=instance_name))
     
-    customers = [user.username for user in get_user_query().filter_by(is_admin=False).all()]
+    customers = get_user_query().filter_by(is_admin=False).all()
     return render_template('admin/create_loan.html', 
                          customers=customers,
                          instance_name=instance_name)
