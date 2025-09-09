@@ -53,10 +53,10 @@ def load_user(user_id):
         if not db_manager.initialized:
             db_manager.initialize_all_databases()
         
-        return db_manager.get_query_for_instance(instance, User).get(int(user_id))
+        user = db_manager.get_query_for_instance(instance, User).get(int(user_id))
+        return user
     except Exception as e:
         # If there's any error, return None (user not found)
-        print(f"Error loading user {user_id}: {e}")
         return None
 
 # Database Models (same as original)
@@ -508,6 +508,12 @@ def before_request():
     if instance not in VALID_INSTANCES:
         flash('Invalid instance', 'error')
         return redirect('/')
+
+@app.context_processor
+def inject_current_user():
+    """Make current_user available in all templates"""
+    from flask_login import current_user
+    return dict(current_user=current_user)
 
 @app.route('/')
 def index():
