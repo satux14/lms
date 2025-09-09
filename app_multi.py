@@ -22,6 +22,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 import os
 import uuid
 from pathlib import Path
@@ -32,15 +34,14 @@ VALID_INSTANCES = ['prod', 'dev', 'testing']
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lending_app.db'  # Default database
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize extensions
+# Initialize extensions without database URI first
 db = SQLAlchemy()
 login_manager = LoginManager()
-db.init_app(app)
-login_manager.init_app(app)
 login_manager.login_view = 'login_redirect'
+
+# We'll initialize with app later after setting the correct database URI
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -120,20 +121,16 @@ def get_database_uri(instance=None):
     if instance not in VALID_INSTANCES:
         instance = DEFAULT_INSTANCE
     
-    # Create instances directory
-    instances_dir = Path("instances")
-    instances_dir.mkdir(exist_ok=True)
-    
-    # Create instance directory
-    instance_dir = instances_dir / instance
-    instance_dir.mkdir(exist_ok=True)
+    # Create instance directory (singular)
+    instance_dir = Path("instance") / instance
+    instance_dir.mkdir(parents=True, exist_ok=True)
     
     # Create database directory
     db_dir = instance_dir / "database"
     db_dir.mkdir(exist_ok=True)
     
     db_path = db_dir / f"lending_app_{instance}.db"
-    return f"sqlite:///{db_path}"
+    return f"sqlite:///{db_path.absolute()}"
 
 def get_uploads_folder(instance=None):
     """Get uploads folder for specific instance"""
@@ -156,6 +153,116 @@ def configure_app_for_instance(instance):
     app.config['UPLOAD_FOLDER'] = get_uploads_folder(instance)
     app.config['INSTANCE_NAME'] = instance
 
+# Custom database manager for proper instance isolation
+class DatabaseManager:
+    def __init__(self):
+        self.databases = {}
+        self.engines = {}
+        self.sessions = {}
+        self.initialized = False
+    
+    def initialize_all_databases(self):
+        """Initialize all database connections for all instances"""
+        if self.initialized:
+            return
+        
+        print("Initializing database connections for all instances...")
+        
+        for instance in VALID_INSTANCES:
+            print(f"  Initializing {instance} database...")
+            
+            # Configure the database URI
+            instance_uri = get_database_uri(instance)
+            
+            # Create engine for this instance
+            engine = create_engine(instance_uri)
+            self.engines[instance] = engine
+            
+            # Create session for this instance
+            session = sessionmaker(bind=engine)()
+            self.sessions[instance] = session
+            
+            # Create tables using the engine
+            with engine.connect() as conn:
+                # Import the models to ensure they're registered
+                from app_multi import User, Loan, Payment
+                
+                # Create all tables
+                db.metadata.create_all(engine)
+        
+        self.initialized = True
+        print("All database connections initialized successfully!")
+    
+    
+    def get_engine_for_instance(self, instance):
+        """Get engine for specific instance"""
+        if not self.initialized:
+            self.initialize_all_databases()
+        
+        if instance not in self.engines:
+            raise ValueError(f"Engine for instance '{instance}' not found")
+        
+        return self.engines[instance]
+    
+    def get_session_for_instance(self, instance):
+        """Get session for specific instance"""
+        if not self.initialized:
+            self.initialize_all_databases()
+        
+        if instance not in self.sessions:
+            raise ValueError(f"Session for instance '{instance}' not found")
+        
+        return self.sessions[instance]
+    
+    def switch_to_instance(self, instance):
+        """Switch to specific instance database"""
+        if instance not in VALID_INSTANCES:
+            return False
+        
+        # Configure app for this instance
+        configure_app_for_instance(instance)
+        
+        # Get engine and session for this instance
+        engine = self.get_engine_for_instance(instance)
+        session = self.get_session_for_instance(instance)
+        
+        # Update the global db object to use this instance's engine and session
+        global db
+        db.session.bind = engine
+        db.engines[''] = engine
+        
+        # Store current instance in g for easy access
+        g.current_instance = instance
+        
+        return True
+    
+    def get_query_for_instance(self, instance, model_class):
+        """Get query object for specific instance and model"""
+        if not self.initialized:
+            self.initialize_all_databases()
+        
+        if instance not in self.sessions:
+            raise ValueError(f"Session for instance '{instance}' not found")
+        
+        session = self.sessions[instance]
+        return session.query(model_class)
+    
+    def add_to_instance(self, instance, obj):
+        """Add object to specific instance database"""
+        if not self.initialized:
+            self.initialize_all_databases()
+        
+        if instance not in self.sessions:
+            raise ValueError(f"Session for instance '{instance}' not found")
+        
+        session = self.sessions[instance]
+        session.add(obj)
+        session.commit()
+        return obj
+
+# Global database manager
+db_manager = DatabaseManager()
+
 # Custom database initialization function
 def init_database_for_instance(instance):
     """Initialize database for specific instance"""
@@ -172,12 +279,21 @@ def init_app():
     # Configure for default instance first
     configure_app_for_instance(DEFAULT_INSTANCE)
     
-    # Create all instance directories and databases
-    for instance in VALID_INSTANCES:
-        configure_app_for_instance(instance)
-        with app.app_context():
-            db.create_all()
+    # Initialize database and login manager with the configured app
+    db.init_app(app)
+    login_manager.init_app(app)
+    
+    # Initialize all database connections
+    db_manager.initialize_all_databases()
+    
+    # Create default data for all instances
+    with app.app_context():
+        for instance in VALID_INSTANCES:
+            # Switch to this instance
+            db_manager.switch_to_instance(instance)
             create_default_data(instance)
+    
+    return app
 
 def create_default_data(instance):
     """Create default data for instance"""
@@ -360,33 +476,13 @@ def verify_payment(payment_id):
 def before_request():
     """Configure app for current instance before each request"""
     instance = get_current_instance()
-    configure_app_for_instance(instance)
     g.current_instance = instance
     
-    # Force database reconnection for this instance
-    instance_uri = get_database_uri(instance)
-    if not hasattr(g, 'db_uri') or g.db_uri != instance_uri:
-        g.db_uri = instance_uri
-        
-        # Create new engine for this instance
-        from sqlalchemy import create_engine
-        new_engine = create_engine(instance_uri)
-        
-        # Store the engine in g for this request
-        g.db_engine = new_engine
-        
-        # Force session to use new engine by creating a new session
-        db.session.close()
-        db.session.bind = new_engine
-        
-        # Update the default engine in SQLAlchemy
-        db.engines[''] = new_engine
-        
-        # Create all tables
-        db.create_all()
-        
-        # Force a new session to be created with the new engine
-        db.session = db._make_scoped_session({'bind': new_engine})
+    # Use database manager to switch to correct instance
+    success = db_manager.switch_to_instance(instance)
+    if not success:
+        flash('Invalid instance', 'error')
+        return redirect('/')
 
 @app.route('/')
 def index():
