@@ -1,0 +1,95 @@
+# Docker ignore file for Lending Management System
+# ================================================
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Database files (will be created in container)
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files (will be created in container)
+backups/
+instance/
+
+# Uploads (will be created in container)
+uploads/
+
+# Documentation
+*.md
+README*
+VERSION_GUIDE*
+FEATURES*
+MULTI_INSTANCE_README*
+BACKUP_README*
+
+# Development scripts
+create_instances.py
+create_sample_data.py
+demo.py
+fix_*.py
+migrate_*.py
+restore_*.py
+safe_migration.py
+update_*.py
+version_manager.py
+manage_instances.py
+instance_manager.py
+
+# Old application files
+app.py
+app_factory.py
+multi_instance_app.py
+run.py
+
+# Backup scripts
+backup.py
+backup_script.py
+daily_backup.py
+
+# Install script
+install.sh
