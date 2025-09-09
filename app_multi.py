@@ -540,7 +540,18 @@ def instances():
 @app.route('/login_redirect')
 def login_redirect():
     """Redirect to login for current instance"""
-    instance = get_current_instance()
+    next_url = request.args.get('next', '')
+    if next_url:
+        # Extract instance from next URL
+        if next_url.startswith('/'):
+            next_url = next_url[1:]  # Remove leading slash
+        path_parts = next_url.split('/')
+        if path_parts and path_parts[0] in VALID_INSTANCES:
+            instance = path_parts[0]
+        else:
+            instance = DEFAULT_INSTANCE
+    else:
+        instance = get_current_instance()
     return redirect(url_for('login', instance_name=instance))
 
 @app.route('/<instance_name>/')
@@ -731,7 +742,7 @@ def admin_loans(instance_name):
             query = query.order_by(Loan.created_at.desc())
     
     loans = query.all()
-    customers = get_user_query().filter_by(is_admin=False).all()
+    customers = [user.username for user in get_user_query().filter_by(is_admin=False).all()]
     
     return render_template('admin/loans.html', 
                          loans=loans, 
@@ -835,7 +846,7 @@ def admin_create_loan(instance_name):
             except ValueError:
                 flash('Invalid date format')
                 return render_template('admin/create_loan.html', 
-                                     customers=get_user_query().filter_by(is_admin=False).all(),
+                                     customers=[user.username for user in get_user_query().filter_by(is_admin=False).all()],
                                      instance_name=instance_name)
         else:
             created_at = datetime.utcnow()
@@ -857,7 +868,7 @@ def admin_create_loan(instance_name):
         flash('Loan created successfully')
         return redirect(url_for('admin_loans', instance_name=instance_name))
     
-    customers = get_user_query().filter_by(is_admin=False).all()
+    customers = [user.username for user in get_user_query().filter_by(is_admin=False).all()]
     return render_template('admin/create_loan.html', 
                          customers=customers,
                          instance_name=instance_name)
@@ -931,8 +942,8 @@ def admin_payments(instance_name):
     filtered_total = sum(payment.amount for payment, loan, user in payments)
     
     # Get unique customers and loans for filters
-    customers = get_user_query().filter_by(is_admin=False).all()
-    loans = get_loan_query().all()
+    customers = [user.username for user in get_user_query().filter_by(is_admin=False).all()]
+    loans = [loan.loan_name for loan in get_loan_query().all()]
     
     # Handle Excel export
     if request.args.get('export') == 'excel':
