@@ -1093,6 +1093,30 @@ def admin_edit_loan(instance_name, loan_id):
         loan.admin_notes = request.form.get('admin_notes', '')
         loan.customer_notes = request.form.get('customer_notes', '')
         
+        # Handle custom creation date if provided
+        custom_created_date = request.form.get('loan_created_date')
+        custom_created_time = request.form.get('loan_created_time')
+        
+        if custom_created_date:
+            try:
+                if custom_created_time:
+                    # Combine date and time
+                    created_at_str = f"{custom_created_date} {custom_created_time}"
+                    loan.created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
+                else:
+                    # Use date only, set time to 00:00
+                    loan.created_at = datetime.strptime(custom_created_date, '%Y-%m-%d')
+            except ValueError:
+                flash('Invalid date format. Using current date.', 'warning')
+                # Keep existing created_at if date is invalid
+        elif custom_created_time:
+            # If only time is provided, update the time part of existing date
+            try:
+                time_obj = datetime.strptime(custom_created_time, '%H:%M').time()
+                loan.created_at = loan.created_at.replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
+            except ValueError:
+                flash('Invalid time format. Time not updated.', 'warning')
+        
         commit_current_instance()
         flash('Loan updated successfully')
         return redirect(url_for('admin_loans', instance_name=instance_name))
