@@ -45,9 +45,19 @@ login_manager.login_view = 'login_redirect'
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Get current instance from g or default to prod
-    instance = getattr(g, 'current_instance', 'prod')
-    return db_manager.get_query_for_instance(instance, User).get(int(user_id))
+    try:
+        # Get current instance from g or default to prod
+        instance = getattr(g, 'current_instance', 'prod')
+        
+        # Ensure database manager is initialized
+        if not db_manager.initialized:
+            db_manager.initialize_all_databases()
+        
+        return db_manager.get_query_for_instance(instance, User).get(int(user_id))
+    except Exception as e:
+        # If there's any error, return None (user not found)
+        print(f"Error loading user {user_id}: {e}")
+        return None
 
 # Database Models (same as original)
 class User(UserMixin, db.Model):
