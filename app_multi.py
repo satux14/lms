@@ -15,7 +15,7 @@ Author: Lending Management System
 Version: 1.0.1
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, g
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, g, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1081,7 +1081,7 @@ def admin_edit_loan(instance_name, loan_id):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    loan = get_loan_query().get_or_404(loan_id)
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
     
     if request.method == 'POST':
         loan.loan_name = request.form['loan_name']
@@ -1117,7 +1117,7 @@ def admin_view_loan(instance_name, loan_id):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    loan = get_loan_query().get_or_404(loan_id)
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
     
     # Calculate interest information
     daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
@@ -1358,7 +1358,7 @@ def customer_loan_detail(instance_name, loan_id):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    loan = get_loan_query().get_or_404(loan_id)
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
     
     # Check if loan belongs to current user
     if loan.customer_id != current_user.id:
@@ -1441,7 +1441,7 @@ def customer_make_payment(instance_name, loan_id):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    loan = get_loan_query().get_or_404(loan_id)
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
     
     # Check if loan belongs to current user
     if loan.customer_id != current_user.id:
@@ -1504,7 +1504,7 @@ def customer_edit_notes(instance_name, loan_id):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    loan = get_loan_query().get_or_404(loan_id)
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
     
     # Check if loan belongs to current user
     if loan.customer_id != current_user.id:
