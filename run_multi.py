@@ -18,9 +18,11 @@ URLs:
     http://localhost:8080/testing/ - Testing instance
 """
 
-from app_multi import app
+from app_multi import init_app
 
 if __name__ == '__main__':
+    # Initialize the app properly
+    app = init_app()
     print("🏦 Starting Multi-Instance Lending Management System")
     print("=" * 60)
     print("📋 Available Instances:")

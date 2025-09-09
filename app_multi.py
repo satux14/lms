@@ -563,7 +563,21 @@ def login(instance_name):
         user = get_user_query().filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
-            login_user(user)
+            try:
+                # Ensure we're in the correct app context
+                from flask import current_app
+                if not hasattr(current_app, 'login_manager'):
+                    print("Warning: login_manager not found in current_app")
+                    flash('Login system not properly initialized. Please try again.', 'error')
+                    return render_template('login.html', instance_name=instance_name)
+                
+                login_user(user)
+            except Exception as e:
+                print(f"Error during login_user: {e}")
+                import traceback
+                traceback.print_exc()
+                flash('Login failed. Please try again.', 'error')
+                return render_template('login.html', instance_name=instance_name)
             next_page = request.args.get('next')
             if user.is_admin:
                 return redirect(next_page) if next_page else redirect(url_for('admin_dashboard', instance_name=instance_name))
