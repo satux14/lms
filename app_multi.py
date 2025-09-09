@@ -681,7 +681,7 @@ def admin_create_loan(instance_name):
     if request.method == 'POST':
         customer_id = request.form['customer_id']
         loan_name = request.form['loan_name']
-        principal_amount = Decimal(request.form['principal_amount'])
+        principal_amount = Decimal(request.form['principal'])
         interest_rate = Decimal(request.form['interest_rate'])
         payment_frequency = request.form['payment_frequency']
         loan_type = request.form['loan_type']
@@ -911,8 +911,8 @@ def admin_edit_loan(instance_name, loan_id):
     
     if request.method == 'POST':
         loan.loan_name = request.form['loan_name']
-        loan.principal_amount = Decimal(request.form['principal_amount'])
-        loan.remaining_principal = Decimal(request.form['remaining_principal'])
+        loan.principal_amount = Decimal(request.form['principal'])
+        # remaining_principal is calculated automatically, not edited directly
         loan.interest_rate = Decimal(request.form['interest_rate'])
         loan.payment_frequency = request.form['payment_frequency']
         loan.loan_type = request.form['loan_type']
@@ -984,7 +984,7 @@ def admin_edit_payment(instance_name, payment_id):
         payment.amount = Decimal(request.form['amount'])
         payment.payment_method = request.form['payment_method']
         payment.transaction_id = request.form.get('transaction_id', '')
-        payment.status = request.form['payment_status']
+        payment.status = request.form['status']
         
         # Parse payment date
         payment_date_str = request.form.get('payment_date')
