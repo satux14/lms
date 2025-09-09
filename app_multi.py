@@ -1274,6 +1274,32 @@ def admin_download_backup(instance_name, filename):
         flash(f'Download failed for {instance_name}: {str(e)}')
         return redirect(url_for('admin_backup', instance_name=instance_name))
 
+# Admin Delete Backup route
+@app.route('/<instance_name>/admin/backup/delete/<filename>', methods=['POST'])
+@login_required
+def admin_delete_backup(instance_name, filename):
+    """Admin delete backup file for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from backup_multi import MultiInstanceBackupManager
+    backup_manager = MultiInstanceBackupManager(app)
+    
+    try:
+        success = backup_manager.delete_backup_file(instance_name, filename)
+        if success:
+            flash(f'Backup file deleted successfully: {filename}')
+        else:
+            flash(f'Failed to delete backup file: {filename}')
+    except Exception as e:
+        flash(f'Delete failed for {instance_name}: {str(e)}')
+    
+    return redirect(url_for('admin_backup', instance_name=instance_name))
+
 # Customer routes
 @app.route('/<instance_name>/customer')
 @login_required

@@ -411,6 +411,31 @@ class MultiInstanceBackupManager:
         except Exception as e:
             logger.error(f"Download failed for {instance}/{filename}: {str(e)}")
             raise e
+    
+    def delete_backup_file(self, instance, filename):
+        """Delete a backup file for a specific instance"""
+        try:
+            if instance not in VALID_INSTANCES:
+                logger.error(f"Invalid instance: {instance}")
+                return False
+            
+            # Look for the file in all backup directories for this instance
+            instance_backup_dir = self.backup_dir / instance
+            for backup_type in ["database", "excel", "full"]:
+                backup_type_dir = instance_backup_dir / backup_type
+                file_path = backup_type_dir / filename
+                if file_path.exists() and file_path.is_file():
+                    file_path.unlink()
+                    logger.info(f"Deleted backup file for {instance}: {file_path}")
+                    return True
+            
+            # File not found
+            logger.warning(f"Backup file not found for deletion: {instance}/{filename}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Delete failed for {instance}/{filename}: {str(e)}")
+            return False
 
 def create_backup(instance, app=None):
     """Convenience function to create a full backup for a specific instance"""
