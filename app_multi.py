@@ -1182,7 +1182,7 @@ def admin_edit_payment(instance_name, payment_id):
                          instance_name=instance_name)
 
 # Admin Create Backup route
-@app.route('/<instance_name>/admin/backup/create')
+@app.route('/<instance_name>/admin/backup/create', methods=['GET', 'POST'])
 @login_required
 def admin_create_backup(instance_name):
     """Admin create backup for specific instance"""
@@ -1197,11 +1197,33 @@ def admin_create_backup(instance_name):
     backup_manager = MultiInstanceBackupManager(app)
     
     try:
-        backup_path = backup_manager.create_full_backup(instance_name)
-        if backup_path:
-            flash(f'Backup created successfully for {instance_name}: {backup_path.name}')
+        if request.method == 'POST':
+            backup_type = request.form.get('backup_type', 'full')
+            
+            if backup_type == 'full':
+                backup_path = backup_manager.create_full_backup(instance_name)
+                if backup_path:
+                    flash(f'Full backup created successfully for {instance_name}: {backup_path.name}')
+                else:
+                    flash(f'Full backup failed for {instance_name}')
+            elif backup_type == 'database':
+                backup_path = backup_manager.create_database_backup(instance_name)
+                if backup_path:
+                    flash(f'Database backup created successfully for {instance_name}: {backup_path.name}')
+                else:
+                    flash(f'Database backup failed for {instance_name}')
+            elif backup_type == 'excel':
+                backup_path = backup_manager.export_to_excel(instance_name)
+                if backup_path:
+                    flash(f'Excel export created successfully for {instance_name}: {backup_path.name}')
+                else:
+                    flash(f'Excel export failed for {instance_name}')
+            else:
+                flash(f'Invalid backup type: {backup_type}')
         else:
-            flash(f'Backup failed for {instance_name}')
+            # GET request - redirect to backup page
+            return redirect(url_for('admin_backup', instance_name=instance_name))
+            
     except Exception as e:
         flash(f'Backup failed for {instance_name}: {str(e)}')
     
