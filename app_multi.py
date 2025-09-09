@@ -1170,6 +1170,35 @@ def customer_loan_detail(instance_name, loan_id):
     # Calculate days active
     days_active = (date.today() - loan.created_at.date()).days
     
+    # Calculate previous principal and interest for each payment
+    # We need to calculate what the principal and interest were before each payment
+    payments_with_previous = []
+    current_principal = loan.principal_amount
+    current_interest_paid = 0
+    
+    # Process payments in chronological order (oldest first)
+    payments_chronological = sorted(payments, key=lambda p: p.payment_date)
+    
+    for payment in payments_chronological:
+        # Store the previous amounts before this payment
+        previous_principal = current_principal
+        previous_interest_paid = current_interest_paid
+        
+        # Update current amounts after this payment (only if verified)
+        if payment.status == 'verified':
+            current_principal -= payment.principal_amount
+            current_interest_paid += payment.interest_amount
+        
+        # Add payment with previous amounts
+        payments_with_previous.append({
+            'payment': payment,
+            'previous_principal': previous_principal,
+            'previous_interest_paid': previous_interest_paid
+        })
+    
+    # Reverse to show newest first
+    payments_with_previous.reverse()
+    
     return render_template('customer/loan_detail.html', 
                          loan=loan,
                          daily_interest=daily_interest,
@@ -1180,7 +1209,7 @@ def customer_loan_detail(instance_name, loan_id):
                          pending_principal=pending_principal,
                          pending_interest=pending_interest,
                          pending_total=pending_total,
-                         payments=payments,
+                         payments=payments_with_previous,
                          days_active=days_active,
                          instance_name=instance_name)
 

@@ -174,19 +174,27 @@
                                             <th>Amount</th>
                                             <th>Interest</th>
                                             <th>Principal</th>
+                                            <th>Previous Principal</th>
+                                            <th>Previous Interest Paid</th>
                                             <th>Method</th>
                                             <th>Transaction ID</th>
                                             <th>Status</th>
-                                            <th>Proof</th>
                                         </tr>
                                     </thead>
                             <tbody>
-                                {% for payment in payments %}
+                                {% for payment_data in payments %}
+                                {% set payment = payment_data.payment %}
                                 <tr>
                                     <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
                                     <td>₹{{ "%.2f"|format(payment.interest_amount) }}</td>
                                     <td>₹{{ "%.2f"|format(payment.principal_amount) }}</td>
+                                    <td>
+                                        <span class="text-muted">₹{{ "%.2f"|format(payment_data.previous_principal) }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">₹{{ "%.2f"|format(payment_data.previous_interest_paid) }}</span>
+                                    </td>
                                     <td>
                                         {% if payment.payment_method %}
                                             <span class="badge bg-info">
@@ -207,17 +215,6 @@
                                         <span class="badge bg-{{ 'success' if payment.status == 'verified' else 'warning' if payment.status == 'pending' else 'danger' }}">
                                             {{ payment.status.title() }}
                                         </span>
-                                    </td>
-                                    <td>
-                                        {% if payment.proof_filename %}
-                                            <a href="{{ url_for('uploaded_file', filename=payment.proof_filename) }}" 
-                                               target="_blank" 
-                                               class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
