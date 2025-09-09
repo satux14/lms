@@ -843,7 +843,7 @@ def admin_create_loan(instance_name):
         customer_id = request.form['customer_id']
         loan_name = request.form['loan_name']
         principal_amount = Decimal(request.form['principal'])
-        interest_rate = Decimal(request.form['interest_rate'])
+        interest_rate = Decimal(request.form['interest_rate']) / 100
         payment_frequency = request.form['payment_frequency']
         loan_type = request.form['loan_type']
         admin_notes = request.form.get('admin_notes', '')
@@ -1087,7 +1087,7 @@ def admin_edit_loan(instance_name, loan_id):
         loan.loan_name = request.form['loan_name']
         loan.principal_amount = Decimal(request.form['principal'])
         # remaining_principal is calculated automatically, not edited directly
-        loan.interest_rate = Decimal(request.form['interest_rate'])
+        loan.interest_rate = Decimal(request.form['interest_rate']) / 100
         loan.payment_frequency = request.form['payment_frequency']
         loan.loan_type = request.form['loan_type']
         loan.admin_notes = request.form.get('admin_notes', '')
