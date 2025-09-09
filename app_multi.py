@@ -45,7 +45,9 @@ login_manager.login_view = 'login_redirect'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Get current instance from g or default to prod
+    instance = getattr(g, 'current_instance', 'prod')
+    return db_manager.get_query_for_instance(instance, User).get(int(user_id))
 
 # Database Models (same as original)
 class User(UserMixin, db.Model):
@@ -298,23 +300,58 @@ def init_app():
 def create_default_data(instance):
     """Create default data for instance"""
     # Create default admin user if it doesn't exist
-    if not User.query.filter_by(username='admin').first():
+    User_query = db_manager.get_query_for_instance(instance, User)
+    if not User_query.filter_by(username='admin').first():
         admin = User(
             username='admin',
             email=f'admin@{instance}.lendingapp.com',
             password_hash=generate_password_hash('admin123'),
             is_admin=True
         )
-        db.session.add(admin)
+        db_manager.add_to_instance(instance, admin)
         
         # Create default interest rate
         default_rate = InterestRate(rate=Decimal('0.21'))  # 21%
-        db.session.add(default_rate)
+        db_manager.add_to_instance(instance, default_rate)
         
-        db.session.commit()
         print(f"Default admin user created for {instance}: username='admin', password='admin123'")
 
-# Helper functions (same as original)
+# Helper functions
+def get_current_instance_from_g():
+    """Get current instance from Flask g object"""
+    return getattr(g, 'current_instance', 'prod')
+
+def get_user_query():
+    """Get User query for current instance"""
+    instance = get_current_instance_from_g()
+    return db_manager.get_query_for_instance(instance, User)
+
+def get_loan_query():
+    """Get Loan query for current instance"""
+    instance = get_current_instance_from_g()
+    return db_manager.get_query_for_instance(instance, Loan)
+
+def get_payment_query():
+    """Get Payment query for current instance"""
+    instance = get_current_instance_from_g()
+    return db_manager.get_query_for_instance(instance, Payment)
+
+def get_interest_rate_query():
+    """Get InterestRate query for current instance"""
+    instance = get_current_instance_from_g()
+    return db_manager.get_query_for_instance(instance, InterestRate)
+
+def add_to_current_instance(obj):
+    """Add object to current instance database"""
+    instance = get_current_instance_from_g()
+    return db_manager.add_to_instance(instance, obj)
+
+def commit_current_instance():
+    """Commit current instance database"""
+    instance = get_current_instance_from_g()
+    session = db_manager.get_session_for_instance(instance)
+    session.commit()
+
 def calculate_daily_interest(principal, annual_rate):
     """Calculate daily interest amount"""
     try:
@@ -359,7 +396,7 @@ def calculate_accumulated_interest(loan, as_of_date=None):
             )
             
             # Subtract verified interest payments
-            verified_interest_payments = db.session.query(db.func.sum(Payment.interest_amount)).filter_by(
+            verified_interest_payments = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
                 loan_id=loan.id, 
                 status='verified'
             ).scalar() or 0
@@ -368,7 +405,7 @@ def calculate_accumulated_interest(loan, as_of_date=None):
         else:
             # For regular loans, accumulated interest is the interest on remaining principal
             # from the last payment date (or loan creation) to today
-            last_payment = Payment.query.filter_by(
+            last_payment = get_payment_query().filter_by(
                 loan_id=loan.id, 
                 status='verified'
             ).order_by(Payment.payment_date.desc()).first()
@@ -438,19 +475,18 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
             status='pending'  # All payments start as pending
         )
         
-        db.session.add(payment)
-        db.session.commit()
+        add_to_current_instance(payment)
         
         return payment
         
     except Exception as e:
-        db.session.rollback()
+        # Rollback is handled by the instance-specific session
         raise e
 
 def verify_payment(payment_id):
     """Verify a payment and update loan balance"""
     try:
-        payment = Payment.query.get_or_404(payment_id)
+        payment = get_payment_query().get_or_404(payment_id)
         loan = payment.loan
         
         if payment.status == 'verified':
@@ -465,10 +501,10 @@ def verify_payment(payment_id):
             if loan.remaining_principal < 0:
                 loan.remaining_principal = Decimal('0')
         
-        db.session.commit()
+        commit_current_instance()
         
     except Exception as e:
-        db.session.rollback()
+        # Rollback is handled by the instance-specific session
         raise e
 
 # Routes
@@ -529,7 +565,7 @@ def login(instance_name):
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        user = User.query.filter_by(username=username).first()
+        user = get_user_query().filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
@@ -561,7 +597,7 @@ def register(instance_name):
         email = request.form.get('email', '')  # Email is optional
         password = request.form['password']
         
-        if User.query.filter_by(username=username).first():
+        if get_user_query().filter_by(username=username).first():
             flash('Username already exists')
             return render_template('register.html', instance_name=instance_name)
         
@@ -572,8 +608,7 @@ def register(instance_name):
             is_admin=False
         )
         
-        db.session.add(user)
-        db.session.commit()
+        add_to_current_instance(user)
         
         flash('Registration successful! Please login.')
         return redirect(url_for('login', instance_name=instance_name))
@@ -593,10 +628,10 @@ def admin_dashboard(instance_name):
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
     # Get statistics
-    total_loans = Loan.query.count()
-    total_principal = sum(loan.principal_amount for loan in Loan.query.all())
-    total_interest_earned = sum(payment.interest_amount for payment in Payment.query.filter_by(status='verified').all())
-    total_users = User.query.count()
+    total_loans = get_loan_query().count()
+    total_principal = sum(loan.principal_amount for loan in get_loan_query().all())
+    total_interest_earned = sum(payment.interest_amount for payment in get_payment_query().filter_by(status='verified').all())
+    total_users = get_user_query().count()
     
     return render_template('admin/dashboard.html', 
                          total_loans=total_loans,
@@ -641,7 +676,7 @@ def admin_loans(instance_name):
     max_rate = request.args.get('max_rate', '')
     
     # Build query
-    query = Loan.query
+    query = get_loan_query()
     
     if loan_type:
         query = query.filter(Loan.loan_type == loan_type)
@@ -687,7 +722,7 @@ def admin_loans(instance_name):
             query = query.order_by(Loan.created_at.desc())
     
     loans = query.all()
-    customers = User.query.filter_by(is_admin=False).all()
+    customers = get_user_query().filter_by(is_admin=False).all()
     
     return render_template('admin/loans.html', 
                          loans=loans, 
@@ -714,7 +749,7 @@ def admin_users(instance_name):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    users = User.query.all()
+    users = get_user_query().all()
     total_loans = sum(len(user.loans) for user in users)
     admin_count = sum(1 for user in users if user.is_admin)
     customer_count = len(users) - admin_count
@@ -744,7 +779,7 @@ def admin_create_user(instance_name):
         password = request.form['password']
         is_admin = 'is_admin' in request.form
         
-        if User.query.filter_by(username=username).first():
+        if get_user_query().filter_by(username=username).first():
             flash('Username already exists')
             return render_template('admin/create_user.html', instance_name=instance_name)
         
@@ -754,8 +789,7 @@ def admin_create_user(instance_name):
             password_hash=generate_password_hash(password),
             is_admin=is_admin
         )
-        db.session.add(user)
-        db.session.commit()
+        add_to_current_instance(user)
         
         flash(f'User {username} created successfully')
         return redirect(url_for('admin_users', instance_name=instance_name))
@@ -792,7 +826,7 @@ def admin_create_loan(instance_name):
             except ValueError:
                 flash('Invalid date format')
                 return render_template('admin/create_loan.html', 
-                                     customers=User.query.filter_by(is_admin=False).all(),
+                                     customers=get_user_query().filter_by(is_admin=False).all(),
                                      instance_name=instance_name)
         else:
             created_at = datetime.utcnow()
@@ -809,13 +843,12 @@ def admin_create_loan(instance_name):
             customer_notes=customer_notes,
             created_at=created_at
         )
-        db.session.add(loan)
-        db.session.commit()
+        add_to_current_instance(loan)
         
         flash('Loan created successfully')
         return redirect(url_for('admin_loans', instance_name=instance_name))
     
-    customers = User.query.filter_by(is_admin=False).all()
+    customers = get_user_query().filter_by(is_admin=False).all()
     return render_template('admin/create_loan.html', 
                          customers=customers,
                          instance_name=instance_name)
@@ -839,7 +872,10 @@ def admin_payments(instance_name):
     payment_method = request.args.get('payment_method', '')
     
     # Build query
-    query = db.session.query(Payment, Loan, User).join(Loan, Payment.loan_id == Loan.id).join(User, Loan.customer_id == User.id)
+    # Get the current instance session for complex queries
+    instance = get_current_instance_from_g()
+    session = db_manager.get_session_for_instance(instance)
+    query = session.query(Payment, Loan, User).join(Loan, Payment.loan_id == Loan.id).join(User, Loan.customer_id == User.id)
     
     if customer_filter:
         query = query.filter(User.username.contains(customer_filter))
@@ -878,7 +914,7 @@ def admin_payments(instance_name):
     payments = query.all()
     
     # Calculate total interest paid
-    total_interest_paid = db.session.query(db.func.sum(Payment.interest_amount)).scalar() or 0
+    total_interest_paid = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).scalar() or 0
     
     # Calculate filtered totals
     filtered_principal = sum(payment.principal_amount for payment, loan, user in payments)
@@ -886,8 +922,8 @@ def admin_payments(instance_name):
     filtered_total = sum(payment.amount for payment, loan, user in payments)
     
     # Get unique customers and loans for filters
-    customers = User.query.filter_by(is_admin=False).all()
-    loans = Loan.query.all()
+    customers = get_user_query().filter_by(is_admin=False).all()
+    loans = get_loan_query().all()
     
     # Handle Excel export
     if request.args.get('export') == 'excel':
@@ -938,13 +974,13 @@ def admin_add_payment(instance_name, loan_id=None):
             except ValueError:
                 flash('Invalid date format')
                 return render_template('admin/add_payment.html', 
-                                     loans=Loan.query.all(),
+                                     loans=get_loan_query().all(),
                                      selected_loan_id=loan_id,
                                      instance_name=instance_name)
         else:
             payment_date = datetime.utcnow()
         
-        loan = Loan.query.get(loan_id)
+        loan = get_loan_query().get(loan_id)
         if not loan:
             flash('Loan not found')
             return redirect(url_for('admin_payments', instance_name=instance_name))
@@ -966,7 +1002,7 @@ def admin_add_payment(instance_name, loan_id=None):
         flash('Payment added successfully. It will be verified by admin.')
         return redirect(url_for('admin_payments', instance_name=instance_name))
     
-    loans = Loan.query.all()
+    loans = get_loan_query().all()
     return render_template('admin/add_payment.html', 
                          loans=loans,
                          selected_loan_id=loan_id,
@@ -1011,7 +1047,7 @@ def admin_edit_loan(instance_name, loan_id):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    loan = Loan.query.get_or_404(loan_id)
+    loan = get_loan_query().get_or_404(loan_id)
     
     if request.method == 'POST':
         loan.loan_name = request.form['loan_name']
@@ -1023,12 +1059,12 @@ def admin_edit_loan(instance_name, loan_id):
         loan.admin_notes = request.form.get('admin_notes', '')
         loan.customer_notes = request.form.get('customer_notes', '')
         
-        db.session.commit()
+        commit_current_instance()
         flash('Loan updated successfully')
         return redirect(url_for('admin_loans', instance_name=instance_name))
     
     # Get payment history for this loan
-    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
     
     return render_template('admin/edit_loan.html', 
                          loan=loan,
@@ -1047,7 +1083,7 @@ def admin_view_loan(instance_name, loan_id):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    loan = Loan.query.get_or_404(loan_id)
+    loan = get_loan_query().get_or_404(loan_id)
     
     # Calculate interest information
     daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
@@ -1055,7 +1091,7 @@ def admin_view_loan(instance_name, loan_id):
     accumulated_interest = calculate_accumulated_interest(loan)
     
     # Get payment history
-    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
     
     # Calculate days active
     days_active = (date.today() - loan.created_at.date()).days
@@ -1081,7 +1117,7 @@ def admin_edit_payment(instance_name, payment_id):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    payment = Payment.query.get_or_404(payment_id)
+    payment = get_payment_query().get_or_404(payment_id)
     loan = payment.loan  # Get the loan associated with this payment
     
     if request.method == 'POST':
@@ -1102,7 +1138,7 @@ def admin_edit_payment(instance_name, payment_id):
                                      loan=loan,
                                      instance_name=instance_name)
         
-        db.session.commit()
+        commit_current_instance()
         flash('Payment updated successfully')
         return redirect(url_for('admin_payments', instance_name=instance_name))
     
@@ -1191,7 +1227,7 @@ def customer_dashboard(instance_name):
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
     # Get customer's loans
-    loans = Loan.query.filter_by(customer_id=current_user.id).all()
+    loans = get_loan_query().filter_by(customer_id=current_user.id).all()
     
     loan_data = []
     for loan in loans:
@@ -1200,13 +1236,13 @@ def customer_dashboard(instance_name):
         accumulated_interest = calculate_accumulated_interest(loan)
         
         # Calculate pending payments for this specific loan
-        pending_payments = Payment.query.filter_by(loan_id=loan.id, status='pending').all()
+        pending_payments = get_payment_query().filter_by(loan_id=loan.id, status='pending').all()
         pending_principal = sum(payment.principal_amount for payment in pending_payments)
         pending_interest = sum(payment.interest_amount for payment in pending_payments)
         pending_total = sum(payment.amount for payment in pending_payments)
         
         # Calculate verified payments for this specific loan
-        verified_payments = Payment.query.filter_by(loan_id=loan.id, status='verified').all()
+        verified_payments = get_payment_query().filter_by(loan_id=loan.id, status='verified').all()
         verified_principal = sum(payment.principal_amount for payment in verified_payments)
         verified_interest = sum(payment.interest_amount for payment in verified_payments)
         
@@ -1237,7 +1273,7 @@ def customer_loan_detail(instance_name, loan_id):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    loan = Loan.query.get_or_404(loan_id)
+    loan = get_loan_query().get_or_404(loan_id)
     
     # Check if loan belongs to current user
     if loan.customer_id != current_user.id:
@@ -1250,7 +1286,7 @@ def customer_loan_detail(instance_name, loan_id):
     accumulated_interest = calculate_accumulated_interest(loan)
     
     # Get payment history
-    payments = Payment.query.filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
+    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
     
     # Calculate total interest paid for this loan
     total_interest_paid = sum(payment.interest_amount for payment in payments if payment.status == 'verified')
@@ -1320,7 +1356,7 @@ def customer_make_payment(instance_name, loan_id):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    loan = Loan.query.get_or_404(loan_id)
+    loan = get_loan_query().get_or_404(loan_id)
     
     # Check if loan belongs to current user
     if loan.customer_id != current_user.id:
@@ -1383,7 +1419,7 @@ def customer_edit_notes(instance_name, loan_id):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    loan = Loan.query.get_or_404(loan_id)
+    loan = get_loan_query().get_or_404(loan_id)
     
     # Check if loan belongs to current user
     if loan.customer_id != current_user.id:
@@ -1393,7 +1429,7 @@ def customer_edit_notes(instance_name, loan_id):
     if request.method == 'POST':
         customer_notes = request.form.get('customer_notes', '')
         loan.customer_notes = customer_notes
-        db.session.commit()
+        commit_current_instance()
         
         flash('Notes updated successfully')
         return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
