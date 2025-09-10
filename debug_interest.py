@@ -49,8 +49,8 @@ def debug_accumulated_interest(instance_name, loan_id):
             print(f"Days since creation: {days}")
             
             # Calculate daily rate
-            daily_rate = loan.interest_rate / 365
-            print(f"Daily rate: {daily_rate:.8f} ({loan.interest_rate * 100:.2f}% / 365)")
+            daily_rate = loan.interest_rate / 360
+            print(f"Daily rate: {daily_rate:.8f} ({loan.interest_rate * 100:.2f}% / 360)")
             
             # Calculate total interest
             total_interest = loan.principal_amount * daily_rate * days

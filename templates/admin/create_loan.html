@@ -329,7 +329,7 @@
                             
                             <h6 class="mt-3">Interest Calculation:</h6>
                             <ul class="list-unstyled">
-                                <li><i class="fas fa-info text-info me-2"></i>Daily: Annual Rate ÷ 365</li>
+                                <li><i class="fas fa-info text-info me-2"></i>Daily: Annual Rate ÷ 360</li>
                                 <li><i class="fas fa-info text-info me-2"></i>Monthly: Annual Rate ÷ 12</li>
                             </ul>
                         </div>
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const interestDiv = document.getElementById('interestCalculation');
         if (principal > 0 && frequency && interestRate > 0) {
             const annualRate = interestRate / 100;
-            const dailyRate = annualRate / 365;
+            const dailyRate = annualRate / 360;
             const monthlyRate = annualRate / 12;
             
             const dailyInterest = principal * dailyRate;
