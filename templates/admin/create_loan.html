@@ -474,7 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (!interestRate || interestRate < 0) {
+        if (isNaN(interestRate) || interestRate < 0) {
             e.preventDefault();
             alert('Please enter a valid interest rate (0% or higher)');
             return;

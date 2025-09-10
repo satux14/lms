@@ -135,8 +135,8 @@
                         </div>
                     </div>
 
-                    <!-- Progress Bar - Only for regular loans -->
-                    {% if loan.loan_type != 'interest_only' %}
+                    <!-- Progress Bar - Only for regular loans with interest -->
+                    {% if loan.loan_type != 'interest_only' and loan.interest_rate > 0 %}
                     <div class="mt-4">
                         <h6 class="text-muted">Payment Progress</h6>
                         {% set progress = ((loan.principal_amount - loan.remaining_principal) / loan.principal_amount * 100) %}

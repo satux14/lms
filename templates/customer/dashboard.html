@@ -107,8 +107,8 @@
                         </div>
                     </div>
 
-                    <!-- Progress Bar (Only for Regular Loans) -->
-                    {% if data.loan.loan_type == 'regular' %}
+                    <!-- Progress Bar (Only for Regular Loans with Interest) -->
+                    {% if data.loan.loan_type == 'regular' and data.loan.interest_rate > 0 %}
                     <div class="mb-3">
                         {% set progress = ((data.loan.principal_amount - data.loan.remaining_principal) / data.loan.principal_amount * 100) %}
                         <div class="d-flex justify-content-between align-items-center mb-2">
