@@ -628,10 +628,14 @@ function toggleNotesEdit() {
                                     <br><br>
                                     <div class="alert alert-warning">
                                         <strong>Verification:</strong> This calculated amount (₹{{ "%.2f"|format(calculated_accumulated) }}) should match the displayed amount (₹{{ "%.2f"|format(accumulated_interest) }})
-                                        {% if calculated_accumulated != accumulated_interest %}
-                                        <br><span class="text-danger"><strong>⚠️ MISMATCH DETECTED!</strong> There may be a calculation error.</span>
+                                        {% set difference = (calculated_accumulated - accumulated_interest) | abs %}
+                                        {% if difference > 0.01 %}
+                                        <br><span class="text-danger"><strong>⚠️ MISMATCH DETECTED!</strong> There may be a calculation error. Difference: ₹{{ "%.4f"|format(difference) }}</span>
                                         {% else %}
                                         <br><span class="text-success"><strong>✅ Calculation Verified</strong></span>
+                                        {% if difference > 0 %}
+                                        <br><small class="text-muted">Minor rounding difference: ₹{{ "%.4f"|format(difference) }} (within acceptable tolerance)</small>
+                                        {% endif %}
                                         {% endif %}
                                     </div>
                                 </li>
