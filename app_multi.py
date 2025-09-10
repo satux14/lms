@@ -1599,8 +1599,8 @@ def change_password(instance_name):
             flash('New passwords do not match', 'error')
             return render_template('change_password.html', instance_name=instance_name)
         
-        if len(new_password) < 6:
-            flash('New password must be at least 6 characters long', 'error')
+        if len(new_password) < 1:
+            flash('Password cannot be empty', 'error')
             return render_template('change_password.html', instance_name=instance_name)
         
         # Update password
@@ -1666,8 +1666,8 @@ def reset_password(instance_name, token):
             flash('Passwords do not match', 'error')
             return render_template('reset_password.html', token=token, instance_name=instance_name)
         
-        if len(new_password) < 6:
-            flash('Password must be at least 6 characters long', 'error')
+        if len(new_password) < 1:
+            flash('Password cannot be empty', 'error')
             return render_template('reset_password.html', token=token, instance_name=instance_name)
         
         # Update password and clear reset token
@@ -1707,8 +1707,8 @@ def admin_reset_user_password(instance_name, user_id):
             flash('Passwords do not match', 'error')
             return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
         
-        if len(new_password) < 6:
-            flash('Password must be at least 6 characters long', 'error')
+        if len(new_password) < 1:
+            flash('Password cannot be empty', 'error')
             return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
         
         # Update password
