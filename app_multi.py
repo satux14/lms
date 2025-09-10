@@ -430,8 +430,9 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
             # For interest-only loans, calculate total pending interest
             total_pending_interest = calculate_accumulated_interest(loan, payment_date.date())
             
-            if payment_amount > total_pending_interest:
-                raise ValueError(f"Payment amount (₹{payment_amount}) exceeds pending interest (₹{total_pending_interest}) for interest-only loan")
+            # Allow small rounding differences (within 0.01)
+            if payment_amount > total_pending_interest + Decimal('0.01'):
+                raise ValueError(f"Payment amount (₹{payment_amount}) exceeds pending interest (₹{total_pending_interest:.2f}) for interest-only loan. Maximum allowed: ₹{total_pending_interest:.2f}")
             
             # All payment goes to interest
             interest_amount = payment_amount
