@@ -281,6 +281,13 @@
                     </h5>
                 </div>
                 <div class="card-body text-center">
+                    {% if loan.interest_rate == 0 %}
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-gift fa-2x mb-2"></i>
+                        <h4 class="text-success mb-0">Interest-Free Loan!</h4>
+                        <p class="mb-0">No interest will be charged on this loan</p>
+                    </div>
+                    {% else %}
                     <div class="row mb-3">
                         <div class="col-6">
                             <h6 class="text-muted">Daily Interest</h6>
@@ -291,7 +298,15 @@
                             <h4 class="text-warning">₹{{ "%.2f"|format(monthly_interest) }}</h4>
                         </div>
                     </div>
+                    {% endif %}
                     <hr>
+                    {% if loan.interest_rate == 0 %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Accumulated Interest</h6>
+                        <h3 class="text-success">₹0.00</h3>
+                        <small class="text-muted">No interest charged on this loan</small>
+                    </div>
+                    {% else %}
                     <div class="mb-3">
                         <h6 class="text-muted">
                             Accumulated Interest 
@@ -306,6 +321,14 @@
                         </h3>
                         <small class="text-muted">Total interest from loan creation</small>
                     </div>
+                    {% endif %}
+                    {% if loan.interest_rate == 0 %}
+                    <div class="mb-3">
+                        <h6 class="text-muted">Recommended Payment</h6>
+                        <h3 class="text-primary">Any Amount</h3>
+                        <small class="text-muted">All payments go directly to principal</small>
+                    </div>
+                    {% else %}
                     <div class="mb-3">
                         <h6 class="text-muted">Recommended Payment</h6>
                         <h3 class="text-primary">
@@ -313,10 +336,18 @@
                         </h3>
                         <small class="text-muted">per {{ loan.payment_frequency }}</small>
                     </div>
+                    {% endif %}
+                    {% if loan.interest_rate == 0 %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-gift me-2"></i>
+                        <small>This is an interest-free loan! All payments go directly to reducing your principal.</small>
+                    </div>
+                    {% else %}
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <small>Interest is calculated daily and added to your balance if not paid.</small>
                     </div>
+                    {% endif %}
                 </div>
             </div>
 

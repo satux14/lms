@@ -199,6 +199,13 @@
                             </h5>
                         </div>
                         <div class="card-body">
+                            {% if loan.interest_rate == 0 %}
+                            <div class="alert alert-success text-center">
+                                <i class="fas fa-gift fa-2x mb-2"></i>
+                                <h4 class="text-success mb-0">Interest-Free Loan!</h4>
+                                <p class="mb-0">No interest will be charged on this loan</p>
+                            </div>
+                            {% else %}
                             <div class="row text-center">
                                 <div class="col-4">
                                     <h6 class="text-muted">Daily Interest</h6>
@@ -220,6 +227,7 @@
                                     <h4 class="text-danger">₹{{ "%.2f"|format(accumulated_interest) }}</h4>
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
