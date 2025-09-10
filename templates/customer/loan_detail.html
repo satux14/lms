@@ -291,7 +291,14 @@
                     </div>
                     <hr>
                     <div class="mb-3">
-                        <h6 class="text-muted">Accumulated Interest</h6>
+                        <h6 class="text-muted">
+                            Accumulated Interest 
+                            <i class="fas fa-info-circle text-info ms-1" 
+                               data-bs-toggle="modal" 
+                               data-bs-target="#interestCalculationModal" 
+                               style="cursor: pointer;" 
+                               title="Click to see detailed calculation"></i>
+                        </h6>
                         <h3 class="text-danger">
                             ₹{{ "%.2f"|format(accumulated_interest) }}
                         </h3>
@@ -520,4 +527,110 @@ function toggleNotesEdit() {
     }
 }
 </script>
+
+<!-- Interest Calculation Modal -->
+<div class="modal fade" id="interestCalculationModal" tabindex="-1" aria-labelledby="interestCalculationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="interestCalculationModalLabel">
+                    <i class="fas fa-calculator me-2"></i>Interest Calculation Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Loan Information</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Principal Amount:</strong></td>
+                                <td>₹{{ "%.2f"|format(loan.principal_amount) }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Interest Rate:</strong></td>
+                                <td>{{ "%.2f"|format(loan.interest_rate * 100) }}% per year</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Loan Type:</strong></td>
+                                <td>{{ loan.loan_type.replace('_', ' ').title() }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created Date:</strong></td>
+                                <td>{{ loan.created_at.date() }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Today's Date:</strong></td>
+                                <td>{{ current_date }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">Calculation Details</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Days Since Creation:</strong></td>
+                                <td>{{ days_active }} days</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Daily Interest Rate:</strong></td>
+                                <td>{{ "%.6f"|format(loan.interest_rate / 365) }} ({{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 365)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Daily Interest Amount:</strong></td>
+                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-warning">Step-by-Step Calculation</h6>
+                        <div class="alert alert-light">
+                            <ol>
+                                <li><strong>Total Interest Calculation:</strong><br>
+                                    Principal × Daily Rate × Days<br>
+                                    ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }} × {{ days_active }} days<br>
+                                    = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}
+                                </li>
+                                <li><strong>Verified Payments Made:</strong><br>
+                                    {% set verified_payments = payments | selectattr('status', 'equalto', 'verified') | list %}
+                                    {% if verified_payments %}
+                                        {% set total_verified = verified_payments | sum(attribute='interest_amount') %}
+                                        Total: ₹{{ "%.2f"|format(total_verified) }}
+                                        <ul class="mt-2">
+                                            {% for payment in verified_payments %}
+                                            <li>₹{{ "%.2f"|format(payment.amount) }} on {{ payment.payment_date.date() }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        No verified payments made yet
+                                    {% endif %}
+                                </li>
+                                <li><strong>Accumulated Interest:</strong><br>
+                                    Total Interest - Verified Payments<br>
+                                    ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }} - ₹{{ "%.2f"|format(verified_payments | sum(attribute='interest_amount') if verified_payments else 0) }}<br>
+                                    = ₹{{ "%.2f"|format(accumulated_interest) }}
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if loan.loan_type == 'interest_only' %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Interest-Only Loan:</strong> You can only pay interest amounts. The principal amount remains unchanged until the loan is closed.
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
