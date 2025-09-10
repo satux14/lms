@@ -566,19 +566,27 @@ function toggleNotesEdit() {
                         </table>
                     </div>
                     <div class="col-md-6">
-                        <h6 class="text-success">Calculation Details</h6>
+                        <h6 class="text-success">Mathematical Breakdown</h6>
                         <table class="table table-sm">
                             <tr>
                                 <td><strong>Days Since Creation:</strong></td>
                                 <td>{{ days_active }} days</td>
                             </tr>
                             <tr>
+                                <td><strong>Annual Interest Rate:</strong></td>
+                                <td>{{ "%.2f"|format(loan.interest_rate * 100) }}% (stored as {{ loan.interest_rate }})</td>
+                            </tr>
+                            <tr>
                                 <td><strong>Daily Interest Rate:</strong></td>
-                                <td>{{ "%.6f"|format(loan.interest_rate / 365) }} ({{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 365)</td>
+                                <td>{{ "%.6f"|format(loan.interest_rate / 365) }}<br><small class="text-muted">({{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 365 days)</small></td>
                             </tr>
                             <tr>
                                 <td><strong>Daily Interest Amount:</strong></td>
-                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }}</td>
+                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }}<br><small class="text-muted">(₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }})</small></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Interest ({{ days_active }} days):</strong></td>
+                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}<br><small class="text-muted">(₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }} × {{ days_active }} days)</small></td>
                             </tr>
                         </table>
                     </div>
@@ -594,28 +602,70 @@ function toggleNotesEdit() {
                                 <li><strong>Total Interest Calculation:</strong><br>
                                     Principal × Daily Rate × Days<br>
                                     ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }} × {{ days_active }} days<br>
-                                    = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}
+                                    {% set total_interest_calc = loan.principal_amount * loan.interest_rate / 365 * days_active %}
+                                    = ₹{{ "%.2f"|format(total_interest_calc) }}
                                 </li>
                                 <li><strong>Verified Payments Made:</strong><br>
                                     {% set verified_payments = payments | selectattr('status', 'equalto', 'verified') | list %}
                                     {% if verified_payments %}
-                                        {% set total_verified = verified_payments | sum(attribute='interest_amount') %}
-                                        Total: ₹{{ "%.2f"|format(total_verified) }}
+                                        {% set total_verified_calc = verified_payments | sum(attribute='interest_amount') %}
+                                        Total: ₹{{ "%.2f"|format(total_verified_calc) }}
                                         <ul class="mt-2">
                                             {% for payment in verified_payments %}
-                                            <li>₹{{ "%.2f"|format(payment.amount) }} on {{ payment.payment_date.date() }}</li>
+                                            <li>₹{{ "%.2f"|format(payment.amount) }} (Interest: ₹{{ "%.2f"|format(payment.interest_amount) }}) on {{ payment.payment_date.date() }}</li>
                                             {% endfor %}
                                         </ul>
                                     {% else %}
                                         No verified payments made yet
+                                        {% set total_verified_calc = 0 %}
                                     {% endif %}
                                 </li>
                                 <li><strong>Accumulated Interest:</strong><br>
                                     Total Interest - Verified Payments<br>
-                                    ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }} - ₹{{ "%.2f"|format(verified_payments | sum(attribute='interest_amount') if verified_payments else 0) }}<br>
-                                    = ₹{{ "%.2f"|format(accumulated_interest) }}
+                                    ₹{{ "%.2f"|format(total_interest_calc) }} - ₹{{ "%.2f"|format(total_verified_calc) }}<br>
+                                    {% set calculated_accumulated = total_interest_calc - total_verified_calc %}
+                                    = ₹{{ "%.2f"|format(calculated_accumulated) }}
+                                    <br><br>
+                                    <div class="alert alert-warning">
+                                        <strong>Verification:</strong> This calculated amount (₹{{ "%.2f"|format(calculated_accumulated) }}) should match the displayed amount (₹{{ "%.2f"|format(accumulated_interest) }})
+                                        {% if calculated_accumulated != accumulated_interest %}
+                                        <br><span class="text-danger"><strong>⚠️ MISMATCH DETECTED!</strong> There may be a calculation error.</span>
+                                        {% else %}
+                                        <br><span class="text-success"><strong>✅ Calculation Verified</strong></span>
+                                        {% endif %}
+                                    </div>
                                 </li>
                             </ol>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6 class="text-primary">Manual Verification Formula</h6>
+                        <div class="alert alert-light">
+                            <p><strong>You can verify this calculation manually using a calculator:</strong></p>
+                            <div class="bg-light p-3 rounded">
+                                <code>
+                                    <strong>Step 1:</strong> Calculate daily interest rate<br>
+                                    Daily Rate = Annual Rate ÷ 365<br>
+                                    Daily Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 365 = {{ "%.6f"|format(loan.interest_rate / 365) }}<br><br>
+                                    
+                                    <strong>Step 2:</strong> Calculate daily interest amount<br>
+                                    Daily Interest = Principal × Daily Rate<br>
+                                    Daily Interest = ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }}<br><br>
+                                    
+                                    <strong>Step 3:</strong> Calculate total interest for {{ days_active }} days<br>
+                                    Total Interest = Daily Interest × Days<br>
+                                    Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }} × {{ days_active }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}<br><br>
+                                    
+                                    <strong>Step 4:</strong> Subtract verified payments<br>
+                                    {% set verified_payments = payments | selectattr('status', 'equalto', 'verified') | list %}
+                                    {% set total_verified_calc = verified_payments | sum(attribute='interest_amount') if verified_payments else 0 %}
+                                    Accumulated Interest = Total Interest - Verified Payments<br>
+                                    Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active - total_verified_calc) }}
+                                </code>
+                            </div>
                         </div>
                     </div>
                 </div>
