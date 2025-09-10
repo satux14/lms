@@ -545,6 +545,9 @@
                             <p><strong>You can verify this calculation manually using a calculator:</strong></p>
                             <div class="bg-light p-3 rounded">
                                 <code>
+                                    <strong>Note:</strong> Interest accumulates daily regardless of payment frequency<br>
+                                    Payment frequency only affects how much interest is "due" when making payments<br><br>
+                                    
                                     <strong>Step 1:</strong> Calculate daily interest rate<br>
                                     Daily Rate = Annual Rate ÷ 360<br>
                                     Daily Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 360 = {{ "%.6f"|format(loan.interest_rate / 360) }}<br><br>
