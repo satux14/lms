@@ -1180,6 +1180,7 @@ def admin_view_loan(instance_name, loan_id):
                          pending_total=pending_total,
                          payments=payments,
                          days_active=days_active,
+                         current_date=date.today(),
                          instance_name=instance_name)
 
 # Admin Edit Payment route
