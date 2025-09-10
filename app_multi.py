@@ -857,17 +857,30 @@ def admin_create_loan(instance_name):
         loan_type = request.form['loan_type']
         admin_notes = request.form.get('admin_notes', '')
         customer_notes = request.form.get('customer_notes', '')
-        custom_created_at = request.form.get('custom_created_at')
+        # Handle custom creation date if provided
+        custom_created_date = request.form.get('loan_created_date')
+        custom_created_time = request.form.get('loan_created_time')
         
-        # Parse custom creation date if provided
-        if custom_created_at:
+        if custom_created_date:
             try:
-                created_at = datetime.strptime(custom_created_at, '%Y-%m-%dT%H:%M')
+                if custom_created_time:
+                    # Combine date and time
+                    created_at_str = f"{custom_created_date} {custom_created_time}"
+                    created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
+                else:
+                    # Use date only, set time to 00:00
+                    created_at = datetime.strptime(custom_created_date, '%Y-%m-%d')
             except ValueError:
-                flash('Invalid date format')
-                return render_template('admin/create_loan.html', 
-                                     customers=[user.username for user in get_user_query().filter_by(is_admin=False).all()],
-                                     instance_name=instance_name)
+                flash('Invalid date format. Using current date.', 'warning')
+                created_at = datetime.utcnow()
+        elif custom_created_time:
+            try:
+                # If only time is provided, use current date with specified time
+                time_obj = datetime.strptime(custom_created_time, '%H:%M').time()
+                created_at = datetime.utcnow().replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
+            except ValueError:
+                flash('Invalid time format. Using current date/time.', 'warning')
+                created_at = datetime.utcnow()
         else:
             created_at = datetime.utcnow()
         
