@@ -475,7 +475,9 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
 def verify_payment(payment_id):
     """Verify a payment and update loan balance"""
     try:
-        payment = get_payment_query().get_or_404(payment_id)
+        payment = get_payment_query().filter_by(id=payment_id).first()
+        if not payment:
+            return  # Payment not found
         loan = payment.loan
         
         if payment.status == 'verified':
@@ -1175,7 +1177,7 @@ def admin_edit_payment(instance_name, payment_id):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    payment = get_payment_query().get_or_404(payment_id)
+    payment = get_payment_query().filter_by(id=payment_id).first() or abort(404)
     loan = payment.loan  # Get the loan associated with this payment
     
     if request.method == 'POST':
