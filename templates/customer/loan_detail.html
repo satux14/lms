@@ -606,13 +606,13 @@ function toggleNotesEdit() {
                                     = ₹{{ "%.2f"|format(total_interest_calc) }}
                                 </li>
                                 <li><strong>Verified Payments Made:</strong><br>
-                                    {% set verified_payments = payments | selectattr('status', 'equalto', 'verified') | list %}
+                                    {% set verified_payments = payments | selectattr('payment.status', 'equalto', 'verified') | list %}
                                     {% if verified_payments %}
-                                        {% set total_verified_calc = verified_payments | sum(attribute='interest_amount') %}
+                                        {% set total_verified_calc = verified_payments | sum(attribute='payment.interest_amount') %}
                                         Total: ₹{{ "%.2f"|format(total_verified_calc) }}
                                         <ul class="mt-2">
-                                            {% for payment in verified_payments %}
-                                            <li>₹{{ "%.2f"|format(payment.amount) }} (Interest: ₹{{ "%.2f"|format(payment.interest_amount) }}) on {{ payment.payment_date.date() }}</li>
+                                            {% for payment_data in verified_payments %}
+                                            <li>₹{{ "%.2f"|format(payment_data.payment.amount) }} (Interest: ₹{{ "%.2f"|format(payment_data.payment.interest_amount) }}) on {{ payment_data.payment.payment_date.date() }}</li>
                                             {% endfor %}
                                         </ul>
                                     {% else %}
@@ -660,8 +660,8 @@ function toggleNotesEdit() {
                                     Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }} × {{ days_active }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}<br><br>
                                     
                                     <strong>Step 4:</strong> Subtract verified payments<br>
-                                    {% set verified_payments = payments | selectattr('status', 'equalto', 'verified') | list %}
-                                    {% set total_verified_calc = verified_payments | sum(attribute='interest_amount') if verified_payments else 0 %}
+                                    {% set verified_payments = payments | selectattr('payment.status', 'equalto', 'verified') | list %}
+                                    {% set total_verified_calc = verified_payments | sum(attribute='payment.interest_amount') if verified_payments else 0 %}
                                     Accumulated Interest = Total Interest - Verified Payments<br>
                                     Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active - total_verified_calc) }}
                                 </code>
