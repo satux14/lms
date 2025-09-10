@@ -529,7 +529,7 @@
 <script>
 function viewLoanDetails(loanId) {
     // Redirect to the loan details page
-    window.location.href = `/admin/loan/${loanId}`;
+    window.location.href = `/{{ instance_name }}/admin/loan/${loanId}`;
 }
 
 function viewPayments(loanId) {
