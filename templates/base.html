@@ -248,6 +248,9 @@
                                     </a></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('change_password', instance_name=instance_name) }}">
+                                    <i class="fas fa-key me-2"></i>Change Password
+                                </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('logout', instance_name=instance_name) }}">
                                     <i class="fas fa-sign-out-alt me-2"></i>Logout
                                 </a></li>

@@ -26,6 +26,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
 import uuid
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 
 # Instance configuration
@@ -67,6 +71,8 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(120), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
 
 class InterestRate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1567,6 +1573,191 @@ def customer_edit_notes(instance_name, loan_id):
     return render_template('customer/edit_notes.html', 
                          loan=loan,
                          instance_name=instance_name)
+
+# Password Management Routes
+
+# Change Password route
+@app.route('/<instance_name>/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password(instance_name):
+    """Change password for current user"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if request.method == 'POST':
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        # Verify current password
+        if not check_password_hash(current_user.password_hash, current_password):
+            flash('Current password is incorrect', 'error')
+            return render_template('change_password.html', instance_name=instance_name)
+        
+        # Validate new password
+        if new_password != confirm_password:
+            flash('New passwords do not match', 'error')
+            return render_template('change_password.html', instance_name=instance_name)
+        
+        if len(new_password) < 6:
+            flash('New password must be at least 6 characters long', 'error')
+            return render_template('change_password.html', instance_name=instance_name)
+        
+        # Update password
+        current_user.password_hash = generate_password_hash(new_password)
+        commit_current_instance()
+        
+        flash('Password changed successfully', 'success')
+        return redirect(url_for('admin_dashboard' if current_user.is_admin else 'customer_dashboard', instance_name=instance_name))
+    
+    return render_template('change_password.html', instance_name=instance_name)
+
+# Forgot Password route
+@app.route('/<instance_name>/forgot-password', methods=['GET', 'POST'])
+def forgot_password(instance_name):
+    """Forgot password - send reset email"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if request.method == 'POST':
+        email = request.form['email']
+        
+        # Find user by email
+        user = get_user_query().filter_by(email=email).first()
+        
+        if user:
+            # Generate reset token
+            reset_token = secrets.token_urlsafe(32)
+            user.reset_token = reset_token
+            user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+            commit_current_instance()
+            
+            # Send reset email (simplified - in production, use proper email service)
+            try:
+                send_password_reset_email(user.email, reset_token, instance_name)
+                flash('Password reset instructions have been sent to your email', 'success')
+            except Exception as e:
+                flash('Error sending email. Please contact administrator.', 'error')
+        else:
+            flash('No account found with that email address', 'error')
+    
+    return render_template('forgot_password.html', instance_name=instance_name)
+
+# Reset Password route
+@app.route('/<instance_name>/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(instance_name, token):
+    """Reset password with token"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    # Find user by token
+    user = get_user_query().filter_by(reset_token=token).first()
+    
+    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+        flash('Invalid or expired reset token', 'error')
+        return redirect(url_for('login', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        # Validate passwords
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('reset_password.html', token=token, instance_name=instance_name)
+        
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return render_template('reset_password.html', token=token, instance_name=instance_name)
+        
+        # Update password and clear reset token
+        user.password_hash = generate_password_hash(new_password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        commit_current_instance()
+        
+        flash('Password reset successfully. Please log in with your new password.', 'success')
+        return redirect(url_for('login', instance_name=instance_name))
+    
+    return render_template('reset_password.html', token=token, instance_name=instance_name)
+
+# Admin Reset User Password route
+@app.route('/<instance_name>/admin/reset-user-password/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def admin_reset_user_password(instance_name, user_id):
+    """Admin reset any user's password"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    user = get_user_query().filter_by(id=user_id).first()
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('admin_users', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        # Validate passwords
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
+        
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
+        
+        # Update password
+        user.password_hash = generate_password_hash(new_password)
+        commit_current_instance()
+        
+        flash(f'Password reset successfully for user {user.username}', 'success')
+        return redirect(url_for('admin_users', instance_name=instance_name))
+    
+    return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
+
+# Email helper function
+def send_password_reset_email(email, token, instance_name):
+    """Send password reset email (simplified implementation)"""
+    # In production, use proper email service like SendGrid, AWS SES, etc.
+    # For now, we'll just print the reset link to console
+    reset_url = f"http://127.0.0.1:8080/{instance_name}/reset-password/{token}"
+    
+    print(f"\n=== PASSWORD RESET EMAIL ===")
+    print(f"To: {email}")
+    print(f"Subject: Password Reset Request")
+    print(f"Reset Link: {reset_url}")
+    print(f"=============================\n")
+    
+    # In production, replace this with actual email sending:
+    # msg = MIMEMultipart()
+    # msg['From'] = "noreply@lendingapp.com"
+    # msg['To'] = email
+    # msg['Subject'] = "Password Reset Request"
+    # 
+    # body = f"""
+    # You requested a password reset for your account.
+    # 
+    # Click the link below to reset your password:
+    # {reset_url}
+    # 
+    # This link will expire in 1 hour.
+    # 
+    # If you didn't request this, please ignore this email.
+    # """
+    # 
+    # msg.attach(MIMEText(body, 'plain'))
+    # 
+    # server = smtplib.SMTP('smtp.gmail.com', 587)
+    # server.starttls()
+    # server.login("your-email@gmail.com", "your-password")
+    # text = msg.as_string()
+    # server.sendmail("noreply@lendingapp.com", email, text)
+    # server.quit()
 
 # Initialize the app only when run directly
 if __name__ == '__main__':
