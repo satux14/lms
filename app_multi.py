@@ -32,6 +32,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
 
+# Constants
+DAYS_PER_YEAR = 360  # Interest calculation based on 360 days per year
+
 # Instance configuration
 DEFAULT_INSTANCE = 'prod'
 VALID_INSTANCES = ['prod', 'dev', 'testing']
@@ -350,7 +353,7 @@ def commit_current_instance():
 def calculate_daily_interest(principal, annual_rate):
     """Calculate daily interest amount"""
     try:
-        daily_rate = annual_rate / 365
+        daily_rate = annual_rate / DAYS_PER_YEAR
         return Decimal(str(principal)) * Decimal(str(daily_rate))
     except (InvalidOperation, TypeError):
         return Decimal('0')
@@ -370,7 +373,7 @@ def calculate_interest_for_period(principal, annual_rate, start_date, end_date):
         if days <= 0:
             return Decimal('0')
         
-        daily_rate = annual_rate / 365
+        daily_rate = annual_rate / DAYS_PER_YEAR
         return Decimal(str(principal)) * Decimal(str(daily_rate)) * Decimal(str(days))
     except (InvalidOperation, TypeError):
         return Decimal('0')

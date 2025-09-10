@@ -472,15 +472,15 @@
                             </tr>
                             <tr>
                                 <td><strong>Daily Interest Rate:</strong></td>
-                                <td>{{ "%.6f"|format(loan.interest_rate / 365) }}<br><small class="text-muted">({{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 365 days)</small></td>
+                                <td>{{ "%.6f"|format(loan.interest_rate / 360) }}<br><small class="text-muted">({{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 360 days)</small></td>
                             </tr>
                             <tr>
                                 <td><strong>Daily Interest Amount:</strong></td>
-                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }}<br><small class="text-muted">(₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }})</small></td>
+                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }}<br><small class="text-muted">(₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 360) }})</small></td>
                             </tr>
                             <tr>
                                 <td><strong>Total Interest ({{ days_active }} days):</strong></td>
-                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}<br><small class="text-muted">(₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }} × {{ days_active }} days)</small></td>
+                                <td>₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }}<br><small class="text-muted">(₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }} × {{ days_active }} days)</small></td>
                             </tr>
                         </table>
                     </div>
@@ -495,8 +495,8 @@
                             <ol>
                                 <li><strong>Total Interest Calculation:</strong><br>
                                     Principal × Daily Rate × Days<br>
-                                    ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }} × {{ days_active }} days<br>
-                                    {% set total_interest_calc = loan.principal_amount * loan.interest_rate / 365 * days_active %}
+                                    ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 360) }} × {{ days_active }} days<br>
+                                    {% set total_interest_calc = loan.principal_amount * loan.interest_rate / 360 * days_active %}
                                     = ₹{{ "%.2f"|format(total_interest_calc) }}
                                 </li>
                                 <li><strong>Verified Payments Made:</strong><br>
@@ -546,22 +546,22 @@
                             <div class="bg-light p-3 rounded">
                                 <code>
                                     <strong>Step 1:</strong> Calculate daily interest rate<br>
-                                    Daily Rate = Annual Rate ÷ 365<br>
-                                    Daily Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 365 = {{ "%.6f"|format(loan.interest_rate / 365) }}<br><br>
+                                    Daily Rate = Annual Rate ÷ 360<br>
+                                    Daily Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 360 = {{ "%.6f"|format(loan.interest_rate / 360) }}<br><br>
                                     
                                     <strong>Step 2:</strong> Calculate daily interest amount<br>
                                     Daily Interest = Principal × Daily Rate<br>
-                                    Daily Interest = ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 365) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }}<br><br>
+                                    Daily Interest = ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 360) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }}<br><br>
                                     
                                     <strong>Step 3:</strong> Calculate total interest for {{ days_active }} days<br>
                                     Total Interest = Daily Interest × Days<br>
-                                    Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365) }} × {{ days_active }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }}<br><br>
+                                    Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }} × {{ days_active }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }}<br><br>
                                     
                                     <strong>Step 4:</strong> Subtract verified payments<br>
                                     {% set verified_payments = payments | selectattr('status', 'equalto', 'verified') | list %}
                                     {% set total_verified_calc = verified_payments | sum(attribute='interest_amount') if verified_payments else 0 %}
                                     Accumulated Interest = Total Interest - Verified Payments<br>
-                                    Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 365 * days_active - total_verified_calc) }}
+                                    Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active - total_verified_calc) }}
                                 </code>
                             </div>
                         </div>

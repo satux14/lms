@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const interestDiv = document.getElementById('interestCalculation');
         if (principal > 0 && interestRate > 0) {
             const annualRate = interestRate / 100;
-            const dailyRate = annualRate / 365;
+            const dailyRate = annualRate / 360;
             const monthlyRate = annualRate / 12;
             
             const dailyInterest = principal * dailyRate;

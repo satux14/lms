@@ -294,7 +294,7 @@ def create_sample_data():
                 payment_type = 'interest'
             else:
                 # For regular loans, calculate based on daily interest
-                daily_interest = loan.remaining_principal * loan.interest_rate / 365
+                daily_interest = loan.remaining_principal * loan.interest_rate / 360
                 if amount >= daily_interest:
                     interest_amount = daily_interest
                     principal_amount = amount - daily_interest
