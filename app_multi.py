@@ -947,8 +947,8 @@ def admin_payments(instance_name):
     
     payments = query.all()
     
-    # Calculate total interest paid
-    total_interest_paid = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).scalar() or 0
+    # Calculate total interest paid (verified payments only)
+    total_interest_paid = get_payment_query().filter_by(status='verified').with_entities(db.func.sum(Payment.interest_amount)).scalar() or 0
     
     # Calculate filtered totals
     filtered_principal = sum(payment.principal_amount for payment, loan, user in payments)
@@ -1154,6 +1154,17 @@ def admin_view_loan(instance_name, loan_id):
     # Get payment history
     payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
     
+    # Calculate verified amounts
+    verified_payments = [p for p in payments if p.status == 'verified']
+    verified_principal = sum(payment.principal_amount for payment in verified_payments)
+    verified_interest = sum(payment.interest_amount for payment in verified_payments)
+    
+    # Calculate pending amounts
+    pending_payments = [p for p in payments if p.status == 'pending']
+    pending_principal = sum(payment.principal_amount for payment in pending_payments)
+    pending_interest = sum(payment.interest_amount for payment in pending_payments)
+    pending_total = pending_principal + pending_interest
+    
     # Calculate days active
     days_active = (date.today() - loan.created_at.date()).days
     
@@ -1162,6 +1173,11 @@ def admin_view_loan(instance_name, loan_id):
                          daily_interest=daily_interest,
                          monthly_interest=monthly_interest,
                          accumulated_interest=accumulated_interest,
+                         verified_principal=verified_principal,
+                         verified_interest=verified_interest,
+                         pending_principal=pending_principal,
+                         pending_interest=pending_interest,
+                         pending_total=pending_total,
                          payments=payments,
                          days_active=days_active,
                          instance_name=instance_name)
