@@ -1249,6 +1249,41 @@ def admin_edit_payment(instance_name, payment_id):
                          loan=loan,
                          instance_name=instance_name)
 
+# Admin Delete Payment route
+@app.route('/<instance_name>/admin/delete-payment/<int:payment_id>', methods=['POST'])
+@login_required
+def admin_delete_payment(instance_name, payment_id):
+    """Admin delete payment for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    payment = get_payment_query().filter_by(id=payment_id).first() or abort(404)
+    loan = payment.loan
+    
+    try:
+        # If payment was verified, we need to adjust the loan balance
+        if payment.status == 'verified':
+            # Add back the principal amount to remaining_principal
+            loan.remaining_principal += payment.principal_amount
+            # Ensure remaining_principal doesn't exceed original principal
+            if loan.remaining_principal > loan.principal_amount:
+                loan.remaining_principal = loan.principal_amount
+        
+        # Delete the payment
+        get_payment_query().filter_by(id=payment_id).delete()
+        commit_current_instance()
+        
+        flash(f'Payment of ₹{payment.amount:,.2f} deleted successfully')
+        return redirect(url_for('admin_payments', instance_name=instance_name))
+        
+    except Exception as e:
+        flash(f'Error deleting payment: {str(e)}')
+        return redirect(url_for('admin_payments', instance_name=instance_name))
+
 # Admin Create Backup route
 @app.route('/<instance_name>/admin/backup/create', methods=['GET', 'POST'])
 @login_required

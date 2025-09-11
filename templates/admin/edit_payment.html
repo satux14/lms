@@ -193,9 +193,17 @@
                             <strong>Note:</strong> Changing the principal amount will automatically adjust the loan's remaining principal balance.
                         </div>
 
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{{ url_for('admin_payments', instance_name=instance_name) }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Update Payment</button>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <button type="button" 
+                                    class="btn btn-outline-danger" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#deleteModal">
+                                <i class="fas fa-trash me-1"></i>Delete Payment
+                            </button>
+                            <div>
+                                <a href="{{ url_for('admin_payments', instance_name=instance_name) }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Update Payment</button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -230,4 +238,52 @@ document.addEventListener('DOMContentLoaded', function() {
     amountInput.addEventListener('input', updatePrincipal);
 });
 </script>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirm Payment Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>Warning:</strong> This action cannot be undone!
+                </div>
+                <p>Are you sure you want to delete this payment?</p>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Payment Details</h6>
+                        <p class="mb-1"><strong>Amount:</strong> ₹{{ "%.2f"|format(payment.amount) }}</p>
+                        <p class="mb-1"><strong>Date:</strong> {{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p class="mb-1"><strong>Status:</strong> 
+                            <span class="badge bg-{{ 'success' if payment.status == 'verified' else 'warning' if payment.status == 'pending' else 'danger' if payment.status == 'rejected' else 'secondary' }}">
+                                {{ payment.status.title() }}
+                            </span>
+                        </p>
+                        {% if payment.status == 'verified' %}
+                        <div class="alert alert-info mt-2">
+                            <small><i class="fas fa-info-circle me-1"></i> This payment was verified. Deleting it will adjust the loan balance.</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form method="POST" action="{{ url_for('admin_delete_payment', instance_name=instance_name, payment_id=payment.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Delete Payment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
