@@ -401,27 +401,22 @@ def calculate_accumulated_interest(loan, as_of_date=None):
             
             return total_interest - Decimal(str(verified_interest_payments))
         else:
-            # For regular loans, accumulated interest is the interest on remaining principal
-            # from the last payment date (or loan creation) to today
-            last_payment = get_payment_query().filter_by(
-                loan_id=loan.id, 
-                status='verified'
-            ).order_by(Payment.payment_date.desc()).first()
-            
-            if last_payment:
-                start_date = last_payment.payment_date
-            else:
-                start_date = loan.created_at.date()
-            
-            # Calculate interest on remaining principal from start_date to today
-            accumulated_interest = calculate_interest_for_period(
-                loan.remaining_principal, 
+            # For regular loans, calculate total interest from loan creation to today
+            # and subtract all verified interest payments
+            total_interest = calculate_interest_for_period(
+                loan.principal_amount, 
                 loan.interest_rate, 
-                start_date, 
+                loan.created_at.date(), 
                 as_of_date
             )
             
-            return accumulated_interest
+            # Subtract verified interest payments
+            verified_interest_payments = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
+                loan_id=loan.id, 
+                status='verified'
+            ).scalar() or 0
+            
+            return total_interest - Decimal(str(verified_interest_payments))
     except Exception as e:
         print(f"Error calculating accumulated interest: {e}")
         return Decimal('0')
@@ -447,25 +442,32 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
             interest_amount = payment_amount
             principal_amount = Decimal('0')
         else:
-            # For regular loans, calculate immediate interest due
-            if loan.payment_frequency == 'daily':
-                interest_due = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
-            else:  # monthly
-                interest_due = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+            # For regular loans, calculate accumulated interest first
+            accumulated_interest = calculate_accumulated_interest(loan, payment_date.date())
             
-            if payment_amount >= interest_due:
-                interest_amount = interest_due
-                principal_amount = payment_amount - interest_due
+            if payment_amount >= accumulated_interest:
+                # Payment covers all accumulated interest
+                interest_amount = accumulated_interest
+                principal_amount = payment_amount - accumulated_interest
             else:
+                # Payment only covers part of accumulated interest
                 interest_amount = payment_amount
                 principal_amount = Decimal('0')
+        
+        # Determine payment type
+        if loan.loan_type == 'interest_only':
+            payment_type = 'interest'
+        elif principal_amount > 0:
+            payment_type = 'both'
+        else:
+            payment_type = 'interest'
         
         # Create payment record
         payment = Payment(
             loan_id=loan.id,
             amount=payment_amount,
             payment_date=payment_date,
-            payment_type='both' if principal_amount > 0 else 'interest',
+            payment_type=payment_type,
             interest_amount=interest_amount,
             principal_amount=principal_amount,
             transaction_id=transaction_id,
