@@ -116,7 +116,7 @@
                     <div class="card text-center">
                         <div class="card-body">
                             <h5 class="card-title text-success">
-                                ₹{{ "%.2f"|format(loans|sum(attribute='principal_amount')) }}
+                                ₹{{ "%.2f"|format(loans|sum(attribute='loan.principal_amount')) }}
                             </h5>
                             <p class="card-text">Total Principal</p>
                         </div>
@@ -126,7 +126,7 @@
                     <div class="card text-center">
                         <div class="card-body">
                             <h5 class="card-title text-warning">
-                                ₹{{ "%.2f"|format(loans|sum(attribute='remaining_principal')) }}
+                                ₹{{ "%.2f"|format(loans|sum(attribute='loan.remaining_principal')) }}
                             </h5>
                             <p class="card-text">Outstanding Balance</p>
                         </div>
@@ -136,9 +136,9 @@
                     <div class="card text-center">
                         <div class="card-body">
                             <h5 class="card-title text-info">
-                                {{ loans|selectattr('payment_frequency', 'equalto', 'daily')|list|length }}
+                                ₹{{ "%.2f"|format(loans|sum(attribute='interest_paid')) }}
                             </h5>
-                            <p class="card-text">Daily Payment Loans</p>
+                            <p class="card-text">Total Interest Paid</p>
                         </div>
                     </div>
                 </div>
@@ -295,7 +295,7 @@
                                     <thead>
                                         <tr>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='id', order=('asc' if request.args.get('sort') == 'id' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='id', order=('asc' if request.args.get('sort') == 'id' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Loan ID
                                                     {% if request.args.get('sort') == 'id' %}
@@ -306,7 +306,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='loan_name', order=('asc' if request.args.get('sort') == 'loan_name' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='loan_name', order=('asc' if request.args.get('sort') == 'loan_name' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Loan Name
                                                     {% if request.args.get('sort') == 'loan_name' %}
@@ -317,7 +317,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='customer', order=('asc' if request.args.get('sort') == 'customer' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='customer', order=('asc' if request.args.get('sort') == 'customer' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Customer
                                                     {% if request.args.get('sort') == 'customer' %}
@@ -328,7 +328,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='loan_type', order=('asc' if request.args.get('sort') == 'loan_type' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='loan_type', order=('asc' if request.args.get('sort') == 'loan_type' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Type
                                                     {% if request.args.get('sort') == 'loan_type' %}
@@ -339,7 +339,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='principal', order=('asc' if request.args.get('sort') == 'principal' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='principal', order=('asc' if request.args.get('sort') == 'principal' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Principal
                                                     {% if request.args.get('sort') == 'principal' %}
@@ -350,7 +350,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='remaining', order=('asc' if request.args.get('sort') == 'remaining' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='remaining', order=('asc' if request.args.get('sort') == 'remaining' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Remaining
                                                     {% if request.args.get('sort') == 'remaining' %}
@@ -361,7 +361,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='interest_rate', order=('asc' if request.args.get('sort') == 'interest_rate' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='interest_rate', order=('asc' if request.args.get('sort') == 'interest_rate' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Interest Rate
                                                     {% if request.args.get('sort') == 'interest_rate' %}
@@ -371,8 +371,9 @@
                                                     {% endif %}
                                                 </a>
                                             </th>
+                                            <th>Interest Paid</th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='frequency', order=('asc' if request.args.get('sort') == 'frequency' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='frequency', order=('asc' if request.args.get('sort') == 'frequency' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Frequency
                                                     {% if request.args.get('sort') == 'frequency' %}
@@ -383,7 +384,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc'), **request.args) }}" 
+                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Created
                                                     {% if request.args.get('sort') == 'created' %}
@@ -398,7 +399,8 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for loan in loans %}
+                                        {% for loan_data in loans %}
+                                        {% set loan = loan_data.loan %}
                                         <tr>
                                             <td>
                                                 <strong>#{{ loan.id }}</strong>
@@ -432,6 +434,11 @@
                                                 </span>
                                             </td>
                                             <td>
+                                                <span class="badge bg-success">
+                                                    ₹{{ "%.2f"|format(loan_data.interest_paid) }}
+                                                </span>
+                                            </td>
+                                            <td>
                                                 <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }}">
                                                     {{ loan.payment_frequency.title() }}
                                                 </span>
@@ -457,16 +464,6 @@
                                                             onclick="viewLoanDetails({{ loan.id }})"
                                                             title="View Details">
                                                         <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-info" 
-                                                            onclick="viewPayments({{ loan.id }})"
-                                                            title="Payment History">
-                                                        <i class="fas fa-history"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-success" 
-                                                            onclick="calculateInterest({{ loan.id }})"
-                                                            title="Calculate Interest">
-                                                        <i class="fas fa-calculator"></i>
                                                     </button>
                                                     {% if loan.is_active %}
                                                     <button class="btn btn-sm btn-outline-warning" 
@@ -589,7 +586,8 @@ function calculateInterest(loanId) {
 </script>
 
 <!-- Close Loan Confirmation Modals -->
-{% for loan in loans %}
+{% for loan_data in loans %}
+{% set loan = loan_data.loan %}
 {% if loan.is_active %}
 <div class="modal fade" id="closeModal{{ loan.id }}" tabindex="-1" aria-labelledby="closeModalLabel{{ loan.id }}" aria-hidden="true">
     <div class="modal-dialog">
@@ -638,7 +636,8 @@ function calculateInterest(loanId) {
 {% endfor %}
 
 <!-- Delete Loan Confirmation Modals -->
-{% for loan in loans %}
+{% for loan_data in loans %}
+{% set loan = loan_data.loan %}
 <div class="modal fade" id="deleteModal{{ loan.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ loan.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
