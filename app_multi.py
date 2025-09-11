@@ -771,8 +771,22 @@ def admin_loans(instance_name):
     loans = query.all()
     customers = get_user_query().filter_by(is_admin=False).all()
     
+    # Calculate interest paid for each loan
+    loans_with_interest = []
+    for loan in loans:
+        # Get verified interest payments for this loan
+        interest_paid = get_payment_query().filter_by(
+            loan_id=loan.id, 
+            status='verified'
+        ).with_entities(db.func.sum(Payment.interest_amount)).scalar() or 0
+        
+        loans_with_interest.append({
+            'loan': loan,
+            'interest_paid': interest_paid
+        })
+    
     return render_template('admin/loans.html', 
-                         loans=loans, 
+                         loans=loans_with_interest, 
                          customers=customers,
                          loan_type=loan_type,
                          frequency=frequency,
