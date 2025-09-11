@@ -187,6 +187,7 @@
                             <select class="form-select" id="status_filter" name="status">
                                 <option value="">All Status</option>
                                 <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
+                                <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>Closed</option>
                                 <option value="paid_off" {% if request.args.get('status') == 'paid_off' %}selected{% endif %}>Paid Off</option>
                             </select>
                         </div>
@@ -437,8 +438,10 @@
                                             </td>
                                             <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
                                             <td>
-                                                {% if loan.is_active %}
+                                                {% if loan.status == 'active' %}
                                                     <span class="badge bg-success">Active</span>
+                                                {% elif loan.status == 'closed' %}
+                                                    <span class="badge bg-warning">Closed</span>
                                                 {% else %}
                                                     <span class="badge bg-secondary">Inactive</span>
                                                 {% endif %}
@@ -464,6 +467,20 @@
                                                             onclick="calculateInterest({{ loan.id }})"
                                                             title="Calculate Interest">
                                                         <i class="fas fa-calculator"></i>
+                                                    </button>
+                                                    {% if loan.is_active %}
+                                                    <button class="btn btn-sm btn-outline-warning" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#closeModal{{ loan.id }}"
+                                                            title="Close Loan">
+                                                        <i class="fas fa-lock"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    <button class="btn btn-sm btn-outline-danger" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#deleteModal{{ loan.id }}"
+                                                            title="Delete Loan">
+                                                        <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
                                             </td>
@@ -570,4 +587,100 @@ function calculateInterest(loanId) {
     }, 1000);
 }
 </script>
+
+<!-- Close Loan Confirmation Modals -->
+{% for loan in loans %}
+{% if loan.is_active %}
+<div class="modal fade" id="closeModal{{ loan.id }}" tabindex="-1" aria-labelledby="closeModalLabel{{ loan.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="closeModalLabel{{ loan.id }}">
+                    <i class="fas fa-lock text-warning me-2"></i>
+                    Close Loan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>Warning:</strong> This will close the loan and hide it from customer view.
+                </div>
+                <p>Are you sure you want to close this loan?</p>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Loan Details</h6>
+                        <p class="mb-1"><strong>Loan ID:</strong> #{{ loan.id }}</p>
+                        <p class="mb-1"><strong>Name:</strong> {{ loan.loan_name }}</p>
+                        <p class="mb-1"><strong>Customer:</strong> {{ loan.customer.username }}</p>
+                        <p class="mb-1"><strong>Principal:</strong> ₹{{ "%.2f"|format(loan.principal_amount) }}</p>
+                        <p class="mb-1"><strong>Remaining:</strong> ₹{{ "%.2f"|format(loan.remaining_principal) }}</p>
+                        <p class="mb-1"><strong>Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}%</p>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-2">
+                    <small><i class="fas fa-info-circle me-1"></i> The loan will be marked as closed and customers will no longer see it in their dashboard.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form method="POST" action="{{ url_for('admin_close_loan', instance_name=instance_name, loan_id=loan.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-lock me-1"></i>Close Loan
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Delete Loan Confirmation Modals -->
+{% for loan in loans %}
+<div class="modal fade" id="deleteModal{{ loan.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ loan.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel{{ loan.id }}">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    Delete Loan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <strong>Danger:</strong> This action cannot be undone!
+                </div>
+                <p>Are you sure you want to delete this loan?</p>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Loan Details</h6>
+                        <p class="mb-1"><strong>Loan ID:</strong> #{{ loan.id }}</p>
+                        <p class="mb-1"><strong>Name:</strong> {{ loan.loan_name }}</p>
+                        <p class="mb-1"><strong>Customer:</strong> {{ loan.customer.username }}</p>
+                        <p class="mb-1"><strong>Principal:</strong> ₹{{ "%.2f"|format(loan.principal_amount) }}</p>
+                        <p class="mb-1"><strong>Remaining:</strong> ₹{{ "%.2f"|format(loan.remaining_principal) }}</p>
+                        <p class="mb-1"><strong>Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}%</p>
+                    </div>
+                </div>
+                <div class="alert alert-warning mt-2">
+                    <small><i class="fas fa-exclamation-triangle me-1"></i> This will permanently delete the loan and all associated data. Make sure there are no payments associated with this loan.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <form method="POST" action="{{ url_for('admin_delete_loan', instance_name=instance_name, loan_id=loan.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Delete Loan
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

@@ -96,6 +96,7 @@ class Loan(db.Model):
     customer_notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    status = db.Column(db.String(20), default='active')  # 'active', 'closed', 'deleted'
     
     # Relationships
     customer = db.relationship('User', backref='loans')
@@ -731,9 +732,11 @@ def admin_loans(instance_name):
         query = query.filter(Loan.interest_rate <= max_rate_decimal)
     if status:
         if status == 'active':
-            query = query.filter(Loan.is_active == True)
+            query = query.filter(Loan.is_active == True, Loan.status == 'active')
+        elif status == 'closed':
+            query = query.filter(Loan.status == 'closed')
         elif status == 'paid_off':
-            query = query.filter(Loan.is_active == False)
+            query = query.filter(Loan.is_active == False, Loan.status != 'closed')
     
     # Get sorting parameters
     sort_by = request.args.get('sort', 'created_at')
@@ -1284,6 +1287,66 @@ def admin_delete_payment(instance_name, payment_id):
         flash(f'Error deleting payment: {str(e)}')
         return redirect(url_for('admin_payments', instance_name=instance_name))
 
+# Admin Close Loan route
+@app.route('/<instance_name>/admin/close-loan/<int:loan_id>', methods=['POST'])
+@login_required
+def admin_close_loan(instance_name, loan_id):
+    """Admin close loan for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
+    
+    try:
+        # Close the loan
+        loan.status = 'closed'
+        loan.is_active = False
+        commit_current_instance()
+        
+        flash(f'Loan "{loan.loan_name}" has been closed successfully')
+        return redirect(url_for('admin_loans', instance_name=instance_name))
+        
+    except Exception as e:
+        flash(f'Error closing loan: {str(e)}')
+        return redirect(url_for('admin_loans', instance_name=instance_name))
+
+# Admin Delete Loan route
+@app.route('/<instance_name>/admin/delete-loan/<int:loan_id>', methods=['POST'])
+@login_required
+def admin_delete_loan(instance_name, loan_id):
+    """Admin delete loan for specific instance"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
+    
+    try:
+        # Check if loan has any payments
+        payments_count = get_payment_query().filter_by(loan_id=loan_id).count()
+        if payments_count > 0:
+            flash(f'Cannot delete loan "{loan.loan_name}" because it has {payments_count} payment(s). Please delete all payments first.')
+            return redirect(url_for('admin_loans', instance_name=instance_name))
+        
+        # Delete the loan
+        loan_name = loan.loan_name
+        get_loan_query().filter_by(id=loan_id).delete()
+        commit_current_instance()
+        
+        flash(f'Loan "{loan_name}" has been deleted successfully')
+        return redirect(url_for('admin_loans', instance_name=instance_name))
+        
+    except Exception as e:
+        flash(f'Error deleting loan: {str(e)}')
+        return redirect(url_for('admin_loans', instance_name=instance_name))
+
 # Admin Create Backup route
 @app.route('/<instance_name>/admin/backup/create', methods=['GET', 'POST'])
 @login_required
@@ -1414,8 +1477,8 @@ def customer_dashboard(instance_name):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    # Get customer's loans
-    loans = get_loan_query().filter_by(customer_id=current_user.id).all()
+    # Get customer's active loans only
+    loans = get_loan_query().filter_by(customer_id=current_user.id, is_active=True).all()
     
     loan_data = []
     for loan in loans:
@@ -1463,8 +1526,8 @@ def customer_loan_detail(instance_name, loan_id):
     
     loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
     
-    # Check if loan belongs to current user
-    if loan.customer_id != current_user.id:
+    # Check if loan belongs to current user and is active
+    if loan.customer_id != current_user.id or not loan.is_active:
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
