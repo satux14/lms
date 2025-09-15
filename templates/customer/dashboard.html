@@ -103,7 +103,16 @@
                         </div>
                         <div class="col-4">
                             <h6 class="text-muted">Accumulated Interest</h6>
-                            <h5 class="text-danger">₹{{ "%.2f"|format(data.accumulated_interest) }}</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <h6 class="text-danger mb-1">₹{{ "%.2f"|format(data.accumulated_interest_daily) }}</h6>
+                                    <small class="text-muted">Daily</small>
+                                </div>
+                                <div class="col-6">
+                                    <h6 class="text-warning mb-1">₹{{ "%.2f"|format(data.accumulated_interest_monthly) }}</h6>
+                                    <small class="text-muted">Monthly</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
