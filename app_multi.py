@@ -454,7 +454,17 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
         
         if loan.loan_type == 'interest_only':
             # For interest-only loans, calculate total pending interest
-            total_pending_interest = calculate_accumulated_interest(loan, payment_date.date())
+            interest_data = calculate_accumulated_interest(loan, payment_date.date())
+            accumulated_interest = interest_data['daily']  # Use daily calculation for interest-only loans
+            
+            # Get total pending interest from all pending payments
+            pending_interest = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
+                loan_id=loan.id, 
+                status='pending'
+            ).scalar() or 0
+            pending_interest = Decimal(str(pending_interest))
+            
+            total_pending_interest = accumulated_interest + pending_interest
             
             # Allow small rounding differences (within 0.01)
             if payment_amount > total_pending_interest + Decimal('0.01'):
@@ -1699,13 +1709,17 @@ def customer_make_payment(instance_name, loan_id):
     # Calculate interest information
     daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
     monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-    accumulated_interest = calculate_accumulated_interest(loan)
+    interest_data = calculate_accumulated_interest(loan)
+    accumulated_interest_daily = interest_data['daily']
+    accumulated_interest_monthly = interest_data['monthly']
     
     return render_template('customer/make_payment.html', 
                          loan=loan,
                          daily_interest=daily_interest,
                          monthly_interest=monthly_interest,
-                         accumulated_interest=accumulated_interest,
+                         accumulated_interest_daily=accumulated_interest_daily,
+                         accumulated_interest_monthly=accumulated_interest_monthly,
+                         interest_data=interest_data,
                          instance_name=instance_name)
 
 # Customer Edit Notes route

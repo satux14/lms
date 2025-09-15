@@ -318,11 +318,11 @@
                         </h6>
                         <div class="row">
                             <div class="col-6">
-                                <h4 class="text-danger mb-1">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h4>
+                                <h4 class="{% if accumulated_interest_daily > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h4>
                                 <small class="text-muted">Daily Calculation</small>
                             </div>
                             <div class="col-6">
-                                <h4 class="text-warning mb-1">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h4>
+                                <h4 class="{% if accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h4>
                                 <small class="text-muted">Monthly Calculation</small>
                             </div>
                         </div>
@@ -378,8 +378,8 @@
                                        step="0.01" 
                                        min="0.01" 
                                        {% if loan.loan_type == 'interest_only' %}
-                                       {% if accumulated_interest > 0 %}
-                                       max="{{ accumulated_interest }}"
+                                       {% if accumulated_interest_daily > 0 %}
+                                       max="{{ accumulated_interest_daily }}"
                                        {% else %}
                                        max="0.01"
                                        disabled
@@ -391,8 +391,8 @@
                             </div>
                             <div class="form-text">
                                 {% if loan.loan_type == 'interest_only' %}
-                                    {% if accumulated_interest > 0 %}
-                                        <strong>Interest-Only Loan:</strong> You can only pay interest (₹{{ "%.2f"|format(accumulated_interest) }} accumulated)
+                                    {% if accumulated_interest_daily > 0 %}
+                                        <strong>Interest-Only Loan:</strong> You can only pay interest (₹{{ "%.2f"|format(accumulated_interest_daily) }} accumulated)
                                     {% else %}
                                         <strong>Interest-Only Loan:</strong> No interest pending. All interest has been paid.
                                     {% endif %}
@@ -451,7 +451,7 @@
 
 
                         <div class="d-grid">
-                            {% if loan.loan_type == 'interest_only' and accumulated_interest <= 0 %}
+                            {% if loan.loan_type == 'interest_only' and accumulated_interest_daily <= 0 %}
                                 <button type="button" class="btn btn-secondary btn-lg" disabled>
                                     <i class="fas fa-check me-2"></i>No Payment Required
                                 </button>
@@ -667,8 +667,8 @@ function toggleNotesEdit() {
                                     = ₹{{ "%.2f"|format(calculated_accumulated) }}
                                     <br><br>
                                     <div class="alert alert-warning">
-                                        <strong>Verification:</strong> This calculated amount (₹{{ "%.2f"|format(calculated_accumulated) }}) should match the displayed amount (₹{{ "%.2f"|format(accumulated_interest) }})
-                                        {% set difference = (calculated_accumulated - accumulated_interest) | abs %}
+                                        <strong>Verification:</strong> This calculated amount (₹{{ "%.2f"|format(calculated_accumulated) }}) should match the displayed daily amount (₹{{ "%.2f"|format(accumulated_interest_daily) }})
+                                        {% set difference = (calculated_accumulated - accumulated_interest_daily) | abs %}
                                         {% if difference > 0.01 %}
                                         <br><span class="text-danger"><strong>⚠️ MISMATCH DETECTED!</strong> There may be a calculation error. Difference: ₹{{ "%.4f"|format(difference) }}</span>
                                         {% else %}

@@ -227,11 +227,11 @@
                                     <div class="row">
                                         <div class="col-6">
                                             <small class="text-muted">Daily</small>
-                                            <h5 class="text-danger mb-1">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h5>
+                                            <h5 class="{% if accumulated_interest_daily > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h5>
                                         </div>
                                         <div class="col-6">
                                             <small class="text-muted">Monthly</small>
-                                            <h5 class="text-warning mb-1">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h5>
+                                            <h5 class="{% if accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h5>
                                         </div>
                                     </div>
                                 </div>
@@ -538,8 +538,8 @@
                                     = ₹{{ "%.2f"|format(calculated_accumulated) }}
                                     <br><br>
                                     <div class="alert alert-warning">
-                                        <strong>Verification:</strong> This calculated amount (₹{{ "%.2f"|format(calculated_accumulated) }}) should match the displayed amount (₹{{ "%.2f"|format(accumulated_interest) }})
-                                        {% set difference = (calculated_accumulated - accumulated_interest) | abs %}
+                                        <strong>Verification:</strong> This calculated amount (₹{{ "%.2f"|format(calculated_accumulated) }}) should match the displayed daily amount (₹{{ "%.2f"|format(accumulated_interest_daily) }})
+                                        {% set difference = (calculated_accumulated - accumulated_interest_daily) | abs %}
                                         {% if difference > 0.01 %}
                                         <br><span class="text-danger"><strong>⚠️ MISMATCH DETECTED!</strong> There may be a calculation error. Difference: ₹{{ "%.4f"|format(difference) }}</span>
                                         {% else %}
