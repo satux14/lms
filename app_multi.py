@@ -380,47 +380,68 @@ def calculate_interest_for_period(principal, annual_rate, start_date, end_date):
         return Decimal('0')
 
 def calculate_accumulated_interest(loan, as_of_date=None):
-    """Calculate total accumulated interest for a loan"""
+    """Calculate total accumulated interest for a loan - returns both daily and monthly calculations"""
     try:
         if as_of_date is None:
             as_of_date = date.today()
         
+        # Calculate days since loan creation
+        days_since_creation = (as_of_date - loan.created_at.date()).days
+        
+        # Get verified interest payments (common for both calculations)
+        verified_interest_payments = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
+            loan_id=loan.id, 
+            status='verified'
+        ).scalar() or 0
+        verified_interest_payments = Decimal(str(verified_interest_payments))
+        
+        # Calculate daily accumulated interest
         if loan.loan_type == 'interest_only':
             # For interest-only loans, calculate interest on original principal
-            total_interest = calculate_interest_for_period(
+            daily_total_interest = calculate_interest_for_period(
                 loan.principal_amount, 
                 loan.interest_rate, 
                 loan.created_at.date(), 
                 as_of_date
             )
-            
-            # Subtract verified interest payments
-            verified_interest_payments = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
-                loan_id=loan.id, 
-                status='verified'
-            ).scalar() or 0
-            
-            return total_interest - Decimal(str(verified_interest_payments))
         else:
-            # For regular loans, calculate total interest from loan creation to today
-            # and subtract all verified interest payments
-            total_interest = calculate_interest_for_period(
+            # For regular loans, use daily calculation
+            daily_total_interest = calculate_interest_for_period(
                 loan.principal_amount, 
                 loan.interest_rate, 
                 loan.created_at.date(), 
                 as_of_date
             )
-            
-            # Subtract verified interest payments
-            verified_interest_payments = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
-                loan_id=loan.id, 
-                status='verified'
-            ).scalar() or 0
-            
-            return total_interest - Decimal(str(verified_interest_payments))
+        
+        daily_accumulated_interest = daily_total_interest - verified_interest_payments
+        
+        # Calculate monthly accumulated interest
+        if days_since_creation < 30:
+            # Before 30 days: return 0 for monthly calculation
+            monthly_accumulated_interest = Decimal('0')
+        else:
+            # After 30 days: calculate monthly interest
+            months_passed = days_since_creation // 30
+            monthly_interest = calculate_monthly_interest(loan.principal_amount, loan.interest_rate)
+            monthly_total_interest = monthly_interest * months_passed
+            monthly_accumulated_interest = monthly_total_interest - verified_interest_payments
+        
+        # Return both calculations
+        return {
+            'daily': daily_accumulated_interest,
+            'monthly': monthly_accumulated_interest,
+            'days_since_creation': days_since_creation,
+            'months_passed': days_since_creation // 30 if days_since_creation >= 30 else 0
+        }
+        
     except Exception as e:
         print(f"Error calculating accumulated interest: {e}")
-        return Decimal('0')
+        return {
+            'daily': Decimal('0'),
+            'monthly': Decimal('0'),
+            'days_since_creation': 0,
+            'months_passed': 0
+        }
 
 def process_payment(loan, payment_amount, payment_date=None, transaction_id=None, 
                    payment_method=None, proof_filename=None):
@@ -444,7 +465,8 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
             principal_amount = Decimal('0')
         else:
             # For regular loans, calculate accumulated interest first
-            accumulated_interest = calculate_accumulated_interest(loan, payment_date.date())
+            interest_data = calculate_accumulated_interest(loan, payment_date.date())
+            accumulated_interest = interest_data['daily']  # Use daily calculation for payment processing
             
             if payment_amount >= accumulated_interest:
                 # Payment covers all accumulated interest
@@ -1190,7 +1212,9 @@ def admin_view_loan(instance_name, loan_id):
     # Calculate interest information
     daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
     monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-    accumulated_interest = calculate_accumulated_interest(loan)
+    interest_data = calculate_accumulated_interest(loan)
+    accumulated_interest_daily = interest_data['daily']
+    accumulated_interest_monthly = interest_data['monthly']
     
     # Get payment history
     payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
@@ -1213,7 +1237,9 @@ def admin_view_loan(instance_name, loan_id):
                          loan=loan,
                          daily_interest=daily_interest,
                          monthly_interest=monthly_interest,
-                         accumulated_interest=accumulated_interest,
+                         accumulated_interest_daily=accumulated_interest_daily,
+                         accumulated_interest_monthly=accumulated_interest_monthly,
+                         interest_data=interest_data,
                          verified_principal=verified_principal,
                          verified_interest=verified_interest,
                          pending_principal=pending_principal,
@@ -1498,7 +1524,9 @@ def customer_dashboard(instance_name):
     for loan in loans:
         daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
         monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-        accumulated_interest = calculate_accumulated_interest(loan)
+        interest_data = calculate_accumulated_interest(loan)
+        accumulated_interest_daily = interest_data['daily']
+        accumulated_interest_monthly = interest_data['monthly']
         
         # Calculate pending payments for this specific loan
         pending_payments = get_payment_query().filter_by(loan_id=loan.id, status='pending').all()
@@ -1515,7 +1543,9 @@ def customer_dashboard(instance_name):
             'loan': loan,
             'daily_interest': daily_interest,
             'monthly_interest': monthly_interest,
-            'accumulated_interest': accumulated_interest,
+            'accumulated_interest_daily': accumulated_interest_daily,
+            'accumulated_interest_monthly': accumulated_interest_monthly,
+            'interest_data': interest_data,
             'pending_principal': pending_principal,
             'pending_interest': pending_interest,
             'pending_total': pending_total,
@@ -1548,7 +1578,9 @@ def customer_loan_detail(instance_name, loan_id):
     # Calculate interest information
     daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
     monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-    accumulated_interest = calculate_accumulated_interest(loan)
+    interest_data = calculate_accumulated_interest(loan)
+    accumulated_interest_daily = interest_data['daily']
+    accumulated_interest_monthly = interest_data['monthly']
     
     # Get payment history
     payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
@@ -1600,7 +1632,9 @@ def customer_loan_detail(instance_name, loan_id):
                          loan=loan,
                          daily_interest=daily_interest,
                          monthly_interest=monthly_interest,
-                         accumulated_interest=accumulated_interest,
+                         accumulated_interest_daily=accumulated_interest_daily,
+                         accumulated_interest_monthly=accumulated_interest_monthly,
+                         interest_data=interest_data,
                          total_interest_paid=total_interest_paid,
                          verified_principal=verified_principal,
                          pending_principal=pending_principal,

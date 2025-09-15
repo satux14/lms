@@ -316,9 +316,16 @@
                                style="cursor: pointer;" 
                                title="Click to see detailed calculation"></i>
                         </h6>
-                        <h3 class="text-danger">
-                            ₹{{ "%.2f"|format(accumulated_interest) }}
-                        </h3>
+                        <div class="row">
+                            <div class="col-6">
+                                <h4 class="text-danger mb-1">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h4>
+                                <small class="text-muted">Daily Calculation</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-warning mb-1">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h4>
+                                <small class="text-muted">Monthly Calculation</small>
+                            </div>
+                        </div>
                         <small class="text-muted">Total interest from loan creation</small>
                     </div>
                     {% endif %}
@@ -684,26 +691,59 @@ function toggleNotesEdit() {
                             <p><strong>You can verify this calculation manually using a calculator:</strong></p>
                             <div class="bg-light p-3 rounded">
                                 <code>
-                                    <strong>Note:</strong> Interest accumulates daily regardless of payment frequency<br>
-                                    Payment frequency only affects how much interest is "due" when making payments<br><br>
-                                    
-                                    <strong>Step 1:</strong> Calculate daily interest rate<br>
-                                    Daily Rate = Annual Rate ÷ 360<br>
-                                    Daily Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 360 = {{ "%.6f"|format(loan.interest_rate / 360) }}<br><br>
-                                    
-                                    <strong>Step 2:</strong> Calculate daily interest amount<br>
-                                    Daily Interest = Principal × Daily Rate<br>
-                                    Daily Interest = ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 360) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }}<br><br>
-                                    
-                                    <strong>Step 3:</strong> Calculate total interest for {{ days_active }} days<br>
-                                    Total Interest = Daily Interest × Days<br>
-                                    Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }} × {{ days_active }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }}<br><br>
-                                    
-                                    <strong>Step 4:</strong> Subtract verified payments<br>
-                                    {% set verified_payments = payments | selectattr('payment.status', 'equalto', 'verified') | list %}
-                                    {% set total_verified_calc = verified_payments | sum(attribute='payment.interest_amount') if verified_payments else 0 %}
-                                    Accumulated Interest = Total Interest - Verified Payments<br>
-                                    Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active - total_verified_calc) }}
+                                    {% if loan.payment_frequency == 'monthly' %}
+                                        <strong>Monthly Payment Frequency:</strong><br>
+                                        Interest is calculated monthly and only shows after 30 days<br><br>
+                                        
+                                        {% if days_active < 30 %}
+                                            <strong>Current Status:</strong> {{ days_active }} days since loan creation<br>
+                                            <strong>Interest Calculation:</strong> No interest shown until 30 days have passed<br>
+                                            <strong>Accumulated Interest:</strong> ₹0.00 (will be calculated at month end)<br><br>
+                                            
+                                            <strong>Next Interest Calculation:</strong> In {{ 30 - days_active }} days<br>
+                                            <strong>Monthly Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 12 = {{ "%.4f"|format(loan.interest_rate / 12 * 100) }}%<br>
+                                            <strong>Monthly Interest Amount:</strong> ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 12) }}<br>
+                                        {% else %}
+                                            <strong>Step 1:</strong> Calculate monthly interest rate<br>
+                                            Monthly Rate = Annual Rate ÷ 12<br>
+                                            Monthly Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 12 = {{ "%.4f"|format(loan.interest_rate / 12 * 100) }}%<br><br>
+                                            
+                                            <strong>Step 2:</strong> Calculate monthly interest amount<br>
+                                            Monthly Interest = Principal × Monthly Rate<br>
+                                            Monthly Interest = ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 12) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 12) }}<br><br>
+                                            
+                                            <strong>Step 3:</strong> Calculate total interest for {{ days_active }} days ({{ (days_active // 30) }} complete months)<br>
+                                            Total Interest = Monthly Interest × Complete Months<br>
+                                            Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 12) }} × {{ (days_active // 30) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 12 * (days_active // 30)) }}<br><br>
+                                            
+                                            <strong>Step 4:</strong> Subtract verified payments<br>
+                                            {% set verified_payments = payments | selectattr('payment.status', 'equalto', 'verified') | list %}
+                                            {% set total_verified_calc = verified_payments | sum(attribute='payment.interest_amount') if verified_payments else 0 %}
+                                            Accumulated Interest = Total Interest - Verified Payments<br>
+                                            Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 12 * (days_active // 30)) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 12 * (days_active // 30) - total_verified_calc) }}
+                                        {% endif %}
+                                    {% else %}
+                                        <strong>Daily Payment Frequency:</strong><br>
+                                        Interest accumulates daily<br><br>
+                                        
+                                        <strong>Step 1:</strong> Calculate daily interest rate<br>
+                                        Daily Rate = Annual Rate ÷ 360<br>
+                                        Daily Rate = {{ "%.2f"|format(loan.interest_rate * 100) }}% ÷ 360 = {{ "%.6f"|format(loan.interest_rate / 360) }}<br><br>
+                                        
+                                        <strong>Step 2:</strong> Calculate daily interest amount<br>
+                                        Daily Interest = Principal × Daily Rate<br>
+                                        Daily Interest = ₹{{ "%.2f"|format(loan.principal_amount) }} × {{ "%.6f"|format(loan.interest_rate / 360) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }}<br><br>
+                                        
+                                        <strong>Step 3:</strong> Calculate total interest for {{ days_active }} days<br>
+                                        Total Interest = Daily Interest × Days<br>
+                                        Total Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360) }} × {{ days_active }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }}<br><br>
+                                        
+                                        <strong>Step 4:</strong> Subtract verified payments<br>
+                                        {% set verified_payments = payments | selectattr('payment.status', 'equalto', 'verified') | list %}
+                                        {% set total_verified_calc = verified_payments | sum(attribute='payment.interest_amount') if verified_payments else 0 %}
+                                        Accumulated Interest = Total Interest - Verified Payments<br>
+                                        Accumulated Interest = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active) }} - ₹{{ "%.2f"|format(total_verified_calc) }} = ₹{{ "%.2f"|format(loan.principal_amount * loan.interest_rate / 360 * days_active - total_verified_calc) }}
+                                    {% endif %}
                                 </code>
                             </div>
                         </div>
