@@ -1278,6 +1278,9 @@ def admin_edit_payment(instance_name, payment_id):
     loan = payment.loan  # Get the loan associated with this payment
     
     if request.method == 'POST':
+        # Store old status for comparison
+        old_status = payment.status
+        
         payment.amount = Decimal(request.form['amount'])
         payment.payment_method = request.form['payment_method']
         payment.transaction_id = request.form.get('transaction_id', '')
@@ -1294,6 +1297,23 @@ def admin_edit_payment(instance_name, payment_id):
                                      payment=payment,
                                      loan=loan,
                                      instance_name=instance_name)
+        
+        # Handle status changes and balance adjustments
+        if payment.status == 'verified' and old_status == 'pending':
+            # Payment is being verified - reduce balance
+            if loan.loan_type != 'interest_only':
+                loan.remaining_principal -= payment.principal_amount
+                if loan.remaining_principal < 0:
+                    loan.remaining_principal = Decimal('0')
+        elif payment.status == 'pending' and old_status == 'verified':
+            # Payment is being unverified - add back to balance
+            if loan.loan_type != 'interest_only':
+                loan.remaining_principal += payment.principal_amount
+                if loan.remaining_principal > loan.principal_amount:
+                    loan.remaining_principal = loan.principal_amount
+        elif payment.status == 'verified' and old_status == 'verified':
+            # Payment was already verified, no balance change needed
+            pass
         
         commit_current_instance()
         flash('Payment updated successfully')
