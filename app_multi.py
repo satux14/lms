@@ -698,9 +698,14 @@ def generate_loan_calculation_excel(loan):
         ws['A1'] = f"Loan Calculation Report: {loan.loan_name}"
         ws['A1'].font = Font(bold=True, size=14)
         
+        # Handle interest rate display (stored as decimal or percentage)
+        interest_rate_display = float(loan.interest_rate)
+        if interest_rate_display < 1:
+            interest_rate_display = interest_rate_display * 100
+        
         ws['A2'] = f"Customer: {loan.customer.username}"
         ws['A3'] = f"Principal Amount: ₹{float(loan.principal_amount):,.2f}"
-        ws['A4'] = f"Interest Rate: {float(loan.interest_rate)}% per annum"
+        ws['A4'] = f"Interest Rate: {interest_rate_display:.2f}% per annum"
         ws['A5'] = f"Loan Created: {loan.created_at.strftime('%Y-%m-%d')}"
         
         # Move headers down
