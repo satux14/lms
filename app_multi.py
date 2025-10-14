@@ -610,7 +610,14 @@ def generate_loan_calculation_excel(loan):
     # Calculate daily values for WITH PAYMENTS sheet
     opening_principal = loan.principal_amount
     accumulated_interest = Decimal('0')
-    daily_rate = loan.interest_rate / DAYS_PER_YEAR / 100
+    # Handle interest rate stored as decimal (0.12) or percentage (12)
+    interest_rate_value = loan.interest_rate
+    if interest_rate_value < 1:
+        # Stored as decimal (0.12 for 12%), don't divide by 100
+        daily_rate = interest_rate_value / DAYS_PER_YEAR
+    else:
+        # Stored as percentage (12 for 12%), divide by 100
+        daily_rate = interest_rate_value / DAYS_PER_YEAR / 100
     
     for day in range(num_days):
         current_date = start_date + timedelta(days=day)
