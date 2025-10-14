@@ -607,11 +607,9 @@ def generate_loan_calculation_excel(loan):
     headers_with = setup_sheet(ws1, include_payments=True)
     headers_without = setup_sheet(ws2, include_payments=False)
     
-    # Calculate daily values for WITH PAYMENTS sheet
-    opening_principal = loan.principal_amount
-    accumulated_interest = Decimal('0')
+    # Calculate daily values for WITH PAYMENTS sheet (with formulas for dynamic calculation)
     # Handle interest rate stored as decimal (0.12) or percentage (12)
-    interest_rate_value = loan.interest_rate
+    interest_rate_value = float(loan.interest_rate)
     if interest_rate_value < 1:
         # Stored as decimal (0.12 for 12%), don't divide by 100
         daily_rate = interest_rate_value / DAYS_PER_YEAR
@@ -619,52 +617,75 @@ def generate_loan_calculation_excel(loan):
         # Stored as percentage (12 for 12%), divide by 100
         daily_rate = interest_rate_value / DAYS_PER_YEAR / 100
     
+    # Pre-populate payment amounts from database
+    payment_dict = {}
+    for payment in payments:
+        payment_date_key = payment.payment_date.date()
+        if payment_date_key not in payment_dict:
+            payment_dict[payment_date_key] = {'amount': Decimal('0'), 'interest': Decimal('0'), 'principal': Decimal('0')}
+        payment_dict[payment_date_key]['amount'] += payment.amount
+        payment_dict[payment_date_key]['interest'] += payment.interest_amount
+        payment_dict[payment_date_key]['principal'] += payment.principal_amount
+    
     for day in range(num_days):
         current_date = start_date + timedelta(days=day)
         row = day + 2
         
-        # Daily interest on opening principal
-        daily_interest = opening_principal * Decimal(str(daily_rate))
-        accumulated_interest += daily_interest
+        # Get pre-populated payment data
+        payment_data = payment_dict.get(current_date, {'amount': Decimal('0'), 'interest': Decimal('0'), 'principal': Decimal('0')})
         
-        # Check for payments on this date
-        payment_amount = Decimal('0')
-        interest_paid = Decimal('0')
-        principal_paid = Decimal('0')
+        # Column references
+        col_opening = 'C'
+        col_daily_int = 'D'
+        col_accum_int = 'E'
+        col_payment = 'F'
+        col_int_paid = 'G'
+        col_prin_paid = 'H'
+        col_closing = 'I'
+        col_remain_int = 'J'
         
-        for payment in payments:
-            if payment.payment_date.date() == current_date:
-                payment_amount += payment.amount
-                interest_paid += payment.interest_amount
-                principal_paid += payment.principal_amount
+        # Write static values
+        ws1.cell(row=row, column=1, value=day + 1)  # Day
+        ws1.cell(row=row, column=2, value=current_date.strftime('%Y-%m-%d'))  # Date
         
-        # Update accumulated interest and principal
-        accumulated_interest -= interest_paid
-        closing_principal = opening_principal - principal_paid
+        # Opening Principal (formula: previous day's closing or initial)
+        if day == 0:
+            ws1.cell(row=row, column=3, value=float(loan.principal_amount)).number_format = '₹#,##0.00'
+        else:
+            ws1.cell(row=row, column=3, value=f'=I{row-1}').number_format = '₹#,##0.00'
         
-        # Write data to sheet
-        ws1.cell(row=row, column=1, value=day + 1)
-        ws1.cell(row=row, column=2, value=current_date.strftime('%Y-%m-%d'))
-        ws1.cell(row=row, column=3, value=float(opening_principal)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=4, value=float(daily_interest)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=5, value=float(accumulated_interest)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=6, value=float(payment_amount)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=7, value=float(interest_paid)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=8, value=float(principal_paid)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=9, value=float(closing_principal)).number_format = '₹#,##0.00'
-        ws1.cell(row=row, column=10, value=float(accumulated_interest)).number_format = '₹#,##0.00'
+        # Daily Interest (formula: Opening Principal * daily rate)
+        ws1.cell(row=row, column=4, value=f'=C{row}*{daily_rate}').number_format = '₹#,##0.00'
+        
+        # Accumulated Interest (formula: previous accumulated + today's interest - today's interest paid)
+        if day == 0:
+            ws1.cell(row=row, column=5, value=f'=D{row}').number_format = '₹#,##0.00'
+        else:
+            ws1.cell(row=row, column=5, value=f'=E{row-1}+D{row}-G{row}').number_format = '₹#,##0.00'
+        
+        # Payment Amount (editable - pre-populate from database)
+        ws1.cell(row=row, column=6, value=float(payment_data['amount'])).number_format = '₹#,##0.00'
+        
+        # Interest Paid (formula: MIN(payment amount, accumulated interest))
+        ws1.cell(row=row, column=7, value=f'=MIN(F{row},E{row})').number_format = '₹#,##0.00'
+        
+        # Principal Paid (formula: payment amount - interest paid)
+        ws1.cell(row=row, column=8, value=f'=F{row}-G{row}').number_format = '₹#,##0.00'
+        
+        # Closing Principal (formula: opening principal - principal paid)
+        ws1.cell(row=row, column=9, value=f'=C{row}-H{row}').number_format = '₹#,##0.00'
+        
+        # Remaining Interest (formula: same as accumulated interest)
+        ws1.cell(row=row, column=10, value=f'=E{row}').number_format = '₹#,##0.00'
         
         # Apply borders
         for col in range(1, 11):
             ws1.cell(row=row, column=col).border = border
         
         # Highlight payment rows
-        if payment_amount > 0:
+        if payment_data['amount'] > 0:
             for col in range(1, 11):
                 ws1.cell(row=row, column=col).fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-        
-        # Update for next day
-        opening_principal = closing_principal
     
     # Calculate daily values for WITHOUT PAYMENTS sheet (projection only)
     opening_principal = loan.principal_amount
