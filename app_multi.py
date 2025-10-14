@@ -543,6 +543,181 @@ def verify_payment(payment_id):
         # Rollback is handled by the instance-specific session
         raise e
 
+def generate_loan_calculation_excel(loan):
+    """Generate Excel report showing daily loan calculations for 6 months"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from io import BytesIO
+    
+    wb = Workbook()
+    
+    # Sheet 1: With Payments (Actual)
+    ws1 = wb.active
+    ws1.title = "With Payments"
+    
+    # Sheet 2: Without Payments (Projection)
+    ws2 = wb.create_sheet("Without Payments")
+    
+    # Header styling
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Get all payments for this loan (sorted by date)
+    payments = get_payment_query().filter_by(loan_id=loan.id, status='verified').order_by(Payment.payment_date).all()
+    
+    # Calculate for 6 months (180 days)
+    num_days = 180
+    start_date = loan.created_at.date()
+    
+    def setup_sheet(ws, include_payments=True):
+        """Setup headers and styling for a sheet"""
+        headers = [
+            "Day", "Date", "Opening Principal", "Daily Interest", 
+            "Accumulated Interest", "Payment Amount", "Interest Paid", 
+            "Principal Paid", "Closing Principal", "Remaining Interest"
+        ]
+        
+        if not include_payments:
+            headers = [h for h in headers if h not in ["Payment Amount", "Interest Paid", "Principal Paid"]]
+        
+        # Write headers
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+        
+        # Set column widths
+        ws.column_dimensions['A'].width = 8
+        ws.column_dimensions['B'].width = 12
+        for col in range(3, len(headers) + 1):
+            ws.column_dimensions[get_column_letter(col)].width = 18
+        
+        return headers
+    
+    # Setup both sheets
+    headers_with = setup_sheet(ws1, include_payments=True)
+    headers_without = setup_sheet(ws2, include_payments=False)
+    
+    # Calculate daily values for WITH PAYMENTS sheet
+    opening_principal = loan.principal_amount
+    accumulated_interest = Decimal('0')
+    daily_rate = loan.interest_rate / DAYS_PER_YEAR / 100
+    
+    for day in range(num_days):
+        current_date = start_date + timedelta(days=day)
+        row = day + 2
+        
+        # Daily interest on opening principal
+        daily_interest = opening_principal * Decimal(str(daily_rate))
+        accumulated_interest += daily_interest
+        
+        # Check for payments on this date
+        payment_amount = Decimal('0')
+        interest_paid = Decimal('0')
+        principal_paid = Decimal('0')
+        
+        for payment in payments:
+            if payment.payment_date.date() == current_date:
+                payment_amount += payment.amount
+                interest_paid += payment.interest_amount
+                principal_paid += payment.principal_amount
+        
+        # Update accumulated interest and principal
+        accumulated_interest -= interest_paid
+        closing_principal = opening_principal - principal_paid
+        
+        # Write data to sheet
+        ws1.cell(row=row, column=1, value=day + 1)
+        ws1.cell(row=row, column=2, value=current_date.strftime('%Y-%m-%d'))
+        ws1.cell(row=row, column=3, value=float(opening_principal)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=4, value=float(daily_interest)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=5, value=float(accumulated_interest)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=6, value=float(payment_amount)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=7, value=float(interest_paid)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=8, value=float(principal_paid)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=9, value=float(closing_principal)).number_format = '₹#,##0.00'
+        ws1.cell(row=row, column=10, value=float(accumulated_interest)).number_format = '₹#,##0.00'
+        
+        # Apply borders
+        for col in range(1, 11):
+            ws1.cell(row=row, column=col).border = border
+        
+        # Highlight payment rows
+        if payment_amount > 0:
+            for col in range(1, 11):
+                ws1.cell(row=row, column=col).fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+        
+        # Update for next day
+        opening_principal = closing_principal
+    
+    # Calculate daily values for WITHOUT PAYMENTS sheet (projection only)
+    opening_principal = loan.principal_amount
+    accumulated_interest = Decimal('0')
+    
+    for day in range(num_days):
+        current_date = start_date + timedelta(days=day)
+        row = day + 2
+        
+        # Daily interest on opening principal (no reduction since no payments)
+        daily_interest = opening_principal * Decimal(str(daily_rate))
+        accumulated_interest += daily_interest
+        
+        # Write data to sheet
+        col = 1
+        ws2.cell(row=row, column=col, value=day + 1)
+        col += 1
+        ws2.cell(row=row, column=col, value=current_date.strftime('%Y-%m-%d'))
+        col += 1
+        ws2.cell(row=row, column=col, value=float(opening_principal)).number_format = '₹#,##0.00'
+        col += 1
+        ws2.cell(row=row, column=col, value=float(daily_interest)).number_format = '₹#,##0.00'
+        col += 1
+        ws2.cell(row=row, column=col, value=float(accumulated_interest)).number_format = '₹#,##0.00'
+        col += 1
+        ws2.cell(row=row, column=col, value=float(opening_principal)).number_format = '₹#,##0.00'
+        col += 1
+        ws2.cell(row=row, column=col, value=float(accumulated_interest)).number_format = '₹#,##0.00'
+        
+        # Apply borders
+        for c in range(1, len(headers_without) + 1):
+            ws2.cell(row=row, column=c).border = border
+    
+    # Add summary information at the top
+    for ws in [ws1, ws2]:
+        ws.insert_rows(1, 5)
+        ws.merge_cells('A1:E1')
+        ws['A1'] = f"Loan Calculation Report: {loan.loan_name}"
+        ws['A1'].font = Font(bold=True, size=14)
+        
+        ws['A2'] = f"Customer: {loan.customer.username}"
+        ws['A3'] = f"Principal Amount: ₹{float(loan.principal_amount):,.2f}"
+        ws['A4'] = f"Interest Rate: {float(loan.interest_rate)}% per annum"
+        ws['A5'] = f"Loan Created: {loan.created_at.strftime('%Y-%m-%d')}"
+        
+        # Move headers down
+        for row in ws.iter_rows(min_row=6, max_row=6):
+            for cell in row:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border
+    
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return output
+
 # Routes
 @app.before_request
 def before_request():
@@ -1356,6 +1531,39 @@ def admin_delete_payment(instance_name, payment_id):
     except Exception as e:
         flash(f'Error deleting payment: {str(e)}')
         return redirect(url_for('admin_payments', instance_name=instance_name))
+
+# Admin Generate Loan Excel Report route
+@app.route('/<instance_name>/admin/loan/<int:loan_id>/excel')
+@login_required
+def admin_loan_excel(instance_name, loan_id):
+    """Generate and download Excel report for loan calculations"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
+    
+    try:
+        # Generate Excel file
+        output = generate_loan_calculation_excel(loan)
+        
+        # Create filename
+        filename = f"loan_calculation_{loan.loan_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        # Send file
+        from flask import send_file
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        flash(f'Error generating Excel report: {str(e)}')
+        return redirect(url_for('admin_view_loan', instance_name=instance_name, loan_id=loan_id))
 
 # Admin Close Loan route
 @app.route('/<instance_name>/admin/close-loan/<int:loan_id>', methods=['POST'])
