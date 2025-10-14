@@ -575,8 +575,8 @@ def generate_loan_calculation_excel(loan):
     # Get all payments for this loan (sorted by date)
     payments = get_payment_query().filter_by(loan_id=loan.id, status='verified').order_by(Payment.payment_date).all()
     
-    # Calculate for 6 months (180 days)
-    num_days = 180
+    # Calculate for 1 year (365 days)
+    num_days = 365
     start_date = loan.created_at.date()
     
     def setup_sheet(ws, include_payments=True):
@@ -682,54 +682,49 @@ def generate_loan_calculation_excel(loan):
     
     for day in range(num_days):
         current_date = start_date + timedelta(days=day)
-        row = day + 2
+        row = day + 2  # Starting at row 2 for data (headers will be inserted later, shifting to row 7)
+        final_row = row + 5  # Account for 5 header rows that will be inserted
         
         # Get pre-populated payment data
         payment_data = payment_dict.get(current_date, {'amount': Decimal('0'), 'interest': Decimal('0'), 'principal': Decimal('0')})
-        
-        # Column references
-        col_opening = 'C'
-        col_daily_int = 'D'
-        col_accum_int = 'E'
-        col_payment = 'F'
-        col_int_paid = 'G'
-        col_prin_paid = 'H'
-        col_closing = 'I'
-        col_remain_int = 'J'
         
         # Write static values
         ws2.cell(row=row, column=1, value=day + 1)  # Day
         ws2.cell(row=row, column=2, value=current_date.strftime('%Y-%m-%d'))  # Date
         
-        # Opening Principal (formula: previous day's closing or initial)
+        # Opening Principal (formula: previous day's closing or initial value)
         if day == 0:
+            # First day: use initial principal as value
             ws2.cell(row=row, column=3, value=float(loan.principal_amount)).number_format = '₹#,##0.00'
         else:
-            ws2.cell(row=row, column=3, value=f'=I{row-1}').number_format = '₹#,##0.00'
+            # Subsequent days: reference previous day's closing with error handling
+            ws2.cell(row=row, column=3, value=f'=IFERROR(I{final_row-1},{float(loan.principal_amount)})').number_format = '₹#,##0.00'
         
         # Daily Interest (formula: Opening Principal * daily rate)
-        ws2.cell(row=row, column=4, value=f'=C{row}*{daily_rate}').number_format = '₹#,##0.00'
+        ws2.cell(row=row, column=4, value=f'=IFERROR(C{final_row}*{daily_rate},0)').number_format = '₹#,##0.00'
         
-        # Accumulated Interest (formula: previous accumulated + today's interest - today's interest paid)
-        if day == 0:
-            ws2.cell(row=row, column=5, value=f'=D{row}').number_format = '₹#,##0.00'
-        else:
-            ws2.cell(row=row, column=5, value=f'=E{row-1}+D{row}-G{row}').number_format = '₹#,##0.00'
-        
-        # Payment Amount (editable - pre-populate from database)
+        # Payment Amount (editable - pre-populate from database) - MOVED BEFORE accumulated interest
         ws2.cell(row=row, column=6, value=float(payment_data['amount'])).number_format = '₹#,##0.00'
         
-        # Interest Paid (formula: MIN(payment amount, accumulated interest))
-        ws2.cell(row=row, column=7, value=f'=MIN(F{row},E{row})').number_format = '₹#,##0.00'
+        # Accumulated Interest BEFORE payment (formula: previous remaining + today's interest)
+        if day == 0:
+            # First day: just today's interest
+            ws2.cell(row=row, column=5, value=f'=IFERROR(D{final_row},0)').number_format = '₹#,##0.00'
+        else:
+            # Subsequent days: previous day's REMAINING interest (J) + today's new interest
+            ws2.cell(row=row, column=5, value=f'=IFERROR(J{final_row-1}+D{final_row},0)').number_format = '₹#,##0.00'
+        
+        # Interest Paid (formula: MIN(payment amount, accumulated interest before payment))
+        ws2.cell(row=row, column=7, value=f'=IFERROR(MIN(F{final_row},E{final_row}),0)').number_format = '₹#,##0.00'
         
         # Principal Paid (formula: payment amount - interest paid)
-        ws2.cell(row=row, column=8, value=f'=F{row}-G{row}').number_format = '₹#,##0.00'
+        ws2.cell(row=row, column=8, value=f'=IFERROR(F{final_row}-G{final_row},0)').number_format = '₹#,##0.00'
         
         # Closing Principal (formula: opening principal - principal paid)
-        ws2.cell(row=row, column=9, value=f'=C{row}-H{row}').number_format = '₹#,##0.00'
+        ws2.cell(row=row, column=9, value=f'=IFERROR(C{final_row}-H{final_row},0)').number_format = '₹#,##0.00'
         
-        # Remaining Interest (formula: same as accumulated interest)
-        ws2.cell(row=row, column=10, value=f'=E{row}').number_format = '₹#,##0.00'
+        # Remaining Interest (formula: accumulated interest AFTER payment = accumulated - interest paid)
+        ws2.cell(row=row, column=10, value=f'=IFERROR(E{final_row}-G{final_row},0)').number_format = '₹#,##0.00'
         
         # Apply borders
         for col in range(1, 11):
@@ -797,6 +792,18 @@ def generate_loan_calculation_excel(loan):
                 cell.font = header_font
                 cell.alignment = Alignment(horizontal='center', vertical='center')
                 cell.border = border
+        
+        # Re-apply column widths after inserting rows (to ensure they're preserved)
+        ws.column_dimensions['A'].width = 8
+        ws.column_dimensions['B'].width = 12
+        ws.column_dimensions['C'].width = 18
+        ws.column_dimensions['D'].width = 18
+        ws.column_dimensions['E'].width = 18
+        ws.column_dimensions['F'].width = 18
+        ws.column_dimensions['G'].width = 18
+        ws.column_dimensions['H'].width = 18
+        ws.column_dimensions['I'].width = 18
+        ws.column_dimensions['J'].width = 18
     
     # Save to BytesIO
     output = BytesIO()
