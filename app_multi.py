@@ -474,18 +474,16 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
             interest_amount = payment_amount
             principal_amount = Decimal('0')
         else:
-            # For regular loans, calculate current period interest due
-            if loan.payment_frequency == 'daily':
-                interest_due = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
-            else:  # monthly
-                interest_due = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+            # For regular loans, calculate accumulated interest first
+            interest_data = calculate_accumulated_interest(loan, payment_date.date())
+            accumulated_interest = interest_data['daily']  # Use daily calculation for payment processing
             
-            if payment_amount >= interest_due:
-                # Payment covers current period interest, remainder goes to principal
-                interest_amount = interest_due
-                principal_amount = payment_amount - interest_due
+            if payment_amount >= accumulated_interest:
+                # Payment covers all accumulated interest, remainder goes to principal
+                interest_amount = accumulated_interest
+                principal_amount = payment_amount - accumulated_interest
             else:
-                # Payment only covers part of current period interest
+                # Payment only covers part of accumulated interest
                 interest_amount = payment_amount
                 principal_amount = Decimal('0')
         
