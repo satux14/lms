@@ -2573,29 +2573,25 @@ def customer_trackers_dashboard(instance_name):
             tracker_data = get_tracker_data(instance_name, tracker.filename)
             summary = get_tracker_summary(instance_name, tracker.filename)
             
-            # Find last paid date
+            # Find last paid date from data rows with date
             last_paid_date = None
             for row in reversed(tracker_data['data']):
-                if row.get('daily_payments'):
+                if row.get('daily_payments') and row.get('date'):
                     last_paid_date = row.get('date')
                     break
             
-            # Calculate pending amount
-            total_days_with_payments = summary['total_days']
-            expected_payments = total_days_with_payments * float(tracker.per_day_payment)
-            actual_payments = float(summary['total_payments'])
-            pending = Decimal(str(expected_payments - actual_payments))
-            
+            # Use pending from summary (already calculated correctly)
+            pending = summary['pending']
             total_pending += pending
             
             tracker_summaries.append({
                 'tracker': tracker,
-                'last_paid_date': last_paid_date,
+                'last_paid_date': last_paid_date if last_paid_date else "No payments yet",
                 'total_payments': summary['total_payments'],
                 'pending': pending,
                 'balance': summary.get('balance', 0),
                 'cumulative': summary.get('cumulative', 0),
-                'days_with_payments': total_days_with_payments
+                'days_with_payments': summary['total_days']
             })
         except Exception as e:
             print(f"Error processing tracker {tracker.id}: {e}")
