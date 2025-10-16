@@ -2565,7 +2565,7 @@ def customer_trackers_dashboard(instance_name):
     
     # Build tracker summary data
     tracker_summaries = []
-    total_pending = Decimal('0')
+    total_pending = 0.0  # Use float instead of Decimal
     
     for tracker in trackers:
         try:
@@ -2581,7 +2581,7 @@ def customer_trackers_dashboard(instance_name):
                     break
             
             # Use pending from summary (already calculated correctly)
-            pending = summary['pending']
+            pending = float(summary['pending'])  # Ensure it's float
             total_pending += pending
             
             tracker_summaries.append({
