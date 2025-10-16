@@ -17,6 +17,38 @@
         </div>
     </div>
 
+    {% if daily_trackers %}
+    <!-- Daily Trackers Link Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>Investment Trackers
+                            </h4>
+                            <p class="mb-2">
+                                <strong>Active Trackers:</strong> {{ daily_trackers|length }} | 
+                                <strong>Click to view details and track your investments</strong>
+                            </p>
+                            <p class="mb-0 small">
+                                <i class="fas fa-info-circle me-2"></i>View all your trackers, last payment dates, and pending amounts
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('customer_trackers_dashboard', instance_name=instance_name) }}" 
+                               class="btn btn-light btn-lg">
+                                <i class="fas fa-list me-2"></i>View All Trackers
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% if loan_data %}
     <!-- Loan Summary Cards -->
     <div class="row mb-4">
@@ -181,44 +213,6 @@
             </div>
         </div>
         {% endfor %}
-    </div>
-
-    <!-- Payment Tips -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-lightbulb me-2"></i>Payment Tips
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 text-center">
-                            <div class="mb-3">
-                                <i class="fas fa-calendar-day fa-3x text-success"></i>
-                            </div>
-                            <h6>Pay Daily</h6>
-                            <p class="text-muted">Make daily payments to minimize interest accumulation and reduce your principal faster.</p>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <div class="mb-3">
-                                <i class="fas fa-plus-circle fa-3x text-warning"></i>
-                            </div>
-                            <h6>Pay More Than Interest</h6>
-                            <p class="text-muted">When you pay more than the daily/monthly interest, the excess reduces your principal balance.</p>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <div class="mb-3">
-                                <i class="fas fa-chart-line fa-3x text-info"></i>
-                            </div>
-                            <h6>Track Your Progress</h6>
-                            <p class="text-muted">Monitor your payment history and see how your principal balance decreases over time.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     {% else %}

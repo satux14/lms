@@ -25,12 +25,20 @@ from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
+import sys
 import uuid
 import secrets
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
+
+# Add daily-trackers to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'daily-trackers'))
+from tracker_manager import (
+    create_tracker_file, get_tracker_data, update_tracker_entry, 
+    get_tracker_summary, TRACKER_TYPES, get_tracker_directory
+)
 
 # Constants
 DAYS_PER_YEAR = 360  # Interest calculation based on 360 days per year
@@ -122,6 +130,24 @@ class PendingInterest(db.Model):
     due_date = db.Column(db.Date, nullable=False)
     month_year = db.Column(db.String(7), nullable=False)
     is_paid = db.Column(db.Boolean, default=False)
+
+class DailyTracker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    tracker_name = db.Column(db.String(200), nullable=False)
+    tracker_type = db.Column(db.String(50), nullable=False)  # '50K', '1L', 'No Reinvest'
+    investment = db.Column(db.Numeric(15, 2), nullable=False)
+    scheme_period = db.Column(db.Integer, nullable=False)  # in days
+    per_day_payment = db.Column(db.Numeric(15, 2), nullable=False)  # daily payment amount
+    start_date = db.Column(db.Date, nullable=False)
+    filename = db.Column(db.String(255), nullable=False)  # unique filename for the Excel file
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)  # Admin-level active/deleted
+    is_closed_by_user = db.Column(db.Boolean, default=False)  # User has closed/hidden tracker
+    
+    # Relationships
+    user = db.relationship('User', backref='daily_trackers')
 
 # Instance management
 
@@ -339,6 +365,11 @@ def get_interest_rate_query():
     """Get InterestRate query for current instance"""
     instance = get_current_instance_from_g()
     return db_manager.get_query_for_instance(instance, InterestRate)
+
+def get_daily_tracker_query():
+    """Get DailyTracker query for current instance"""
+    instance = get_current_instance_from_g()
+    return db_manager.get_query_for_instance(instance, DailyTracker)
 
 def add_to_current_instance(obj):
     """Add object to current instance database"""
@@ -1885,8 +1916,16 @@ def customer_dashboard(instance_name):
             'verified_interest': verified_interest
         })
     
+    # Check if user has daily trackers (active and not closed by user)
+    daily_trackers = get_daily_tracker_query().filter_by(
+        user_id=current_user.id, 
+        is_active=True,
+        is_closed_by_user=False
+    ).all()
+    
     return render_template('customer/dashboard.html',
                          loan_data=loan_data,
+                         daily_trackers=daily_trackers,
                          instance_name=instance_name)
 
 # Customer Loan Detail route
@@ -2219,6 +2258,545 @@ def admin_reset_user_password(instance_name, user_id):
         return redirect(url_for('admin_users', instance_name=instance_name))
     
     return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
+
+# ============================================================================
+# DAILY TRACKER ROUTES
+# ============================================================================
+
+@app.route('/<instance_name>/admin/daily-trackers')
+@login_required
+def admin_daily_trackers(instance_name):
+    """Admin view all daily trackers"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Get filter parameters
+    filter_user_id = request.args.get('user_id', type=int)
+    filter_status = request.args.get('status', '')
+    filter_tracker_name = request.args.get('tracker_name', '')
+    filter_per_day_payment = request.args.get('per_day_payment', type=float)
+    filter_pending_min = request.args.get('pending_min', type=float)
+    filter_pending_max = request.args.get('pending_max', type=float)
+    
+    # Base query
+    query = get_daily_tracker_query().filter_by(is_active=True)
+    
+    # Apply filters
+    if filter_user_id:
+        query = query.filter_by(user_id=filter_user_id)
+    
+    if filter_tracker_name:
+        query = query.filter(DailyTracker.tracker_name.ilike(f'%{filter_tracker_name}%'))
+    
+    if filter_per_day_payment:
+        query = query.filter(DailyTracker.per_day_payment == filter_per_day_payment)
+    
+    trackers = query.all()
+    
+    # Get summary data for each tracker
+    tracker_summaries = []
+    total_trackers = 0
+    total_payments_sum = 0
+    total_pending_sum = 0
+    
+    for tracker in trackers:
+        try:
+            summary = get_tracker_summary(instance_name, tracker.filename)
+            
+            # Apply status filter
+            if filter_status:
+                if filter_status == 'active' and tracker.is_closed_by_user:
+                    continue
+                elif filter_status == 'closed' and not tracker.is_closed_by_user:
+                    continue
+            
+            # Apply pending filter
+            pending = summary.get('pending', 0)
+            if filter_pending_min is not None and pending < filter_pending_min:
+                continue
+            if filter_pending_max is not None and pending > filter_pending_max:
+                continue
+            
+            tracker_summaries.append({
+                'tracker': tracker,
+                'summary': summary,
+                'pending': pending,
+                'total_payments': summary.get('total_payments', 0),
+                'days_with_payments': summary.get('total_days', 0)
+            })
+            
+            total_trackers += 1
+            total_payments_sum += summary.get('total_payments', 0)
+            total_pending_sum += pending
+            
+        except Exception as e:
+            # If we can't read the tracker, still include it with error
+            tracker_summaries.append({
+                'tracker': tracker,
+                'summary': {},
+                'pending': 0,
+                'total_payments': 0,
+                'days_with_payments': 0,
+                'error': str(e)
+            })
+    
+    # Get users for dropdown
+    users = get_user_query().filter_by(is_admin=False).all()
+    
+    return render_template('admin/daily_trackers.html', 
+                         tracker_summaries=tracker_summaries,
+                         total_trackers=total_trackers,
+                         total_payments_sum=total_payments_sum,
+                         total_pending_sum=total_pending_sum,
+                         users=users,
+                         instance_name=instance_name,
+                         tracker_types=TRACKER_TYPES,
+                         filters={
+                             'user_id': filter_user_id,
+                             'status': filter_status,
+                             'tracker_name': filter_tracker_name,
+                             'per_day_payment': filter_per_day_payment,
+                             'pending_min': filter_pending_min,
+                             'pending_max': filter_pending_max
+                         })
+
+
+@app.route('/<instance_name>/admin/daily-trackers/create', methods=['GET', 'POST'])
+@login_required
+def admin_create_daily_tracker(instance_name):
+    """Admin create new daily tracker"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        try:
+            user_id = int(request.form['user_id'])
+            tracker_name = request.form['tracker_name']
+            tracker_type = request.form['tracker_type']
+            investment = Decimal(request.form['investment'])
+            scheme_period = int(request.form['scheme_period'])
+            per_day_payment = Decimal(request.form['per_day_payment'])
+            start_date_str = request.form['start_date']
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            
+            # Validate tracker type
+            if tracker_type not in TRACKER_TYPES:
+                flash('Invalid tracker type', 'error')
+                users = get_user_query().filter_by(is_admin=False).all()
+                return render_template('admin/create_daily_tracker.html',
+                                     users=users,
+                                     instance_name=instance_name,
+                                     tracker_types=TRACKER_TYPES)
+            
+            # Get user
+            user = get_user_query().filter_by(id=user_id).first()
+            if not user:
+                flash('User not found', 'error')
+                users = get_user_query().filter_by(is_admin=False).all()
+                return render_template('admin/create_daily_tracker.html',
+                                     users=users,
+                                     instance_name=instance_name,
+                                     tracker_types=TRACKER_TYPES)
+            
+            # Create Excel file
+            filename = create_tracker_file(
+                instance_name,
+                user.username,
+                tracker_name,
+                tracker_type,
+                investment,
+                scheme_period,
+                start_date,
+                per_day_payment
+            )
+            
+            # Create database entry
+            tracker = DailyTracker(
+                user_id=user_id,
+                tracker_name=tracker_name,
+                tracker_type=tracker_type,
+                investment=investment,
+                scheme_period=scheme_period,
+                per_day_payment=per_day_payment,
+                start_date=start_date,
+                filename=filename
+            )
+            
+            add_to_current_instance(tracker)
+            commit_current_instance()
+            
+            flash(f'Daily tracker created successfully for {user.username}', 'success')
+            return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+            
+        except Exception as e:
+            flash(f'Error creating daily tracker: {str(e)}', 'error')
+            print(f"Error creating daily tracker: {e}")
+    
+    # GET request
+    users = get_user_query().filter_by(is_admin=False).all()
+    return render_template('admin/create_daily_tracker.html',
+                         users=users,
+                         instance_name=instance_name,
+                         tracker_types=TRACKER_TYPES)
+
+
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>')
+@login_required
+def admin_view_daily_tracker(instance_name, tracker_id):
+    """Admin view a specific daily tracker"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    try:
+        # Get tracker data from Excel
+        tracker_data = get_tracker_data(instance_name, tracker.filename)
+        summary = get_tracker_summary(instance_name, tracker.filename)
+        
+        return render_template('admin/view_daily_tracker.html',
+                             tracker=tracker,
+                             tracker_data=tracker_data,
+                             summary=summary,
+                             instance_name=instance_name)
+    except Exception as e:
+        flash(f'Error reading tracker data: {str(e)}', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+
+
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/add-entry', methods=['GET', 'POST'])
+@login_required
+def admin_add_tracker_entry(instance_name, tracker_id):
+    """Admin add entry to daily tracker"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    if request.method == 'POST':
+        try:
+            day = int(request.form['day'])
+            entry_data = {}
+            
+            # Collect all form fields dynamically
+            for key, value in request.form.items():
+                if key != 'day' and value.strip():
+                    # Convert numeric fields
+                    if key in ['daily_payments', 'withdrawn', 'cumulative', 'balance', 
+                              'reinvest', 'pocket_money', 'total_invested']:
+                        try:
+                            entry_data[key] = Decimal(value)
+                        except:
+                            entry_data[key] = value
+                    else:
+                        entry_data[key] = value
+            
+            # Update the tracker
+            update_tracker_entry(instance_name, tracker.filename, day, entry_data)
+            
+            # Update the tracker's updated_at timestamp
+            tracker.updated_at = datetime.utcnow()
+            commit_current_instance()
+            
+            flash(f'Entry for Day {day} updated successfully', 'success')
+            return redirect(url_for('admin_view_daily_tracker', 
+                                  instance_name=instance_name, 
+                                  tracker_id=tracker_id))
+            
+        except Exception as e:
+            flash(f'Error updating entry: {str(e)}', 'error')
+            print(f"Error updating entry: {e}")
+    
+    # GET request - show form
+    try:
+        tracker_data = get_tracker_data(instance_name, tracker.filename)
+        return render_template('admin/add_tracker_entry.html',
+                             tracker=tracker,
+                             tracker_data=tracker_data,
+                             instance_name=instance_name)
+    except Exception as e:
+        flash(f'Error reading tracker data: {str(e)}', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+
+
+# ============================================================================
+# CUSTOMER DAILY TRACKER ROUTES
+# ============================================================================
+
+@app.route('/<instance_name>/customer/trackers-dashboard')
+@login_required
+def customer_trackers_dashboard(instance_name):
+    """Customer trackers dashboard - list all trackers with summary"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    # Get all user's trackers (active and not closed)
+    trackers = get_daily_tracker_query().filter_by(
+        user_id=current_user.id, 
+        is_active=True,
+        is_closed_by_user=False
+    ).all()
+    
+    if not trackers:
+        flash('No daily trackers found for your account', 'info')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Build tracker summary data
+    tracker_summaries = []
+    total_pending = Decimal('0')
+    
+    for tracker in trackers:
+        try:
+            # Get tracker data and summary
+            tracker_data = get_tracker_data(instance_name, tracker.filename)
+            summary = get_tracker_summary(instance_name, tracker.filename)
+            
+            # Find last paid date
+            last_paid_date = None
+            for row in reversed(tracker_data['data']):
+                if row.get('daily_payments'):
+                    last_paid_date = row.get('date')
+                    break
+            
+            # Calculate pending amount
+            total_days_with_payments = summary['total_days']
+            expected_payments = total_days_with_payments * float(tracker.per_day_payment)
+            actual_payments = float(summary['total_payments'])
+            pending = Decimal(str(expected_payments - actual_payments))
+            
+            total_pending += pending
+            
+            tracker_summaries.append({
+                'tracker': tracker,
+                'last_paid_date': last_paid_date,
+                'total_payments': summary['total_payments'],
+                'pending': pending,
+                'balance': summary.get('balance', 0),
+                'cumulative': summary.get('cumulative', 0),
+                'days_with_payments': total_days_with_payments
+            })
+        except Exception as e:
+            print(f"Error processing tracker {tracker.id}: {e}")
+            # Add tracker with error indication
+            tracker_summaries.append({
+                'tracker': tracker,
+                'last_paid_date': None,
+                'total_payments': 0,
+                'pending': 0,
+                'balance': 0,
+                'cumulative': 0,
+                'days_with_payments': 0,
+                'error': str(e)
+            })
+    
+    return render_template('customer/trackers_dashboard.html',
+                         tracker_summaries=tracker_summaries,
+                         total_pending=total_pending,
+                         instance_name=instance_name)
+
+
+@app.route('/<instance_name>/customer/daily-tracker')
+@app.route('/<instance_name>/customer/daily-tracker/<int:tracker_id>')
+@login_required
+def customer_daily_tracker(instance_name, tracker_id=None):
+    """Customer view their daily tracker"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    # Get user's tracker (active and not closed)
+    if tracker_id:
+        # Specific tracker requested - verify it belongs to user
+        tracker = get_daily_tracker_query().filter_by(
+            id=tracker_id,
+            user_id=current_user.id, 
+            is_active=True,
+            is_closed_by_user=False
+        ).first()
+    else:
+        # No specific tracker - get first one
+        tracker = get_daily_tracker_query().filter_by(
+            user_id=current_user.id, 
+            is_active=True,
+            is_closed_by_user=False
+        ).first()
+    
+    if not tracker:
+        flash('No daily tracker found for your account', 'info')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    try:
+        # Get tracker data from Excel
+        tracker_data = get_tracker_data(instance_name, tracker.filename)
+        summary = get_tracker_summary(instance_name, tracker.filename)
+        
+        return render_template('customer/daily_tracker.html',
+                             tracker=tracker,
+                             tracker_data=tracker_data,
+                             summary=summary,
+                             instance_name=instance_name)
+    except Exception as e:
+        flash(f'Error reading tracker data: {str(e)}', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+
+
+@app.route('/<instance_name>/customer/daily-tracker/close', methods=['POST'])
+@login_required
+def customer_close_tracker(instance_name):
+    """Customer closes/hides their daily tracker"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    # Get user's tracker
+    tracker = get_daily_tracker_query().filter_by(
+        user_id=current_user.id, 
+        is_active=True,
+        is_closed_by_user=False
+    ).first()
+    
+    if not tracker:
+        flash('No active tracker found', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Close the tracker (user won't see it anymore, but admin can still access)
+    tracker.is_closed_by_user = True
+    tracker.updated_at = datetime.utcnow()
+    commit_current_instance()
+    
+    flash('Tracker closed successfully. Contact admin if you need to reopen it.', 'success')
+    return redirect(url_for('customer_dashboard', instance_name=instance_name))
+
+
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_tracker(instance_name, tracker_id):
+    """Admin deletes a tracker permanently"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    # Mark as deleted (soft delete)
+    tracker.is_active = False
+    tracker.updated_at = datetime.utcnow()
+    commit_current_instance()
+    
+    flash(f'Tracker "{tracker.tracker_name}" deleted successfully', 'success')
+    return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+
+
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/reopen', methods=['POST'])
+@login_required
+def admin_reopen_tracker(instance_name, tracker_id):
+    """Admin reopens a tracker closed by user"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    # Reopen the tracker for user
+    tracker.is_closed_by_user = False
+    tracker.updated_at = datetime.utcnow()
+    commit_current_instance()
+    
+    flash(f'Tracker "{tracker.tracker_name}" reopened successfully', 'success')
+    return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+
+
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/close', methods=['POST'])
+@login_required
+def admin_close_tracker(instance_name, tracker_id):
+    """Admin closes a tracker for user (hides it from user view)"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    # Close the tracker (user won't see it)
+    tracker.is_closed_by_user = True
+    tracker.updated_at = datetime.utcnow()
+    commit_current_instance()
+    
+    flash(f'Tracker "{tracker.tracker_name}" closed successfully', 'success')
+    return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+
+
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/download')
+@login_required
+def admin_download_tracker(instance_name, tracker_id):
+    """Admin downloads the Excel file for a tracker"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    try:
+        # Get the directory where the tracker file is stored
+        from tracker_manager import get_tracker_directory
+        tracker_dir = get_tracker_directory(instance_name)
+        
+        # Send the file for download
+        return send_from_directory(
+            tracker_dir,
+            tracker.filename,
+            as_attachment=True,
+            download_name=f"{tracker.user.username}_{tracker.tracker_name}_{tracker.filename}"
+        )
+    except Exception as e:
+        flash(f'Error downloading tracker: {str(e)}', 'error')
+        return redirect(url_for('admin_view_daily_tracker', 
+                              instance_name=instance_name, 
+                              tracker_id=tracker_id))
+
 
 # Email helper function
 def send_password_reset_email(email, token, instance_name):

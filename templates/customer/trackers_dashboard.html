@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}My Trackers - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h2">
+                    <i class="fas fa-calendar-alt me-2"></i>My Investment Trackers
+                </h1>
+                <a href="{{ url_for('customer_dashboard', instance_name=instance_name) }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Tile -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                    <h3>₹{{ "%.2f"|format(total_pending) }}</h3>
+                    <p class="mb-0">Total Pending Amount</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-list fa-3x mb-3"></i>
+                    <h3>{{ tracker_summaries|length }}</h3>
+                    <p class="mb-0">Active Trackers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-coins fa-3x mb-3"></i>
+                    <h3>₹{{ "%.2f"|format(tracker_summaries|sum(attribute='total_payments')) }}</h3>
+                    <p class="mb-0">Total Payments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trackers Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i>All Trackers
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Tracker Name</th>
+                            <th>Investment</th>
+                            <th>Start Date</th>
+                            <th>Per Day Payment</th>
+                            <th>Days Paid</th>
+                            <th>Last Paid Date</th>
+                            <th>Total Payments</th>
+                            <th>Pending</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for summary in tracker_summaries %}
+                        <tr {% if summary.get('error') %}class="table-warning"{% endif %}>
+                            <td>
+                                <strong>{{ summary.tracker.tracker_name }}</strong>
+                                {% if summary.tracker.scheme_period %}
+                                <br><small class="text-muted">{{ summary.tracker.scheme_period }} days scheme</small>
+                                {% endif %}
+                            </td>
+                            <td>₹{{ "%.2f"|format(summary.tracker.investment) }}</td>
+                            <td>{{ summary.tracker.start_date.strftime('%d %b %Y') }}</td>
+                            <td>
+                                <span class="badge bg-primary">₹{{ "%.2f"|format(summary.tracker.per_day_payment) }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ summary.days_with_payments }}</span>
+                            </td>
+                            <td>
+                                {% if summary.last_paid_date %}
+                                    {% if summary.last_paid_date is string %}
+                                        {{ summary.last_paid_date }}
+                                    {% else %}
+                                        {{ summary.last_paid_date.strftime('%d %b %Y') if summary.last_paid_date.strftime is defined else summary.last_paid_date }}
+                                    {% endif %}
+                                {% else %}
+                                <span class="text-muted">No payments yet</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong class="text-success">₹{{ "%.2f"|format(summary.total_payments) }}</strong>
+                            </td>
+                            <td>
+                                {% if summary.pending > 0 %}
+                                <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(summary.pending) }}</span>
+                                {% elif summary.pending < 0 %}
+                                <span class="badge bg-success">-₹{{ "%.2f"|format(summary.pending|abs) }}</span>
+                                {% else %}
+                                <span class="badge bg-success">₹0.00</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if summary.get('error') %}
+                                <span class="badge bg-danger" title="{{ summary.error }}">Error</span>
+                                {% else %}
+                                <a href="{{ url_for('customer_daily_tracker', instance_name=instance_name, tracker_id=summary.tracker.id) }}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <th colspan="6" class="text-end">Totals:</th>
+                            <th>₹{{ "%.2f"|format(tracker_summaries|sum(attribute='total_payments')) }}</th>
+                            <th>
+                                {% if total_pending > 0 %}
+                                <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(total_pending) }}</span>
+                                {% else %}
+                                <span class="badge bg-success">₹0.00</span>
+                                {% endif %}
+                            </th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6><i class="fas fa-info-circle me-2 text-info"></i>Last Paid Date</h6>
+                    <p class="small mb-0">The most recent date when a payment was made to this tracker.</p>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Pending Amount</h6>
+                    <p class="small mb-0">Outstanding payments based on days paid and expected daily payment.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
