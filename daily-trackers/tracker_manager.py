@@ -326,6 +326,23 @@ def update_tracker_entry(instance, filename, day, entry_data):
             
             ws[cell] = value
     
+    # Auto-calculate cumulative if daily_payments is provided but cumulative is not
+    if 'daily_payments' in entry_data and 'cumulative' not in entry_data:
+        # Calculate cumulative as sum of all daily_payments from start to this day
+        cumulative_sum = 0
+        for calc_row in range(data_start, row_num + 1):
+            payment_cell = f"{columns['daily_payments']}{calc_row}"
+            payment_value = ws[payment_cell].value
+            if payment_value is not None:
+                try:
+                    cumulative_sum += float(payment_value)
+                except:
+                    pass
+        
+        # Set the cumulative value
+        cumulative_cell = f"{columns['cumulative']}{row_num}"
+        ws[cumulative_cell] = cumulative_sum
+    
     # Save the workbook
     wb.save(str(tracker_path))
     
