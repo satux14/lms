@@ -57,10 +57,18 @@ def recalculate_tracker_cumulative(instance, filename):
         columns = config['columns']
         data_start = config['data_start_row']
         
+        # Get start date for date calculations
+        from datetime import timedelta
+        start_date_cell = config['start_date_cell']
+        start_date = ws[start_date_cell].value
+        if isinstance(start_date, str):
+            from datetime import datetime
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        
         changes_made = 0
         cumulative_sum = 0
         
-        # Go through all rows and recalculate cumulative
+        # Go through all rows and recalculate cumulative and dates
         for row_num in range(data_start, data_start + 400):
             day_cell = f"{columns['day']}{row_num}"
             day_value = ws[day_cell].value
@@ -68,6 +76,16 @@ def recalculate_tracker_cumulative(instance, filename):
             # Stop if we hit empty days
             if day_value is None or day_value == '':
                 break
+            
+            # Calculate date based on day number
+            if start_date and isinstance(day_value, (int, float)):
+                calculated_date = start_date + timedelta(days=int(day_value))
+                date_cell = f"{columns['date']}{row_num}"
+                current_date = ws[date_cell].value
+                if current_date is None or current_date == '':
+                    ws[date_cell] = calculated_date
+                    print(f"  Day {day_value}: Set date to {calculated_date}")
+                    changes_made += 1
             
             # Get daily payment
             payment_cell = f"{columns['daily_payments']}{row_num}"
