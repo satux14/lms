@@ -1,0 +1,146 @@
+"""
+Recalculate Cumulative for All Existing Tracker Entries
+========================================================
+
+This script goes through all tracker Excel files and recalculates
+cumulative values for entries that have daily_payments but missing cumulative.
+
+Usage:
+    python3 recalculate_cumulatives.py
+"""
+
+import sys
+import os
+from pathlib import Path
+
+# Add the app directory to the path
+sys.path.insert(0, os.path.dirname(__file__))
+
+from app_multi import app, init_app, VALID_INSTANCES, get_database_uri
+from daily_trackers.tracker_manager import SHEET_CONFIGS, TRACKER_TYPES, get_tracker_directory
+import openpyxl
+
+def recalculate_tracker_cumulative(instance, filename):
+    """Recalculate cumulative for all entries in a tracker"""
+    tracker_dir = Path(get_tracker_directory(instance))
+    tracker_path = tracker_dir / filename
+    
+    if not tracker_path.exists():
+        return False, f"File not found: {filename}"
+    
+    try:
+        wb = openpyxl.load_workbook(str(tracker_path))
+        ws = wb.active
+        
+        sheet_name = ws.title
+        
+        # Determine tracker type
+        tracker_type = None
+        for key, value in TRACKER_TYPES.items():
+            if value == sheet_name:
+                tracker_type = key
+                break
+        
+        if not tracker_type:
+            return False, f"Unknown sheet type: {sheet_name}"
+        
+        config = SHEET_CONFIGS[tracker_type]
+        columns = config['columns']
+        data_start = config['data_start_row']
+        
+        changes_made = 0
+        cumulative_sum = 0
+        
+        # Go through all rows and recalculate cumulative
+        for row_num in range(data_start, data_start + 400):
+            day_cell = f"{columns['day']}{row_num}"
+            day_value = ws[day_cell].value
+            
+            # Stop if we hit empty days
+            if day_value is None or day_value == '':
+                break
+            
+            # Get daily payment
+            payment_cell = f"{columns['daily_payments']}{row_num}"
+            payment_value = ws[payment_cell].value
+            
+            # Add to cumulative if there's a payment
+            if payment_value is not None and payment_value != '':
+                try:
+                    cumulative_sum += float(payment_value)
+                except:
+                    pass
+            
+            # Get current cumulative value
+            cumulative_cell = f"{columns['cumulative']}{row_num}"
+            current_cumulative = ws[cumulative_cell].value
+            
+            # Update if cumulative is missing or different
+            if payment_value is not None and payment_value != '':
+                if current_cumulative is None or current_cumulative == '':
+                    ws[cumulative_cell] = cumulative_sum
+                    changes_made += 1
+                    print(f"  Day {day_value}: Set cumulative to {cumulative_sum}")
+        
+        if changes_made > 0:
+            wb.save(str(tracker_path))
+            return True, f"Updated {changes_made} entries"
+        else:
+            return True, "No updates needed"
+            
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
+def main():
+    """Main function"""
+    print("\n" + "="*70)
+    print("RECALCULATE CUMULATIVE VALUES")
+    print("="*70)
+    
+    # Initialize app
+    print("\n→ Initializing application...")
+    init_app()
+    print("✓ Application initialized")
+    
+    from app_multi import get_daily_tracker_query
+    
+    total_updated = 0
+    total_trackers = 0
+    
+    for instance in VALID_INSTANCES:
+        print(f"\n{'='*70}")
+        print(f"Instance: {instance}")
+        print(f"{'='*70}")
+        
+        # Get all trackers for this instance
+        trackers = get_daily_tracker_query().filter_by(is_active=True).all()
+        
+        if not trackers:
+            print(f"  No trackers found")
+            continue
+        
+        print(f"  Found {len(trackers)} trackers")
+        
+        for tracker in trackers:
+            print(f"\n  → {tracker.tracker_name} (User: {tracker.user.username})")
+            success, message = recalculate_tracker_cumulative(instance, tracker.filename)
+            
+            if success:
+                print(f"    ✓ {message}")
+                if "Updated" in message:
+                    total_updated += 1
+            else:
+                print(f"    ✗ {message}")
+            
+            total_trackers += 1
+    
+    print("\n" + "="*70)
+    print("SUMMARY")
+    print("="*70)
+    print(f"Total trackers checked: {total_trackers}")
+    print(f"Trackers updated: {total_updated}")
+    print("\n✓ Done! Refresh your browser to see updated cumulative values.")
+
+if __name__ == '__main__':
+    main()
+
