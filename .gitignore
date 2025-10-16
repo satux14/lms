@@ -75,10 +75,11 @@ logs/
 temp/
 tmp/
 
-# Excel exports
+# Excel exports (but allow template)
 exports/
 *.xlsx
 *.xls
+!daily-trackers/template/*.xlsx
 
 # Backup files
 *.bak
