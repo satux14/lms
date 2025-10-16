@@ -17,8 +17,17 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app_multi import app, init_app, VALID_INSTANCES, get_database_uri
-from daily_trackers.tracker_manager import SHEET_CONFIGS, TRACKER_TYPES, get_tracker_directory
 import openpyxl
+
+# Import from daily-trackers directory
+import importlib.util
+spec = importlib.util.spec_from_file_location("tracker_manager", "daily-trackers/tracker_manager.py")
+tracker_manager = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tracker_manager)
+
+SHEET_CONFIGS = tracker_manager.SHEET_CONFIGS
+TRACKER_TYPES = tracker_manager.TRACKER_TYPES
+get_tracker_directory = tracker_manager.get_tracker_directory
 
 def recalculate_tracker_cumulative(instance, filename):
     """Recalculate cumulative for all entries in a tracker"""
