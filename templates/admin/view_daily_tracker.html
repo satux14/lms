@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}View Daily Tracker - {{ tracker.tracker_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
+                            <i class="fas fa-calendar-alt me-2"></i>All Trackers
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-eye me-2"></i>{{ tracker.tracker_name }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ url_for('admin_add_tracker_entry', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                           class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus me-1"></i>Add Entry
+                        </a>
+                        <a href="{{ url_for('admin_download_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                           class="btn btn-sm btn-success">
+                            <i class="fas fa-download me-1"></i>Download Excel
+                        </a>
+                        <a href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" 
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tracker Info -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-user fa-3x text-primary mb-3"></i>
+                            <h5>{{ tracker.user.username }}</h5>
+                            <p class="text-muted mb-0">User</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-rupee-sign fa-3x text-success mb-3"></i>
+                            <h5>₹{{ "%.2f"|format(tracker.investment) }}</h5>
+                            <p class="text-muted mb-0">Investment</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calendar fa-3x text-info mb-3"></i>
+                            <h5>{{ tracker.scheme_period }} days</h5>
+                            <p class="text-muted mb-0">Scheme Period</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calendar-day fa-3x text-warning mb-3"></i>
+                            <h5>{{ tracker.start_date.strftime('%Y-%m-%d') }}</h5>
+                            <p class="text-muted mb-0">Start Date</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <p class="mb-1"><strong>Total Days with Payments:</strong></p>
+                            <h4>{{ summary.total_days }}</h4>
+                        </div>
+                        <div class="col-md-3">
+                            <p class="mb-1"><strong>Total Payments:</strong></p>
+                            <h4>₹{{ "%.2f"|format(summary.total_payments) }}</h4>
+                        </div>
+                        <div class="col-md-3">
+                            <p class="mb-1"><strong>Cumulative:</strong></p>
+                            <h4>₹{{ "%.2f"|format(summary.cumulative) }}</h4>
+                        </div>
+                        {% if tracker.tracker_type in ['50K', '1L'] %}
+                        <div class="col-md-3">
+                            <p class="mb-1"><strong>Balance:</strong></p>
+                            <h4>₹{{ "%.2f"|format(summary.balance) }}</h4>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Parameters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Tracker Type:</strong></p>
+                            <p>{{ tracker_data.parameters.tracker_type }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Per Day Payment:</strong></p>
+                            <p>₹{{ tracker_data.parameters.per_day_payment }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Scheme Period:</strong></p>
+                            <p>{{ tracker_data.parameters.scheme_period }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-2"></i>Daily Tracker Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="table table-striped table-hover table-sm">
+                            <thead class="table-dark" style="position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Date</th>
+                                    <th>Daily Payments</th>
+                                    {% if tracker.tracker_type == 'No Reinvest' %}
+                                    <th>Transaction Details</th>
+                                    {% endif %}
+                                    <th>Payment Mode</th>
+                                    {% if tracker.tracker_type in ['50K'] %}
+                                    <th>Cumulative</th>
+                                    <th>Balance</th>
+                                    <th>Withdrawn</th>
+                                    {% elif tracker.tracker_type == '1L' %}
+                                    <th>Cumulative</th>
+                                    <th>Balance</th>
+                                    <th>Withdrawn</th>
+                                    <th>Reinvest</th>
+                                    <th>Pocket Money</th>
+                                    <th>Total Invested</th>
+                                    {% else %}
+                                    <th>Cumulative</th>
+                                    <th>Balance</th>
+                                    <th>Withdrawn</th>
+                                    {% endif %}
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in tracker_data.data %}
+                                <tr {% if row.daily_payments %}class="table-success"{% endif %}>
+                                    <td>{{ row.day }}</td>
+                                    <td>
+                                        {% if row.date %}
+                                            {% if row.date is string %}
+                                                {{ row.date }}
+                                            {% else %}
+                                                {{ row.date.strftime('%Y-%m-%d') if row.date.strftime is defined else row.date }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.daily_payments %}
+                                        <strong>₹{{ "%.2f"|format(row.daily_payments) }}</strong>
+                                        {% endif %}
+                                    </td>
+                                    {% if tracker.tracker_type == 'No Reinvest' %}
+                                    <td>{{ row.transaction_details or '' }}</td>
+                                    {% endif %}
+                                    <td>{{ row.payment_mode or '' }}</td>
+                                    {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
+                                    <td>{{ "%.2f"|format(row.cumulative) if row.cumulative else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.balance) if row.balance else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.withdrawn) if row.withdrawn else '' }}</td>
+                                    {% endif %}
+                                    {% if tracker.tracker_type == '1L' %}
+                                    <td>{{ "%.2f"|format(row.reinvest) if row.reinvest else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.pocket_money) if row.pocket_money else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.total_invested) if row.total_invested else '' }}</td>
+                                    {% endif %}
+                                    <td>{{ row.notes or '' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Rows with payments are highlighted in green. Empty cells indicate no data for that day.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

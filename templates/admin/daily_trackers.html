@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Trackers - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <!-- Main Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_interest_rate', instance_name=instance_name) }}">
+                            <i class="fas fa-percentage me-2"></i>Interest Rates
+                        </a>
+                    </li>
+                    
+                    <!-- Loan Management -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Loan Management</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
+                            <i class="fas fa-plus me-2"></i>Create Loan
+                        </a>
+                    </li>
+                    
+                    <!-- Daily Tracker Management -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Daily Trackers</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
+                            <i class="fas fa-calendar-alt me-2"></i>All Trackers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">
+                            <i class="fas fa-plus me-2"></i>Create Tracker
+                        </a>
+                    </li>
+                    
+                    <!-- Payment Management -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Payment Management</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_payments', instance_name=instance_name) }}">
+                            <i class="fas fa-credit-card me-2"></i>All Payments
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_add_payment', instance_name=instance_name) }}">
+                            <i class="fas fa-plus-circle me-2"></i>Add Payment
+                        </a>
+                    </li>
+                    
+                    <!-- User Management -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>User Management</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_users', instance_name=instance_name) }}">
+                            <i class="fas fa-users me-2"></i>Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_create_user', instance_name=instance_name) }}">
+                            <i class="fas fa-user-plus me-2"></i>Create User
+                        </a>
+                    </li>
+                    
+                    <!-- System -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>System</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_backup', instance_name=instance_name) }}">
+                            <i class="fas fa-database me-2"></i>Backup
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-calendar-alt me-2"></i>Daily Trackers
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-plus me-1"></i>Create Tracker
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Tiles -->
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="card-body text-center">
+                            <i class="fas fa-list fa-3x mb-3"></i>
+                            <h3>{{ total_trackers }}</h3>
+                            <p class="mb-0">Total Trackers</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <div class="card-body text-center">
+                            <i class="fas fa-coins fa-3x mb-3"></i>
+                            <h3>₹{{ "%.2f"|format(total_payments_sum) }}</h3>
+                            <p class="mb-0">Total Payments</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                            <h3>₹{{ "%.2f"|format(total_pending_sum) }}</h3>
+                            <p class="mb-0">Total Pending</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Filters
+                        <button class="btn btn-sm btn-outline-secondary float-end" type="button" onclick="clearFilters()">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </button>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" id="filterForm">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="user_id" class="form-label">User</label>
+                                <select class="form-select" id="user_id" name="user_id">
+                                    <option value="">All Users</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}" {% if filters.user_id == user.id %}selected{% endif %}>
+                                        {{ user.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="">All Status</option>
+                                    <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+                                    <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="tracker_name" class="form-label">Tracker Name</label>
+                                <input type="text" class="form-control" id="tracker_name" name="tracker_name" 
+                                       placeholder="Search by name..." value="{{ filters.tracker_name or '' }}">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="per_day_payment" class="form-label">Per Day Payment</label>
+                                <input type="number" class="form-control" id="per_day_payment" name="per_day_payment" 
+                                       placeholder="Exact amount..." step="0.01" value="{{ filters.per_day_payment or '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="pending_min" class="form-label">Pending Amount (Min)</label>
+                                <input type="number" class="form-control" id="pending_min" name="pending_min" 
+                                       placeholder="Min pending..." step="0.01" value="{{ filters.pending_min or '' }}">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="pending_max" class="form-label">Pending Amount (Max)</label>
+                                <input type="number" class="form-control" id="pending_max" name="pending_max" 
+                                       placeholder="Max pending..." step="0.01" value="{{ filters.pending_max or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="fas fa-search me-1"></i>Apply Filters
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearFilters()">
+                                    <i class="fas fa-redo me-1"></i>Reset
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Trackers Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>All Daily Trackers
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if tracker_summaries %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Tracker Name</th>
+                                    <th>Type</th>
+                                    <th>Investment</th>
+                                    <th>Scheme Period</th>
+                                    <th>Per Day Payment</th>
+                                    <th>Days Paid</th>
+                                    <th>Total Payments</th>
+                                    <th>Pending</th>
+                                    <th>Start Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in tracker_summaries %}
+                                {% set tracker = item.tracker %}
+                                <tr {% if item.get('error') %}class="table-warning"{% endif %}>
+                                    <td>{{ tracker.id }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ tracker.user.username }}</span>
+                                    </td>
+                                    <td>{{ tracker.tracker_name }}</td>
+                                    <td>
+                                        {% if tracker.tracker_type == '50K' %}
+                                        <span class="badge bg-success">50K Reinvest</span>
+                                        {% elif tracker.tracker_type == '1L' %}
+                                        <span class="badge bg-primary">1L Enhanced</span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark">No Reinvest</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>₹{{ "%.2f"|format(tracker.investment) }}</td>
+                                    <td>{{ tracker.scheme_period }} days</td>
+                                    <td>
+                                        <span class="badge bg-primary">₹{{ "%.2f"|format(tracker.per_day_payment) }}</span>
+                                    </td>
+                                    <td>
+                                        {% if item.get('error') %}
+                                        <span class="text-danger">Error</span>
+                                        {% else %}
+                                        <span class="badge bg-info">{{ item.days_with_payments }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.get('error') %}
+                                        <span class="text-danger">-</span>
+                                        {% else %}
+                                        <strong class="text-success">₹{{ "%.2f"|format(item.total_payments) }}</strong>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.get('error') %}
+                                        <span class="text-danger">-</span>
+                                        {% elif item.pending > 0 %}
+                                        <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(item.pending) }}</span>
+                                        {% elif item.pending < 0 %}
+                                        <span class="badge bg-success">-₹{{ "%.2f"|format(item.pending|abs) }}</span>
+                                        {% else %}
+                                        <span class="badge bg-success">₹0.00</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ tracker.start_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if tracker.is_closed_by_user %}
+                                        <span class="badge bg-secondary">Closed by User</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                               class="btn btn-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin_add_tracker_entry', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                               class="btn btn-primary" title="Add Entry">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin_download_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                               class="btn btn-success" title="Download Excel">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% if tracker.is_closed_by_user %}
+                                            <form action="{{ url_for('admin_reopen_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                                  method="POST" style="display: inline;">
+                                                <button type="submit" class="btn btn-warning" title="Reopen for User">
+                                                    <i class="fas fa-folder-open"></i>
+                                                </button>
+                                            </form>
+                                            {% else %}
+                                            <form action="{{ url_for('admin_close_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                                  method="POST" style="display: inline;">
+                                                <button type="submit" class="btn btn-secondary" title="Close Tracker">
+                                                    <i class="fas fa-times-circle"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-danger" 
+                                                    onclick="confirmDelete({{ tracker.id }}, '{{ tracker.tracker_name }}')" 
+                                                    title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No daily trackers found matching your filters.
+                        {% if filters.user_id or filters.status or filters.tracker_name or filters.per_day_payment or filters.pending_min or filters.pending_max %}
+                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="clearFilters()">Clear Filters</button>
+                        {% else %}
+                        <a href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">Create one now</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Are you sure you want to delete this tracker?</strong></p>
+                <p id="trackerNameDisplay"></p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This action will mark the tracker as deleted. The Excel file will remain, but the tracker won't be accessible through the system.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Yes, Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(trackerId, trackerName) {
+    // Set tracker name in modal
+    document.getElementById('trackerNameDisplay').textContent = 'Tracker: ' + trackerName;
+    
+    // Set form action URL
+    const deleteUrl = '{{ url_for("admin_delete_tracker", instance_name=instance_name, tracker_id=0) }}'.replace('/0/', '/' + trackerId + '/');
+    document.getElementById('deleteForm').action = deleteUrl;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+function clearFilters() {
+    // Clear all form inputs
+    document.getElementById('user_id').value = '';
+    document.getElementById('status').value = '';
+    document.getElementById('tracker_name').value = '';
+    document.getElementById('per_day_payment').value = '';
+    document.getElementById('pending_min').value = '';
+    document.getElementById('pending_max').value = '';
+    
+    // Redirect to page without query parameters
+    window.location.href = '{{ url_for("admin_daily_trackers", instance_name=instance_name) }}';
+}
+
+// Auto-submit form when dropdown filters change
+document.getElementById('user_id').addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+});
+
+document.getElementById('status').addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+});
+</script>
+{% endblock %}
+

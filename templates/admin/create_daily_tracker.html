@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Create Daily Tracker - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <!-- Main Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    
+                    <!-- Daily Tracker Management -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Daily Trackers</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
+                            <i class="fas fa-calendar-alt me-2"></i>All Trackers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">
+                            <i class="fas fa-plus me-2"></i>Create Tracker
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-plus me-2"></i>Create Daily Tracker
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Trackers
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-wpforms me-2"></i>Tracker Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">
+                                <!-- User Selection -->
+                                <div class="mb-3">
+                                    <label for="user_id" class="form-label">
+                                        <i class="fas fa-user me-2"></i>Select User *
+                                    </label>
+                                    <select class="form-select" id="user_id" name="user_id" required>
+                                        <option value="">Choose user...</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.username }} ({{ user.email or 'No email' }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Tracker Name -->
+                                <div class="mb-3">
+                                    <label for="tracker_name" class="form-label">
+                                        <i class="fas fa-tag me-2"></i>Tracker Name *
+                                    </label>
+                                    <input type="text" class="form-control" id="tracker_name" name="tracker_name" 
+                                           placeholder="e.g., John's Investment Tracker" required>
+                                    <small class="form-text text-muted">A descriptive name for this tracker</small>
+                                </div>
+
+                                <!-- Tracker Type -->
+                                <div class="mb-3">
+                                    <label for="tracker_type" class="form-label">
+                                        <i class="fas fa-layer-group me-2"></i>Tracker Type *
+                                    </label>
+                                    <select class="form-select" id="tracker_type" name="tracker_type" required>
+                                        <option value="">Choose tracker type...</option>
+                                        <option value="50K">50K Reinvest Tracker</option>
+                                        <option value="1L">1L Enhanced Tracker</option>
+                                        <option value="No Reinvest">No Reinvest Tracker</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <strong>50K:</strong> Reinvestment strategy with ₹50K increments<br>
+                                        <strong>1L:</strong> Enhanced strategy with ₹1L reinvestment<br>
+                                        <strong>No Reinvest:</strong> Simple tracking without reinvestment
+                                    </small>
+                                </div>
+
+                                <!-- Investment Amount -->
+                                <div class="mb-3">
+                                    <label for="investment" class="form-label">
+                                        <i class="fas fa-rupee-sign me-2"></i>Investment Amount *
+                                    </label>
+                                    <input type="number" class="form-control" id="investment" name="investment" 
+                                           placeholder="e.g., 50000" step="0.01" min="0" required>
+                                    <small class="form-text text-muted">Initial investment amount in rupees</small>
+                                </div>
+
+                                <!-- Scheme Period -->
+                                <div class="mb-3">
+                                    <label for="scheme_period" class="form-label">
+                                        <i class="fas fa-calendar me-2"></i>Scheme Period (Days) *
+                                    </label>
+                                    <input type="number" class="form-control" id="scheme_period" name="scheme_period" 
+                                           placeholder="e.g., 100" min="1" required>
+                                    <small class="form-text text-muted">Duration of the investment scheme in days</small>
+                                </div>
+
+                                <!-- Per Day Payment -->
+                                <div class="mb-3">
+                                    <label for="per_day_payment" class="form-label">
+                                        <i class="fas fa-money-bill-wave me-2"></i>Per Day Payment *
+                                    </label>
+                                    <input type="number" class="form-control" id="per_day_payment" name="per_day_payment" 
+                                           placeholder="e.g., 500" step="0.01" min="0" required>
+                                    <small class="form-text text-muted">
+                                        Daily payment amount (₹500 for 50K, ₹1000 for 1L, ₹3000 for No Reinvest)
+                                    </small>
+                                </div>
+
+                                <!-- Start Date -->
+                                <div class="mb-3">
+                                    <label for="start_date" class="form-label">
+                                        <i class="fas fa-calendar-day me-2"></i>Start Date *
+                                    </label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" required>
+                                    <small class="form-text text-muted">The date when the investment tracker begins</small>
+                                </div>
+
+                                <!-- Submit Buttons -->
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" 
+                                       class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Create Tracker
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6><i class="fas fa-check-circle me-2 text-success"></i>What happens when you create?</h6>
+                            <ul class="small">
+                                <li>A unique Excel file is generated for the user</li>
+                                <li>The file is stored in the instance-specific directory</li>
+                                <li>The tracker is pre-configured with all necessary formulas</li>
+                                <li>User can view their tracker from their dashboard</li>
+                                <li>Admin can add/edit entries anytime</li>
+                            </ul>
+
+                            <hr>
+
+                            <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Tips</h6>
+                            <ul class="small">
+                                <li>Choose tracker type based on investment strategy</li>
+                                <li>Ensure investment amount matches the scheme</li>
+                                <li>Start date can be past, present, or future</li>
+                                <li>Filename will include username for easy identification</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set today's date as default for start_date
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').value = today;
+    
+    // Auto-fill per day payment based on tracker type
+    const trackerTypeSelect = document.getElementById('tracker_type');
+    const perDayPaymentInput = document.getElementById('per_day_payment');
+    
+    trackerTypeSelect.addEventListener('change', function() {
+        const trackerType = this.value;
+        let suggestedPayment = '';
+        
+        if (trackerType === '50K') {
+            suggestedPayment = '500';
+        } else if (trackerType === '1L') {
+            suggestedPayment = '1000';
+        } else if (trackerType === 'No Reinvest') {
+            suggestedPayment = '3000';
+        }
+        
+        // Only set if field is empty or contains default value
+        if (!perDayPaymentInput.value || 
+            perDayPaymentInput.value === '500' || 
+            perDayPaymentInput.value === '1000' || 
+            perDayPaymentInput.value === '3000') {
+            perDayPaymentInput.value = suggestedPayment;
+        }
+    });
+});
+</script>
+{% endblock %}
+
