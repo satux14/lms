@@ -111,37 +111,59 @@ def main():
     init_app()
     print("✓ Application initialized")
     
-    from app_multi import get_daily_tracker_query
+    from app_multi import DailyTracker, db
     
     total_updated = 0
     total_trackers = 0
     
-    for instance in VALID_INSTANCES:
-        print(f"\n{'='*70}")
-        print(f"Instance: {instance}")
-        print(f"{'='*70}")
-        
-        # Get all trackers for this instance
-        trackers = get_daily_tracker_query().filter_by(is_active=True).all()
-        
-        if not trackers:
-            print(f"  No trackers found")
-            continue
-        
-        print(f"  Found {len(trackers)} trackers")
-        
-        for tracker in trackers:
-            print(f"\n  → {tracker.tracker_name} (User: {tracker.user.username})")
-            success, message = recalculate_tracker_cumulative(instance, tracker.filename)
+    # Run within application context
+    with app.app_context():
+        for instance in VALID_INSTANCES:
+            print(f"\n{'='*70}")
+            print(f"Instance: {instance}")
+            print(f"{'='*70}")
             
-            if success:
-                print(f"    ✓ {message}")
-                if "Updated" in message:
-                    total_updated += 1
-            else:
-                print(f"    ✗ {message}")
+            # Get database URI for this instance
+            db_uri = get_database_uri(instance)
             
-            total_trackers += 1
+            # Query trackers directly with the instance database
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+            
+            engine = create_engine(db_uri)
+            Session = sessionmaker(bind=engine)
+            session = Session()
+            
+            try:
+                # Get all active trackers for this instance
+                trackers = session.query(DailyTracker).filter_by(is_active=True).all()
+                
+                if not trackers:
+                    print(f"  No trackers found")
+                    continue
+                
+                print(f"  Found {len(trackers)} trackers")
+                
+                for tracker in trackers:
+                    # Get username
+                    from app_multi import User
+                    user = session.query(User).filter_by(id=tracker.user_id).first()
+                    username = user.username if user else "Unknown"
+                    
+                    print(f"\n  → {tracker.tracker_name} (User: {username})")
+                    success, message = recalculate_tracker_cumulative(instance, tracker.filename)
+                    
+                    if success:
+                        print(f"    ✓ {message}")
+                        if "Updated" in message:
+                            total_updated += 1
+                    else:
+                        print(f"    ✗ {message}")
+                    
+                    total_trackers += 1
+            finally:
+                session.close()
+                engine.dispose()
     
     print("\n" + "="*70)
     print("SUMMARY")
