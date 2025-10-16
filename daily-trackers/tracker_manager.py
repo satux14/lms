@@ -351,12 +351,17 @@ def get_tracker_summary(instance, filename):
     total_days = len([r for r in rows if r.get('daily_payments')])
     total_payments = sum(float(r.get('daily_payments', 0) or 0) for r in rows)
     
-    # Get latest balance/cumulative
+    # Get latest balance/cumulative and highest day number
     latest_row = None
+    highest_day = 0
     for row in reversed(rows):
         if row.get('daily_payments') is not None:
-            latest_row = row
-            break
+            if latest_row is None:
+                latest_row = row
+            # Track the highest day number with a payment
+            day_num = row.get('day', 0)
+            if isinstance(day_num, (int, float)) and day_num > highest_day:
+                highest_day = int(day_num)
     
     balance = 0
     cumulative = 0
@@ -367,8 +372,9 @@ def get_tracker_summary(instance, filename):
             balance = latest_row.get('balance', 0) or 0
         cumulative = latest_row.get('cumulative', 0) or 0
     
-    # Calculate pending
-    expected_total = total_days * float(parameters.get('per_day_payment', 0) or 0)
+    # Calculate pending based on highest day number, not count of days
+    # If Day 2 has payment, expected should be 2 * per_day, not 1 * per_day
+    expected_total = highest_day * float(parameters.get('per_day_payment', 0) or 0)
     pending = expected_total - total_payments
     
     return {
@@ -377,6 +383,8 @@ def get_tracker_summary(instance, filename):
         'balance': balance,
         'cumulative': cumulative,
         'pending': pending,
+        'expected_total': expected_total,
+        'highest_day': highest_day,
         'parameters': parameters
     }
 
