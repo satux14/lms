@@ -4,7 +4,7 @@ Handles Excel file operations for daily trackers
 """
 import os
 import shutil
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -325,6 +325,19 @@ def update_tracker_entry(instance, filename, day, entry_data):
                 value = float(value)
             
             ws[cell] = value
+    
+    # Auto-calculate date if not provided
+    if 'date' not in entry_data:
+        # Get start_date from the tracker
+        start_date_cell = config['start_date_cell']
+        start_date = ws[start_date_cell].value
+        if start_date and isinstance(start_date, (datetime, date)):
+            if isinstance(start_date, datetime):
+                start_date = start_date.date()
+            # Calculate the date for this day
+            calculated_date = start_date + timedelta(days=int(day) - 1)
+            date_cell = f"{columns['date']}{row_num}"
+            ws[date_cell] = calculated_date
     
     # Auto-calculate cumulative if daily_payments is provided but cumulative is not
     if 'daily_payments' in entry_data and 'cumulative' not in entry_data:
