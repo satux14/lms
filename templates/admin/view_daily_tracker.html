@@ -183,7 +183,7 @@
                             </thead>
                             <tbody>
                                 {% for row in tracker_data.data %}
-                                <tr {% if row.daily_payments %}class="table-success"{% endif %}>
+                                <tr {% if row.daily_payments and row.daily_payments > 0 %}class="table-success"{% endif %}>
                                     <td>{{ row.day }}</td>
                                     <td>
                                         {% if row.date %}
@@ -195,7 +195,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if row.daily_payments %}
+                                        {% if row.daily_payments is not none %}
                                         <strong>₹{{ "%.2f"|format(row.daily_payments) }}</strong>
                                         {% endif %}
                                     </td>
@@ -204,14 +204,14 @@
                                     {% endif %}
                                     <td>{{ row.payment_mode or '' }}</td>
                                     {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
-                                    <td>{{ "%.2f"|format(row.cumulative) if row.cumulative else '' }}</td>
-                                    <td>{{ "%.2f"|format(row.balance) if row.balance else '' }}</td>
-                                    <td>{{ "%.2f"|format(row.withdrawn) if row.withdrawn else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.cumulative) if row.cumulative is not none else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.balance) if row.balance is not none else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.withdrawn) if row.withdrawn is not none else '' }}</td>
                                     {% endif %}
                                     {% if tracker.tracker_type == '1L' %}
-                                    <td>{{ "%.2f"|format(row.reinvest) if row.reinvest else '' }}</td>
-                                    <td>{{ "%.2f"|format(row.pocket_money) if row.pocket_money else '' }}</td>
-                                    <td>{{ "%.2f"|format(row.total_invested) if row.total_invested else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.reinvest) if row.reinvest is not none else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.pocket_money) if row.pocket_money is not none else '' }}</td>
+                                    <td>{{ "%.2f"|format(row.total_invested) if row.total_invested is not none else '' }}</td>
                                     {% endif %}
                                     <td>{{ row.notes or '' }}</td>
                                 </tr>
