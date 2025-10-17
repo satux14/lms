@@ -2326,7 +2326,8 @@ def admin_daily_trackers(instance_name):
                 'summary': summary,
                 'pending': pending,
                 'total_payments': summary.get('total_payments', 0),
-                'days_with_payments': summary.get('total_days', 0)
+                'days_with_payments': summary.get('total_days', 0),
+                'total_days_count': summary.get('total_days_count', 0)
             })
             
             total_trackers += 1
@@ -2341,6 +2342,7 @@ def admin_daily_trackers(instance_name):
                 'pending': 0,
                 'total_payments': 0,
                 'days_with_payments': 0,
+                'total_days_count': 0,
                 'error': str(e)
             })
     

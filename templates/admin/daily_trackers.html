@@ -272,7 +272,7 @@
                                         {% if item.get('error') %}
                                         <span class="text-danger">Error</span>
                                         {% else %}
-                                        <span class="badge bg-info">{{ item.days_with_payments }}</span>
+                                        <span class="badge bg-info">{{ item.days_with_payments }}/{{ item.total_days_count }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
