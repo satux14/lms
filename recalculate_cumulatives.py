@@ -77,37 +77,30 @@ def recalculate_tracker_cumulative(instance, filename):
             if day_value is None or day_value == '':
                 break
             
-            # Calculate date based on day number
+            # ALWAYS calculate and set date (force overwrite formulas)
             if start_date and isinstance(day_value, (int, float)):
                 calculated_date = start_date + timedelta(days=int(day_value))
                 date_cell = f"{columns['date']}{row_num}"
-                current_date = ws[date_cell].value
-                if current_date is None or current_date == '':
-                    ws[date_cell] = calculated_date
-                    print(f"  Day {day_value}: Set date to {calculated_date}")
-                    changes_made += 1
+                ws[date_cell] = calculated_date  # Always set
+                print(f"  Day {day_value}: Set date to {calculated_date}")
+                changes_made += 1
             
             # Get daily payment
             payment_cell = f"{columns['daily_payments']}{row_num}"
             payment_value = ws[payment_cell].value
             
-            # Add to cumulative if there's a payment
+            # Add to cumulative if there's a payment entry (even if 0)
             if payment_value is not None and payment_value != '':
                 try:
                     cumulative_sum += float(payment_value)
                 except:
                     pass
-            
-            # Get current cumulative value
-            cumulative_cell = f"{columns['cumulative']}{row_num}"
-            current_cumulative = ws[cumulative_cell].value
-            
-            # Update if cumulative is missing or different
-            if payment_value is not None and payment_value != '':
-                if current_cumulative is None or current_cumulative == '':
-                    ws[cumulative_cell] = cumulative_sum
-                    changes_made += 1
-                    print(f"  Day {day_value}: Set cumulative to {cumulative_sum}")
+                
+                # ALWAYS set cumulative (force overwrite formulas)
+                cumulative_cell = f"{columns['cumulative']}{row_num}"
+                ws[cumulative_cell] = cumulative_sum
+                print(f"  Day {day_value}: Set cumulative to {cumulative_sum}")
+                changes_made += 1
         
         if changes_made > 0:
             wb.save(str(tracker_path))
