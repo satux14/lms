@@ -142,10 +142,10 @@
                     <tbody>
                         {% set cumulative_pending = 0 %}
                         {% for row in tracker_data.data %}
-                        {% if row.daily_payments %}
+                        {% if row.daily_payments is not none %}
                         {% set expected = row.day * tracker_data.parameters.per_day_payment %}
                         {% set cumulative_pending = expected - (row.cumulative or 0) %}
-                        <tr class="table-success">
+                        <tr class="{% if row.daily_payments and row.daily_payments > 0 %}table-success{% endif %}">
                             <td><strong>{{ row.day }}</strong></td>
                             <td>
                                 {% if row.date %}
@@ -192,7 +192,7 @@
             
             <div class="alert alert-info mt-3">
                 <i class="fas fa-info-circle me-2"></i>
-                <strong>Note:</strong> Only days with payment entries are shown above. Empty days are hidden for better readability.
+                <strong>Note:</strong> All days with entries are shown. Days without any data are hidden for better readability.
             </div>
         </div>
     </div>
