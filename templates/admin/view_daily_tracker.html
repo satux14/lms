@@ -96,20 +96,28 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Total Days with Payments:</strong></p>
+                        <div class="col-md-2">
+                            <p class="mb-1"><strong>Total Days:</strong></p>
+                            <h4>{{ tracker_data.data|length }}</h4>
+                        </div>
+                        <div class="col-md-2">
+                            <p class="mb-1"><strong>Days with Payments:</strong></p>
                             <h4>{{ summary.total_days }}</h4>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <p class="mb-1"><strong>Total Payments:</strong></p>
                             <h4>₹{{ "%.2f"|format(summary.total_payments) }}</h4>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <p class="mb-1"><strong>Pending:</strong></p>
+                            <h4 class="text-warning">₹{{ "%.2f"|format(summary.pending) }}</h4>
+                        </div>
+                        <div class="col-md-2">
                             <p class="mb-1"><strong>Cumulative:</strong></p>
                             <h4>₹{{ "%.2f"|format(summary.cumulative) }}</h4>
                         </div>
                         {% if tracker.tracker_type in ['50K', '1L'] %}
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <p class="mb-1"><strong>Balance:</strong></p>
                             <h4>₹{{ "%.2f"|format(summary.balance) }}</h4>
                         </div>
