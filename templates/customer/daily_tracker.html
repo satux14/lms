@@ -136,15 +136,11 @@
                             {% endif %}
                             <th>Payment Mode</th>
                             <th>Cumulative</th>
-                            <th>Pending</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% set cumulative_pending = 0 %}
                         {% for row in tracker_data.data %}
                         {% if row.daily_payments is not none %}
-                        {% set expected = row.day * tracker_data.parameters.per_day_payment %}
-                        {% set cumulative_pending = expected - (row.cumulative or 0) %}
                         <tr class="{% if row.daily_payments and row.daily_payments > 0 %}table-success{% endif %}">
                             <td><strong>{{ row.day }}</strong></td>
                             <td>
@@ -174,13 +170,6 @@
                                 ₹{{ "%.2f"|format(row.cumulative) }}
                                 {% else %}
                                 -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if cumulative_pending > 0 %}
-                                <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(cumulative_pending) }}</span>
-                                {% else %}
-                                <span class="badge bg-success">₹0.00</span>
                                 {% endif %}
                             </td>
                         </tr>
