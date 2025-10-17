@@ -2593,7 +2593,8 @@ def customer_trackers_dashboard(instance_name):
                 'pending': pending,
                 'balance': summary.get('balance', 0),
                 'cumulative': summary.get('cumulative', 0),
-                'days_with_payments': summary['total_days']
+                'days_with_payments': summary['total_days'],
+                'total_days_count': summary['total_days_count']
             })
         except Exception as e:
             print(f"Error processing tracker {tracker.id}: {e}")
@@ -2606,6 +2607,7 @@ def customer_trackers_dashboard(instance_name):
                 'balance': 0,
                 'cumulative': 0,
                 'days_with_payments': 0,
+                'total_days_count': 0,
                 'error': str(e)
             })
     
