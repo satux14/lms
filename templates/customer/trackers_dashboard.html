@@ -87,7 +87,7 @@
                                 <span class="badge bg-primary">₹{{ "%.2f"|format(summary.tracker.per_day_payment) }}</span>
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ summary.days_with_payments }}</span>
+                                <span class="badge bg-info">{{ summary.days_with_payments }}/{{ summary.total_days_count }}</span>
                             </td>
                             <td>
                                 {% if summary.last_paid_date %}
