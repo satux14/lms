@@ -378,7 +378,8 @@ def get_tracker_summary(instance, filename):
     rows = data['data']
     
     # Calculate summary - just read from Excel, don't calculate ourselves
-    total_days = len([r for r in rows if r.get('daily_payments')])
+    total_days = len([r for r in rows if r.get('daily_payments')])  # Days with actual payments
+    total_days_count = len(rows)  # Total days including 0 payments
     
     # Get the latest row with data
     latest_row = None
@@ -412,6 +413,7 @@ def get_tracker_summary(instance, filename):
     
     return {
         'total_days': total_days,
+        'total_days_count': total_days_count,
         'total_payments': total_payments,
         'balance': balance,
         'cumulative': cumulative,
