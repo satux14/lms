@@ -420,19 +420,13 @@ def update_tracker_entry_by_index(instance, filename, row_index, entry_data):
             
             ws[cell] = value
     
-    # Auto-calculate date if not provided but day is updated
-    if 'day' in entry_data and 'date' not in entry_data:
-        # Get start_date from the tracker
-        start_date_cell = config['start_date_cell']
-        start_date = ws[start_date_cell].value
-        if start_date and isinstance(start_date, (datetime, date)):
-            if isinstance(start_date, datetime):
-                start_date = start_date.date()
-            # Calculate the date for this day
-            day_value = entry_data['day']
-            calculated_date = start_date + timedelta(days=int(day_value) - 1)
-            date_cell = f"{columns['date']}{row_num}"
-            ws[date_cell] = calculated_date
+    # Only update date if explicitly provided in entry_data
+    # When editing, preserve the existing date unless user changes the day field manually
+    # and we want to recalculate based on new day value
+    if 'date' in entry_data:
+        # Date is explicitly provided, use it
+        date_cell = f"{columns['date']}{row_num}"
+        ws[date_cell] = entry_data['date']
     
     # Auto-calculate cumulative if daily_payments is provided but cumulative is not
     if 'daily_payments' in entry_data and 'cumulative' not in entry_data:
