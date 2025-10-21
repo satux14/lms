@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Entry - {{ tracker.tracker_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
+                            <i class="fas fa-calendar-alt me-2"></i>All Trackers
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-edit me-2"></i>Edit Entry (Row {{ row_index + 1 }})
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Tracker
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tracker Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Tracker: {{ tracker.tracker_name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>User:</strong> {{ tracker.user.username }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Type:</strong> {{ tracker.tracker_type }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Investment:</strong> ₹{{ "%.2f"|format(tracker.investment) }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Start Date:</strong> {{ tracker.start_date.strftime('%Y-%m-%d') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Entry Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-wpforms me-2"></i>Edit Entry Details - Day {{ row_data.day }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <!-- Day Number (editable but shown) -->
+                                <div class="mb-3">
+                                    <label for="day" class="form-label">
+                                        <i class="fas fa-calendar-day me-2"></i>Day Number *
+                                    </label>
+                                    <input type="number" class="form-control" id="day" name="day" 
+                                           min="0" max="{{ tracker.scheme_period }}" required
+                                           value="{{ row_data.day if row_data.day is not none else '' }}">
+                                    <small class="form-text text-muted">Day 0 is the start date, Day 1 is the first day after start, etc.</small>
+                                </div>
+
+                                <!-- Date (read-only, auto-calculated) -->
+                                <div class="mb-3">
+                                    <label for="date_display" class="form-label">
+                                        <i class="fas fa-calendar me-2"></i>Date
+                                    </label>
+                                    <input type="text" class="form-control" id="date_display" 
+                                           value="{% if row_data.date %}{% if row_data.date is string %}{{ row_data.date }}{% else %}{{ row_data.date.strftime('%Y-%m-%d') if row_data.date.strftime is defined else row_data.date }}{% endif %}{% endif %}" 
+                                           readonly>
+                                    <small class="form-text text-muted">Auto-calculated from start date + day number</small>
+                                </div>
+
+                                <!-- Daily Payment -->
+                                <div class="mb-3">
+                                    <label for="daily_payments" class="form-label">
+                                        <i class="fas fa-rupee-sign me-2"></i>Daily Payment
+                                    </label>
+                                    <input type="number" class="form-control" id="daily_payments" name="daily_payments" 
+                                           step="0.01" min="0" placeholder="e.g., 3000"
+                                           value="{{ row_data.daily_payments if row_data.daily_payments is not none else '' }}">
+                                </div>
+
+                                {% if tracker.tracker_type == 'No Reinvest' %}
+                                <!-- Transaction Details (No Reinvest only) -->
+                                <div class="mb-3">
+                                    <label for="transaction_details" class="form-label">
+                                        <i class="fas fa-file-alt me-2"></i>Transaction Details
+                                    </label>
+                                    <input type="text" class="form-control" id="transaction_details" name="transaction_details" 
+                                           placeholder="Transaction reference or details"
+                                           value="{{ row_data.transaction_details if row_data.transaction_details else '' }}">
+                                </div>
+                                {% endif %}
+
+                                <!-- Payment Mode -->
+                                <div class="mb-3">
+                                    <label for="payment_mode" class="form-label">
+                                        <i class="fas fa-credit-card me-2"></i>Payment Mode
+                                    </label>
+                                    <select class="form-select" id="payment_mode" name="payment_mode">
+                                        <option value="">Select payment mode...</option>
+                                        <option value="Cash" {% if row_data.payment_mode == 'Cash' %}selected{% endif %}>Cash</option>
+                                        <option value="Bank Transfer" {% if row_data.payment_mode == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
+                                        <option value="UPI" {% if row_data.payment_mode == 'UPI' %}selected{% endif %}>UPI</option>
+                                        <option value="Cheque" {% if row_data.payment_mode == 'Cheque' %}selected{% endif %}>Cheque</option>
+                                        <option value="Online" {% if row_data.payment_mode == 'Online' %}selected{% endif %}>Online</option>
+                                        <option value="Other" {% if row_data.payment_mode == 'Other' %}selected{% endif %}>Other</option>
+                                    </select>
+                                </div>
+
+                                {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
+                                <!-- Withdrawn Amount -->
+                                <div class="mb-3">
+                                    <label for="withdrawn" class="form-label">
+                                        <i class="fas fa-money-bill-wave me-2"></i>Withdrawn Amount
+                                    </label>
+                                    <input type="number" class="form-control" id="withdrawn" name="withdrawn" 
+                                           step="0.01" min="0" placeholder="Amount withdrawn"
+                                           value="{{ row_data.withdrawn if row_data.withdrawn is not none else '' }}">
+                                </div>
+                                {% endif %}
+
+                                {% if tracker.tracker_type == '1L' %}
+                                <!-- 1L Enhanced specific fields -->
+                                <div class="mb-3">
+                                    <label for="reinvest" class="form-label">
+                                        <i class="fas fa-redo me-2"></i>Reinvest Amount
+                                    </label>
+                                    <input type="number" class="form-control" id="reinvest" name="reinvest" 
+                                           step="0.01" min="0" placeholder="Amount to reinvest"
+                                           value="{{ row_data.reinvest if row_data.reinvest is not none else '' }}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="reinvest_from" class="form-label">
+                                        <i class="fas fa-info-circle me-2"></i>Reinvest From
+                                    </label>
+                                    <input type="text" class="form-control" id="reinvest_from" name="reinvest_from" 
+                                           placeholder="Source of reinvestment"
+                                           value="{{ row_data.reinvest_from if row_data.reinvest_from else '' }}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="pocket_money" class="form-label">
+                                        <i class="fas fa-wallet me-2"></i>Pocket Money
+                                    </label>
+                                    <input type="number" class="form-control" id="pocket_money" name="pocket_money" 
+                                           step="0.01" min="0" placeholder="Pocket money amount"
+                                           value="{{ row_data.pocket_money if row_data.pocket_money is not none else '' }}">
+                                </div>
+                                {% endif %}
+
+                                <!-- Notes -->
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">
+                                        <i class="fas fa-sticky-note me-2"></i>Notes
+                                    </label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                              placeholder="Any additional notes or comments">{{ row_data.notes if row_data.notes else '' }}</textarea>
+                                </div>
+
+                                <!-- Submit Buttons -->
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                       class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Update Entry
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Editing Entry
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6><i class="fas fa-info-circle me-2 text-info"></i>Current Values</h6>
+                            <ul class="small">
+                                <li><strong>Day:</strong> {{ row_data.day }}</li>
+                                <li><strong>Date:</strong> {% if row_data.date %}{% if row_data.date is string %}{{ row_data.date }}{% else %}{{ row_data.date.strftime('%Y-%m-%d') }}{% endif %}{% else %}Not set{% endif %}</li>
+                                <li><strong>Payment:</strong> ₹{{ "%.2f"|format(row_data.daily_payments) if row_data.daily_payments is not none else '0.00' }}</li>
+                                <li><strong>Mode:</strong> {{ row_data.payment_mode if row_data.payment_mode else 'Not set' }}</li>
+                                {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
+                                <li><strong>Cumulative:</strong> ₹{{ "%.2f"|format(row_data.cumulative) if row_data.cumulative is not none else '0.00' }}</li>
+                                {% endif %}
+                            </ul>
+
+                            <hr>
+
+                            <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Tips</h6>
+                            <ul class="small">
+                                <li>You're editing row {{ row_index + 1 }} of the tracker</li>
+                                <li>All current values are pre-filled</li>
+                                <li>Leave a field empty to clear its value</li>
+                                <li>Excel formulas will auto-recalculate</li>
+                                <li>Changes are saved immediately to the Excel file</li>
+                            </ul>
+
+                            <hr>
+
+                            <div class="alert alert-info small">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                This edit button allows you to update specific entries without confusion, 
+                                even if there are duplicate day numbers in the tracker.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-update date display when day changes
+document.getElementById('day').addEventListener('change', function() {
+    const day = parseInt(this.value);
+    const startDate = new Date('{{ tracker.start_date.strftime("%Y-%m-%d") }}');
+    const targetDate = new Date(startDate);
+    targetDate.setDate(startDate.getDate() + (day - 1));
+    
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const date = String(targetDate.getDate()).padStart(2, '0');
+    
+    document.getElementById('date_display').value = `${year}-${month}-${date}`;
+});
+</script>
+{% endblock %}
+
