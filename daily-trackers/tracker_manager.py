@@ -362,6 +362,101 @@ def update_tracker_entry(instance, filename, day, entry_data):
     return True
 
 
+def update_tracker_entry_by_index(instance, filename, row_index, entry_data):
+    """
+    Update a specific entry in the tracker by row index
+    
+    Args:
+        instance: Instance name
+        filename: Filename of the tracker
+        row_index: Zero-based index of the row in the data array
+        entry_data: Dictionary with column names and values to update
+    
+    Returns:
+        True if successful
+    """
+    tracker_dir = Path(get_tracker_directory(instance))
+    tracker_path = tracker_dir / filename
+    
+    if not tracker_path.exists():
+        raise FileNotFoundError(f"Tracker file not found: {filename}")
+    
+    wb = openpyxl.load_workbook(str(tracker_path))
+    ws = wb.active
+    
+    sheet_name = ws.title
+    
+    # Determine tracker type from sheet name
+    tracker_type = None
+    for key, value in TRACKER_TYPES.items():
+        if value == sheet_name:
+            tracker_type = key
+            break
+    
+    if not tracker_type:
+        raise ValueError(f"Unknown sheet name: {sheet_name}")
+    
+    config = SHEET_CONFIGS[tracker_type]
+    columns = config['columns']
+    data_start = config['data_start_row']
+    
+    # Calculate actual Excel row number from row_index
+    row_num = data_start + row_index
+    
+    # Update the specified columns
+    for col_name, value in entry_data.items():
+        if col_name in columns:
+            col_letter = columns[col_name]
+            cell = f"{col_letter}{row_num}"
+            
+            # Handle date conversion
+            if col_name == 'date':
+                if isinstance(value, str):
+                    value = datetime.strptime(value, '%Y-%m-%d').date()
+            
+            # Convert Decimal to float for Excel
+            if isinstance(value, Decimal):
+                value = float(value)
+            
+            ws[cell] = value
+    
+    # Auto-calculate date if not provided but day is updated
+    if 'day' in entry_data and 'date' not in entry_data:
+        # Get start_date from the tracker
+        start_date_cell = config['start_date_cell']
+        start_date = ws[start_date_cell].value
+        if start_date and isinstance(start_date, (datetime, date)):
+            if isinstance(start_date, datetime):
+                start_date = start_date.date()
+            # Calculate the date for this day
+            day_value = entry_data['day']
+            calculated_date = start_date + timedelta(days=int(day_value) - 1)
+            date_cell = f"{columns['date']}{row_num}"
+            ws[date_cell] = calculated_date
+    
+    # Auto-calculate cumulative if daily_payments is provided but cumulative is not
+    if 'daily_payments' in entry_data and 'cumulative' not in entry_data:
+        # Calculate cumulative as sum of all daily_payments from start to this day
+        cumulative_sum = 0
+        for calc_row in range(data_start, row_num + 1):
+            payment_cell = f"{columns['daily_payments']}{calc_row}"
+            payment_value = ws[payment_cell].value
+            if payment_value is not None:
+                try:
+                    cumulative_sum += float(payment_value)
+                except:
+                    pass
+        
+        # Set the cumulative value
+        cumulative_cell = f"{columns['cumulative']}{row_num}"
+        ws[cumulative_cell] = cumulative_sum
+    
+    # Save the workbook
+    wb.save(str(tracker_path))
+    
+    return True
+
+
 def get_tracker_summary(instance, filename):
     """
     Get summary information from a tracker

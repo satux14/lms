@@ -187,6 +187,7 @@
                                     <th>Withdrawn</th>
                                     {% endif %}
                                     <th>Notes</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -222,6 +223,13 @@
                                     <td>{{ "%.2f"|format(row.total_invested) if row.total_invested is not none else '' }}</td>
                                     {% endif %}
                                     <td>{{ row.notes or '' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin_edit_tracker_entry', instance_name=instance_name, tracker_id=tracker.id, row_index=loop.index0) }}" 
+                                           class="btn btn-sm btn-primary" 
+                                           title="Edit this entry">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

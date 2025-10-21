@@ -2543,6 +2543,84 @@ def admin_add_tracker_entry(instance_name, tracker_id):
         return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
 
 
+@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/edit-entry/<int:row_index>', methods=['GET', 'POST'])
+@login_required
+def admin_edit_tracker_entry(instance_name, tracker_id, row_index):
+    """Admin edit a specific entry by row index"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
+    if not tracker:
+        flash('Tracker not found', 'error')
+        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
+    
+    # Get tracker data
+    try:
+        tracker_data = get_tracker_data(instance_name, tracker.filename)
+    except Exception as e:
+        flash(f'Error reading tracker data: {str(e)}', 'error')
+        return redirect(url_for('admin_view_daily_tracker', 
+                              instance_name=instance_name, 
+                              tracker_id=tracker_id))
+    
+    # Validate row_index
+    if row_index < 0 or row_index >= len(tracker_data['data']):
+        flash('Invalid row index', 'error')
+        return redirect(url_for('admin_view_daily_tracker', 
+                              instance_name=instance_name, 
+                              tracker_id=tracker_id))
+    
+    row_data = tracker_data['data'][row_index]
+    
+    if request.method == 'POST':
+        try:
+            entry_data = {}
+            
+            # Collect all form fields dynamically
+            for key, value in request.form.items():
+                if value.strip():
+                    # Convert numeric fields
+                    if key in ['day', 'daily_payments', 'withdrawn', 'cumulative', 'balance', 
+                              'reinvest', 'pocket_money', 'total_invested']:
+                        try:
+                            entry_data[key] = Decimal(value) if key != 'day' else int(value)
+                        except:
+                            entry_data[key] = value
+                    else:
+                        entry_data[key] = value
+            
+            # Update the tracker by row index
+            sys.path.insert(0, str(Path(__file__).parent / 'daily-trackers'))
+            from tracker_manager import update_tracker_entry_by_index
+            update_tracker_entry_by_index(instance_name, tracker.filename, row_index, entry_data)
+            
+            # Update the tracker's updated_at timestamp
+            tracker.updated_at = datetime.utcnow()
+            commit_current_instance()
+            
+            flash(f'Entry for Day {row_data.get("day", row_index)} updated successfully', 'success')
+            return redirect(url_for('admin_view_daily_tracker', 
+                                  instance_name=instance_name, 
+                                  tracker_id=tracker_id))
+            
+        except Exception as e:
+            flash(f'Error updating entry: {str(e)}', 'error')
+            print(f"Error updating entry: {e}")
+    
+    # GET request - show form with current values
+    return render_template('admin/edit_tracker_entry.html',
+                         tracker=tracker,
+                         tracker_data=tracker_data,
+                         row_data=row_data,
+                         row_index=row_index,
+                         instance_name=instance_name)
+
+
 # ============================================================================
 # CUSTOMER DAILY TRACKER ROUTES
 # ============================================================================
