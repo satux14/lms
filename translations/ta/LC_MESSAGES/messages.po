@@ -1417,3 +1417,59 @@ msgstr "பயனர் வகை"
 msgid "Create User"
 msgstr "பயனரை உருவாக்கு"
 
+
+# Customer Daily Tracker Page
+msgid "Investment"
+msgstr "முதலீடு"
+
+msgid "Days Period"
+msgstr "நாட்கள் காலம்"
+
+msgid "Start Date"
+msgstr "தொடக்க தேதி"
+
+msgid "Per Day Payment"
+msgstr "ஒரு நாள் செலுத்தல்"
+
+msgid "Days Paid/Total Days"
+msgstr "செலுத்திய நாட்கள்/மொத்த நாட்கள்"
+
+msgid "Expected Payment"
+msgstr "எதிர்பார்க்கப்படும் செலுத்தல்"
+
+msgid "Pending"
+msgstr "நிலுவையில்"
+
+msgid "Daily Tracker Entries"
+msgstr "தினசரி பதிவுகள்"
+
+msgid "Entries"
+msgstr "பதிவுகள்"
+
+msgid "Day"
+msgstr "நாள்"
+
+msgid "Date"
+msgstr "தேதி"
+
+msgid "Daily Payments"
+msgstr "தினசரி செலுத்தல்கள்"
+
+msgid "Transaction Details"
+msgstr "பரிவர்த்தனை விவரங்கள்"
+
+msgid "Payment Mode"
+msgstr "செலுத்தும் முறை"
+
+msgid "Cumulative"
+msgstr "ஒட்டுமொத்த"
+
+msgid "Back to Trackers"
+msgstr "பதிவுகளுக்குத் திரும்பு"
+
+msgid "Summary"
+msgstr "சுருக்கம்"
+
+msgid "Note: All days with entries are shown. Days without any data are hidden for better readability."
+msgstr "குறிப்பு: பதிவுகள் உள்ள அனைத்து நாட்களும் காட்டப்படுகின்றன. தரவு இல்லாத நாட்கள் சிறந்த வாசிப்புக்காக மறைக்கப்பட்டுள்ளன."
+
