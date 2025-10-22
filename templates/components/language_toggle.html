@@ -10,41 +10,63 @@ The component automatically detects current language and displays toggle button
 -->
 
 <div class="language-toggle" style="display: inline-block;">
-    <div class="btn-group btn-group-sm" role="group" aria-label="Language selection">
+    <div class="btn-group" role="group" aria-label="Language selection">
         {% if current_language == 'en' %}
             <a href="{{ url_for('set_language', instance_name=instance_name, language_code='en') }}" 
-               class="btn btn-primary btn-sm active" title="English">
-                <i class="fas fa-globe me-1"></i>EN
+               class="btn btn-success active" title="English">
+                <i class="fas fa-globe me-1"></i><strong>English</strong>
             </a>
             <a href="{{ url_for('set_language', instance_name=instance_name, language_code='ta') }}" 
-               class="btn btn-outline-primary btn-sm" title="தமிழ்">
-                <i class="fas fa-language me-1"></i>த
+               class="btn btn-outline-light text-white" title="தமிழ்">
+                <i class="fas fa-language me-1"></i><strong>தமிழ்</strong>
             </a>
         {% else %}
             <a href="{{ url_for('set_language', instance_name=instance_name, language_code='en') }}" 
-               class="btn btn-outline-primary btn-sm" title="English">
-                <i class="fas fa-globe me-1"></i>EN
+               class="btn btn-outline-light text-white" title="English">
+                <i class="fas fa-globe me-1"></i><strong>English</strong>
             </a>
             <a href="{{ url_for('set_language', instance_name=instance_name, language_code='ta') }}" 
-               class="btn btn-primary btn-sm active" title="தமிழ்">
-                <i class="fas fa-language me-1"></i>த
+               class="btn btn-success active" title="தமிழ்">
+                <i class="fas fa-language me-1"></i><strong>தமிழ்</strong>
             </a>
         {% endif %}
     </div>
 </div>
 
 <style>
+.language-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px;
+    border-radius: 8px;
+}
+
 .language-toggle .btn {
-    font-weight: 600;
-    min-width: 50px;
+    font-weight: 700;
+    min-width: 90px;
+    padding: 8px 16px;
+    font-size: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
 }
 
 .language-toggle .btn.active {
     pointer-events: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-color: #28a745;
 }
 
-.language-toggle .btn:hover {
-    transform: translateY(-1px);
-    transition: all 0.2s ease;
+.language-toggle .btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.language-toggle .btn-outline-light {
+    background: transparent;
+}
+
+.language-toggle .btn i {
+    font-size: 16px;
 }
 </style>
