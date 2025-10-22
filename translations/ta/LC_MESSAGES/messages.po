@@ -1462,7 +1462,7 @@ msgid "Payment Mode"
 msgstr "செலுத்தும் முறை"
 
 msgid "Cumulative"
-msgstr "ஒட்டுமொத்த"
+msgstr "திரட்சி"
 
 msgid "Back to Trackers"
 msgstr "பதிவுகளுக்குத் திரும்பு"
