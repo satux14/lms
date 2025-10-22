@@ -22,13 +22,15 @@ from datetime import datetime
 
 def get_db_paths():
     """Returns a list of potential database paths."""
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+    base_dir = os.path.abspath(os.path.dirname(__file__))
     db_paths = []
 
     # Common instance paths
     for instance_name in ['prod', 'dev', 'testing']:
-        path1 = os.path.join(base_dir, 'instances', instance_name, 'database', f'lending_app_{instance_name}.db')
-        path2 = os.path.join(base_dir, 'instance', instance_name, 'database', f'lending_app_{instance_name}.db')
+        # Check instance/prod/database/ first (most common)
+        path1 = os.path.join(base_dir, 'instance', instance_name, 'database', f'lending_app_{instance_name}.db')
+        # Check instances/prod/database/ (alternate)
+        path2 = os.path.join(base_dir, 'instances', instance_name, 'database', f'lending_app_{instance_name}.db')
         if os.path.exists(path1):
             db_paths.append(path1)
         if os.path.exists(path2):
