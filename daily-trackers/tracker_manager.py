@@ -160,6 +160,24 @@ def create_tracker_file(instance, username, tracker_name, tracker_type, investme
     
     ws[config['per_day_payment_cell']] = float(per_day_payment)
     
+    # Populate date values directly (not formulas) for all data rows
+    # This ensures dates are immediately visible without needing Excel to recalculate
+    data_start = config['data_start_row']
+    date_col = config['columns']['date']
+    day_col = config['columns']['day']
+    
+    # Calculate max rows based on scheme period
+    max_rows = int(scheme_period) + 10  # Add some buffer
+    
+    for row_num in range(data_start, data_start + max_rows):
+        # Get the day number from the row
+        day_value = ws[f'{day_col}{row_num}'].value
+        if day_value is not None:
+            # Calculate the actual date: start_date + day_number
+            calculated_date = start_date + timedelta(days=int(day_value))
+            # Store as string in yyyy-mm-dd format for consistency
+            ws[f'{date_col}{row_num}'] = calculated_date.strftime('%Y-%m-%d')
+    
     # Remove other sheets (keep only the selected tracker type)
     for sheet in wb.sheetnames:
         if sheet != sheet_name:
