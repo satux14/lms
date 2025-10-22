@@ -1473,3 +1473,8 @@ msgstr "சுருக்கம்"
 msgid "Note: All days with entries are shown. Days without any data are hidden for better readability."
 msgstr "குறிப்பு: பதிவுகள் உள்ள அனைத்து நாட்களும் காட்டப்படுகின்றன. தரவு இல்லாத நாட்கள் சிறந்த வாசிப்புக்காக மறைக்கப்பட்டுள்ளன."
 
+
+# Company Name
+msgid "The SRS Consulting"
+msgstr "The SRS Consulting"
+
