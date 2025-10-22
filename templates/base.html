@@ -209,7 +209,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-university me-2"></i>Lending Management System
+                <i class="fas fa-university me-2"></i>{{ _('Lending Management System') }}
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -218,6 +218,11 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    <!-- Language Toggle -->
+                    <li class="nav-item me-2 d-flex align-items-center">
+                        {% include 'components/language_toggle.html' %}
+                    </li>
+                    
                     {% if current_user.is_authenticated %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
@@ -226,28 +231,28 @@
                             <ul class="dropdown-menu">
                                 {% if current_user.is_admin %}
                                     <li><a class="dropdown-item" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
-                                        <i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard
+                                        <i class="fas fa-tachometer-alt me-2"></i>{{ _('Admin Dashboard') }}
                                     </a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('admin_interest_rate', instance_name=instance_name) }}">
-                                        <i class="fas fa-percentage me-2"></i>Interest Rates
+                                        <i class="fas fa-percentage me-2"></i>{{ _('Interest Rates') }}
                                     </a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
-                                        <i class="fas fa-file-invoice-dollar me-2"></i>All Loans
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>{{ _('All Loans') }}
                                     </a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
-                                        <i class="fas fa-plus me-2"></i>Create Loan
+                                        <i class="fas fa-plus me-2"></i>{{ _('Create Loan') }}
                                     </a></li>
                                 {% else %}
                                     <li><a class="dropdown-item" href="{{ url_for('customer_dashboard', instance_name=instance_name) }}">
-                                        <i class="fas fa-tachometer-alt me-2"></i>My Dashboard
+                                        <i class="fas fa-tachometer-alt me-2"></i>{{ _('My Dashboard') }}
                                     </a></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('change_password', instance_name=instance_name) }}">
-                                    <i class="fas fa-key me-2"></i>Change Password
+                                    <i class="fas fa-key me-2"></i>{{ _('Change Password') }}
                                 </a></li>
                                 <li><a class="dropdown-item" href="{{ url_for('logout', instance_name=instance_name) }}">
-                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    <i class="fas fa-sign-out-alt me-2"></i>{{ _('Logout') }}
                                 </a></li>
                             </ul>
                         </li>
