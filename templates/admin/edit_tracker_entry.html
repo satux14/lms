@@ -11,12 +11,12 @@
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
-                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                            <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
-                            <i class="fas fa-calendar-alt me-2"></i>All Trackers
+                            <i class="fas fa-calendar-alt me-2"></i>{{ _("All Trackers") }}
                         </a>
                     </li>
                 </ul>
@@ -33,7 +33,7 @@
                     <div class="btn-group me-2">
                         <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
                            class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Back to Tracker
+                            <i class="fas fa-arrow-left me-1"></i>{{ _("Back") }} to Tracker
                         </a>
                     </div>
                 </div>

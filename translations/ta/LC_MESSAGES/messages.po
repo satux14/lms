@@ -1,0 +1,1419 @@
+# Tamil translations for Lending Management System
+# தமிழ் மொழிபெயர்ப்புகள் - கடன் மேலாண்மை அமைப்பு
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"POT-Creation-Date: 2025-10-22 07:00\n"
+"PO-Revision-Date: 2025-10-22 07:00\n"
+"Last-Translator: \n"
+"Language: ta\n"
+"Language-Team: Tamil\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Common Actions
+msgid "Login"
+msgstr "உள்நுழைவு"
+
+msgid "Logout"
+msgstr "வெளியேறு"
+
+msgid "Register"
+msgstr "பதிவு செய்க"
+
+msgid "Submit"
+msgstr "சமர்ப்பிக்க"
+
+msgid "Cancel"
+msgstr "ரத்து செய்"
+
+msgid "Save"
+msgstr "சேமி"
+
+msgid "Delete"
+msgstr "நீக்கு"
+
+msgid "Edit"
+msgstr "திருத்து"
+
+msgid "View"
+msgstr "பார்வையிடு"
+
+msgid "Create"
+msgstr "உருவாக்கு"
+
+msgid "Add"
+msgstr "சேர்"
+
+msgid "Update"
+msgstr "புதுப்பி"
+
+msgid "Search"
+msgstr "தேடு"
+
+msgid "Filter"
+msgstr "வடிகட்டு"
+
+msgid "Export"
+msgstr "ஏற்றுமதி"
+
+msgid "Download"
+msgstr "பதிவிறக்கு"
+
+msgid "Upload"
+msgstr "பதிவேற்று"
+
+msgid "Back"
+msgstr "பின்"
+
+msgid "Next"
+msgstr "அடுத்து"
+
+msgid "Close"
+msgstr "மூடு"
+
+# User Interface
+msgid "Username"
+msgstr "பயனர்பெயர்"
+
+msgid "Password"
+msgstr "கடவுச்சொல்"
+
+msgid "Email"
+msgstr "மின்னஞ்சல்"
+
+msgid "Forgot Password?"
+msgstr "கடவுச்சொல் மறந்துவிட்டதா?"
+
+msgid "Change Password"
+msgstr "கடவுச்சொல் மாற்று"
+
+msgid "Dashboard"
+msgstr "முகப்புப் பக்கம்"
+
+msgid "Profile"
+msgstr "சுயவிவரம்"
+
+msgid "Settings"
+msgstr "அமைப்புகள்"
+
+# Loan Management
+msgid "Loan"
+msgstr "கடன்"
+
+msgid "Loans"
+msgstr "கடன்கள்"
+
+msgid "All Loans"
+msgstr "அனைத்து கடன்கள்"
+
+msgid "My Loans"
+msgstr "என் கடன்கள்"
+
+msgid "Create Loan"
+msgstr "கடன் உருவாக்கு"
+
+msgid "Loan Details"
+msgstr "கடன் விவரங்கள்"
+
+msgid "Loan Name"
+msgstr "கடன் பெயர்"
+
+msgid "Loan Amount"
+msgstr "கடன் தொகை"
+
+msgid "Principal Amount"
+msgstr "அசல் தொகை"
+
+msgid "Remaining Principal"
+msgstr "மீதமுள்ள அசல்"
+
+msgid "Interest Rate"
+msgstr "வட்டி விகிதம்"
+
+msgid "Payment Frequency"
+msgstr "செலுத்தும் அதிர்வெண்"
+
+msgid "Loan Type"
+msgstr "கடன் வகை"
+
+msgid "Interest Only"
+msgstr "வட்டி மட்டும்"
+
+msgid "Regular"
+msgstr "வழக்கமான"
+
+msgid "Daily"
+msgstr "தினசரி"
+
+msgid "Monthly"
+msgstr "மாதாந்திர"
+
+msgid "Active"
+msgstr "செயலில்"
+
+msgid "Closed"
+msgstr "மூடப்பட்டது"
+
+msgid "Paid Off"
+msgstr "செலுத்தப்பட்டது"
+
+# Payment Management
+msgid "Payment"
+msgstr "செலுத்துதல்"
+
+msgid "Payments"
+msgstr "செலுத்துதல்கள்"
+
+msgid "All Payments"
+msgstr "அனைத்து செலுத்துதல்கள்"
+
+msgid "Add Payment"
+msgstr "செலுத்துதல் சேர்"
+
+msgid "Payment Date"
+msgstr "செலுத்திய தேதி"
+
+msgid "Payment Amount"
+msgstr "செலுத்திய தொகை"
+
+msgid "Payment Mode"
+msgstr "செலுத்தும் முறை"
+
+msgid "Payment History"
+msgstr "செலுத்துதல் வரலாறு"
+
+msgid "Principal Payment Progress"
+msgstr "அசல் செலுத்தும் முன்னேற்றம்"
+
+msgid "Interest Amount"
+msgstr "வட்டித் தொகை"
+
+msgid "Principal Paid"
+msgstr "அசல் செலுத்தப்பட்டது"
+
+msgid "Interest Paid"
+msgstr "வட்டி செலுத்தப்பட்டது"
+
+msgid "Pending"
+msgstr "நிலுவையில்"
+
+msgid "Verified"
+msgstr "சரிபார்க்கப்பட்டது"
+
+msgid "Rejected"
+msgstr "நிராகரிக்கப்பட்டது"
+
+# Interest & Calculations
+msgid "Interest"
+msgstr "வட்டி"
+
+msgid "Accumulated Interest"
+msgstr "திரட்சி வட்டி"
+
+msgid "Daily Calculation"
+msgstr "தினசரி கணக்கீடு"
+
+msgid "Monthly Calculation"
+msgstr "மாதாந்திர கணக்கீடு"
+
+msgid "Calculate Interest"
+msgstr "வட்டி கணக்கிடு"
+
+msgid "Interest Calculation"
+msgstr "வட்டி கணக்கீடு"
+
+# Users & Roles
+msgid "User"
+msgstr "பயனர்"
+
+msgid "Users"
+msgstr "பயனர்கள்"
+
+msgid "Customer"
+msgstr "வாடிக்கையாளர்"
+
+msgid "Customers"
+msgstr "வாடிக்கையாளர்கள்"
+
+msgid "Admin"
+msgstr "நிர்வாகி"
+
+msgid "Moderator"
+msgstr "மதிப்பாய்வாளர்"
+
+msgid "User Management"
+msgstr "பயனர் மேலாண்மை"
+
+msgid "Create User"
+msgstr "பயனர் உருவாக்கு"
+
+# Trackers
+msgid "Tracker"
+msgstr "கண்காணிப்பாளர்"
+
+msgid "Trackers"
+msgstr "கண்காணிப்பாளர்கள்"
+
+msgid "Daily Tracker"
+msgstr "தினசரி கண்காணிப்பாளர்"
+
+msgid "All Trackers"
+msgstr "அனைத்து கண்காணிப்பாளர்கள்"
+
+msgid "My Trackers"
+msgstr "என் கண்காணிப்பாளர்கள்"
+
+msgid "Create Tracker"
+msgstr "கண்காணிப்பாளர் உருவாக்கு"
+
+msgid "Tracker Details"
+msgstr "கண்காணிப்பாளர் விவரங்கள்"
+
+# Status & Messages
+msgid "Status"
+msgstr "நிலை"
+
+msgid "Success"
+msgstr "வெற்றி"
+
+msgid "Error"
+msgstr "பிழை"
+
+msgid "Warning"
+msgstr "எச்சரிக்கை"
+
+msgid "Info"
+msgstr "தகவல்"
+
+msgid "Loading..."
+msgstr "ஏற்றுகிறது..."
+
+msgid "No data found"
+msgstr "தரவு எதுவும் இல்லை"
+
+msgid "Are you sure?"
+msgstr "நீங்கள் உறுதியாக இருக்கிறீர்களா?"
+
+msgid "Confirm"
+msgstr "உறுதிப்படுத்து"
+
+# Date & Time
+msgid "Date"
+msgstr "தேதி"
+
+msgid "Time"
+msgstr "நேரம்"
+
+msgid "Created"
+msgstr "உருவாக்கப்பட்டது"
+
+msgid "Updated"
+msgstr "புதுப்பிக்கப்பட்டது"
+
+msgid "Start Date"
+msgstr "தொடக்க தேதி"
+
+msgid "End Date"
+msgstr "முடிவு தேதி"
+
+msgid "Last Updated"
+msgstr "கடைசியாக புதுப்பிக்கப்பட்டது"
+
+# Numbers & Finance
+msgid "Total"
+msgstr "மொத்தம்"
+
+msgid "Amount"
+msgstr "தொகை"
+
+msgid "Balance"
+msgstr "இருப்பு"
+
+msgid "Cumulative"
+msgstr "திரட்சி"
+
+msgid "Pending Amount"
+msgstr "நிலுவைத் தொகை"
+
+msgid "Total Payments"
+msgstr "மொத்த செலுத்துதல்கள்"
+
+msgid "Total Principal"
+msgstr "மொத்த அசல்"
+
+# Reports & Analytics
+msgid "Report"
+msgstr "அறிக்கை"
+
+msgid "Reports"
+msgstr "அறிக்கைகள்"
+
+msgid "Summary"
+msgstr "சுருக்கம்"
+
+msgid "Statistics"
+msgstr "புள்ளிவிவரங்கள்"
+
+msgid "Analytics"
+msgstr "பகுப்பாய்வு"
+
+msgid "Export to Excel"
+msgstr "எக்செல் க்கு ஏற்றுமதி"
+
+# Navigation
+msgid "Home"
+msgstr "முகப்பு"
+
+msgid "Menu"
+msgstr "பட்டியல்"
+
+msgid "Actions"
+msgstr "செயல்கள்"
+
+msgid "Options"
+msgstr "விருப்பங்கள்"
+
+msgid "More"
+msgstr "மேலும்"
+
+# Form Labels
+msgid "Required"
+msgstr "தேவை"
+
+msgid "Optional"
+msgstr "விரும்பினால்"
+
+msgid "Description"
+msgstr "விவரம்"
+
+msgid "Notes"
+msgstr "குறிப்புகள்"
+
+msgid "Comments"
+msgstr "கருத்துகள்"
+
+msgid "Remarks"
+msgstr "கருத்துரைகள்"
+
+# Validation Messages
+msgid "Invalid language selection"
+msgstr "தவறான மொழி தேர்வு"
+
+msgid "Language preference saved"
+msgstr "மொழி விருப்பம் சேமிக்கப்பட்டது"
+
+msgid "Error saving language preference"
+msgstr "மொழி விருப்பத்தை சேமிப்பதில் பிழை"
+
+msgid "Please fill in all required fields"
+msgstr "தேவையான அனைத்து புலங்களையும் நிரப்பவும்"
+
+msgid "Invalid input"
+msgstr "தவறான உள்ளீடு"
+
+msgid "Operation successful"
+msgstr "செயல்பாடு வெற்றியாகும்"
+
+msgid "Operation failed"
+msgstr "செயல்பாடு தோல்வியடைந்தது"
+
+# Access & Permissions
+msgid "Access denied"
+msgstr "அணுகல் மறுக்கப்பட்டது"
+
+msgid "Permission denied"
+msgstr "அனுமதி மறுக்கப்பட்டது"
+
+msgid "Unauthorized"
+msgstr "அங்கீகரிக்கப்படவில்லை"
+
+msgid "You do not have permission to perform this action"
+msgstr "இந்த செயலைச் செய்ய உங்களுக்கு அனுமதி இல்லை"
+
+# Additional Banking Terms
+msgid "Transaction"
+msgstr "பரிவர்த்தனை"
+
+msgid "Transactions"
+msgstr "பரிவர்த்தனைகள்"
+
+msgid "Receipt"
+msgstr "ரசீது"
+
+msgid "Invoice"
+msgstr "விலைப்பட்டியல்"
+
+msgid "Statement"
+msgstr "அறிக்கை"
+
+msgid "Account"
+msgstr "கணக்கு"
+
+msgid "Balance Sheet"
+msgstr "இருப்புநிலைக் குறிப்பு"
+
+
+# Admin Dashboard Specific
+msgid "Admin Dashboard"
+msgstr "நிர்வாக முகப்புப் பக்கம்"
+
+msgid "Interest Rates"
+msgstr "வட்டி விகிதங்கள்"
+
+msgid "Active Loans"
+msgstr "செயலில் உள்ள கடன்கள்"
+
+msgid "Total Principal"
+msgstr "மொத்த அசல்"
+
+msgid "Interest Earned"
+msgstr "வட்டி ஈட்டப்பட்டது"
+
+msgid "Quick Actions"
+msgstr "விரைவு செயல்கள்"
+
+msgid "Create New Loan"
+msgstr "புதிய கடன் உருவாக்கு"
+
+msgid "Manage Users"
+msgstr "பயனர்களை நிர்வகி"
+
+msgid "View All Loans"
+msgstr "அனைத்து கடன்களைக் காண்க"
+
+msgid "Export Data"
+msgstr "தரவை ஏற்றுமதி செய்"
+
+msgid "Backup"
+msgstr "காப்புப்பிரதி"
+
+
+
+# Navigation & Common
+msgid "Lending Management System"
+msgstr "கடன் மேலாண்மை அமைப்பு"
+
+msgid "My Dashboard"
+msgstr "எனது முகப்புப் பக்கம்"
+
+msgid "Change Password"
+msgstr "கடவுச்சொல்லை மாற்று"
+
+msgid "Logout"
+msgstr "வெளியேறு"
+
+msgid "Loan Management"
+msgstr "கடன் மேலாண்மை"
+
+msgid "Create Loan"
+msgstr "கடன் உருவாக்கு"
+
+msgid "Create Tracker"
+msgstr "டிராக்கர் உருவாக்கு"
+
+msgid "Create User"
+msgstr "பயனர் உருவாக்கு"
+
+msgid "System"
+msgstr "அமைப்பு"
+
+# Forms & Actions
+msgid "Submit"
+msgstr "சமர்ப்பி"
+
+msgid "Save"
+msgstr "சேமி"
+
+msgid "Cancel"
+msgstr "ரத்து செய்"
+
+msgid "Edit"
+msgstr "திருத்து"
+
+msgid "View"
+msgstr "பார்"
+
+msgid "Close"
+msgstr "மூடு"
+
+msgid "Reopen"
+msgstr "மீண்டும் திற"
+
+msgid "Search"
+msgstr "தேடு"
+
+msgid "Filter"
+msgstr "வடிகட்டு"
+
+msgid "Download"
+msgstr "பதிவிறக்கு"
+
+msgid "Upload"
+msgstr "பதிவேற்று"
+
+msgid "Yes"
+msgstr "ஆம்"
+
+msgid "No"
+msgstr "இல்லை"
+
+msgid "Back"
+msgstr "பின் செல்"
+
+msgid "Next"
+msgstr "அடுத்து"
+
+msgid "Previous"
+msgstr "முந்தைய"
+
+msgid "Actions"
+msgstr "செயல்கள்"
+
+# Loan specific
+msgid "Loan ID"
+msgstr "கடன் அடையாள எண்"
+
+msgid "Loan Amount"
+msgstr "கடன் தொகை"
+
+msgid "Loan Details"
+msgstr "கடன் விவரங்கள்"
+
+msgid "View Loan"
+msgstr "கடனைப் பார்"
+
+msgid "Edit Loan"
+msgstr "கடனைத் திருத்து"
+
+msgid "Close Loan"
+msgstr "கடனை மூடு"
+
+msgid "Delete Loan"
+msgstr "கடனை நீக்கு"
+
+msgid "Loan Status"
+msgstr "கடன் நிலை"
+
+msgid "Created Date"
+msgstr "உருவாக்கப்பட்ட தேதி"
+
+msgid "Last Updated"
+msgstr "கடைசியாக புதுப்பிக்கப்பட்டது"
+
+msgid "Remaining Principal"
+msgstr "மீதமுள்ள அசல்"
+
+msgid "Interest Rate (per annum)"
+msgstr "வட்டி விகிதம் (ஆண்டுக்கு)"
+
+msgid "Created At"
+msgstr "உருவாக்கப்பட்டது"
+
+# Payment specific  
+msgid "Payment Status"
+msgstr "செலுத்தல் நிலை"
+
+msgid "Payment Method"
+msgstr "செலுத்தும் முறை"
+
+msgid "Verified"
+msgstr "சரிபார்க்கப்பட்டது"
+
+msgid "Pending"
+msgstr "நிலுவையில்"
+
+msgid "Rejected"
+msgstr "நிராகரிக்கப்பட்டது"
+
+msgid "Cash"
+msgstr "பணம்"
+
+msgid "Bank Transfer"
+msgstr "வங்கி பரிமாற்றம்"
+
+msgid "UPI"
+msgstr "UPI"
+
+msgid "Cheque"
+msgstr "காசோலை"
+
+msgid "Other"
+msgstr "மற்றவை"
+
+# User Management
+msgid "Username"
+msgstr "பயனர்பெயர்"
+
+msgid "Email"
+msgstr "மின்னஞ்சல்"
+
+msgid "Password"
+msgstr "கடவுச்சொல்"
+
+msgid "Confirm Password"
+msgstr "கடவுச்சொல்லை உறுதிப்படுத்து"
+
+msgid "New Password"
+msgstr "புதிய கடவுச்சொல்"
+
+msgid "Old Password"
+msgstr "பழைய கடவுச்சொல்"
+
+msgid "Role"
+msgstr "பங்கு"
+
+msgid "Admin"
+msgstr "நிர்வாகி"
+
+msgid "Customer"
+msgstr "வாடிக்கையாளர்"
+
+msgid "Moderator"
+msgstr "மேற்பார்வையாளர்"
+
+msgid "Is Admin"
+msgstr "நிர்வாகியா"
+
+msgid "Is Moderator"
+msgstr "மேற்பார்வையாளரா"
+
+# Status messages
+msgid "Success"
+msgstr "வெற்றி"
+
+msgid "Error"
+msgstr "பிழை"
+
+msgid "Warning"
+msgstr "எச்சரிக்கை"
+
+msgid "Info"
+msgstr "தகவல்"
+
+msgid "Loading..."
+msgstr "ஏற்றுகிறது..."
+
+msgid "Please wait..."
+msgstr "தயவுசெய்து காத்திருக்கவும்..."
+
+msgid "Are you sure?"
+msgstr "நீங்கள் உறுதியாக உள்ளீர்களா?"
+
+msgid "Confirmation"
+msgstr "உறுதிப்படுத்தல்"
+
+msgid "Required"
+msgstr "தேவையானது"
+
+msgid "Optional"
+msgstr "விரும்பினால்"
+
+# Trackers
+msgid "Tracker"
+msgstr "டிராக்கர்"
+
+msgid "Tracker Name"
+msgstr "டிராக்கர் பெயர்"
+
+msgid "Description"
+msgstr "விவரணை"
+
+msgid "Notes"
+msgstr "குறிப்புகள்"
+
+msgid "Entry"
+msgstr "பதிவு"
+
+msgid "Add Entry"
+msgstr "பதிவு சேர்"
+
+msgid "Edit Entry"
+msgstr "பதிவைத் திருத்து"
+
+msgid "Delete Entry"
+msgstr "பதிவை நீக்கு"
+
+# Date & Time
+msgid "Date"
+msgstr "தேதி"
+
+msgid "Time"
+msgstr "நேரம்"
+
+msgid "Start Date"
+msgstr "தொடக்க தேதி"
+
+msgid "End Date"
+msgstr "முடிவு தேதி"
+
+msgid "From"
+msgstr "இருந்து"
+
+msgid "To"
+msgstr "வரை"
+
+# Reports
+msgid "Report"
+msgstr "அறிக்கை"
+
+msgid "Reports"
+msgstr "அறிக்கைகள்"
+
+msgid "Generate Report"
+msgstr "அறிக்கை உருவாக்கு"
+
+msgid "Summary"
+msgstr "சுருக்கம்"
+
+msgid "Details"
+msgstr "விவரங்கள்"
+
+msgid "Total"
+msgstr "மொத்தம்"
+
+msgid "Count"
+msgstr "எண்ணிக்கை"
+
+# Misc
+msgid "Home"
+msgstr "முகப்பு"
+
+msgid "Settings"
+msgstr "அமைப்புகள்"
+
+msgid "Help"
+msgstr "உதவி"
+
+msgid "About"
+msgstr "பற்றி"
+
+msgid "Contact"
+msgstr "தொடர்பு"
+
+msgid "Version"
+msgstr "பதிப்பு"
+
+msgid "Language"
+msgstr "மொழி"
+
+msgid "Select"
+msgstr "தேர்ந்தெடு"
+
+msgid "Select All"
+msgstr "அனைத்தையும் தேர்ந்தெடு"
+
+msgid "Clear"
+msgstr "அழி"
+
+msgid "Reset"
+msgstr "மீட்டமை"
+
+msgid "Refresh"
+msgstr "புதுப்பி"
+
+msgid "Print"
+msgstr "அச்சிடு"
+
+msgid "Share"
+msgstr "பகிர்"
+
+msgid "Copy"
+msgstr "நகலெடு"
+
+msgid "Paste"
+msgstr "ஒட்டு"
+
+msgid "Forgot Password?"
+msgstr "கடவுச்சொல்லை மறந்துவிட்டீர்களா?"
+
+
+# Customer Dashboard Specific
+msgid "Welcome back"
+msgstr "மீண்டும் வரவேற்கிறோம்"
+
+msgid "Investment Trackers"
+msgstr "முதலீட்டு டிராக்கர்கள்"
+
+msgid "Active Trackers"
+msgstr "செயலில் உள்ள டிராக்கர்கள்"
+
+msgid "Click to view details and track your investments"
+msgstr "விவரங்களைப் பார்க்கவும் உங்கள் முதலீடுகளைக் கண்காணிக்கவும் கிளிக் செய்யவும்"
+
+msgid "View all your trackers, last payment dates, and pending amounts"
+msgstr "உங்கள் அனைத்து டிராக்கர்களையும், கடைசி செலுத்திய தேதிகள் மற்றும் நிலுவைத் தொகைகளைப் பார்க்கவும்"
+
+msgid "Outstanding Balance"
+msgstr "நிலுவைத் தொகை"
+
+msgid "Regular Loan"
+msgstr "வழக்கமான கடன்"
+
+msgid "Interest-Only Loan"
+msgstr "வட்டி மட்டும் கடன்"
+
+msgid "Accumulated Interest"
+msgstr "திரட்சி வட்டி"
+
+msgid "Principal Payment Progress"
+msgstr "அசல் செலுத்தும் முன்னேற்றம்"
+
+msgid "Pending Payments"
+msgstr "நிலுவையில் உள்ள செலுத்துதல்கள்"
+
+msgid "Principal"
+msgstr "அசல்"
+
+msgid "Interest"
+msgstr "வட்டி"
+
+msgid "These payments are awaiting admin verification. Your balance will be reduced once confirmed."
+msgstr "இந்த செலுத்துதல்கள் நிர்வாக சரிபார்ப்புக்காக காத்திருக்கின்றன. உறுதிப்படுத்தப்பட்டவுடன் உங்கள் இருப்பு குறைக்கப்படும்."
+
+
+# More Customer Dashboard
+msgid "Click to view details and track your investments"
+msgstr "விவரங்களைப் பார்க்கவும் உங்கள் முதலீடுகளைக் கண்காணிக்கவும் கிளிக் செய்யவும்"
+
+msgid "View all your trackers, last payment dates, and pending amounts"
+msgstr "உங்கள் அனைத்து டிராக்கர்களையும், கடைசி செலுத்திய தேதிகள் மற்றும் நிலுவைத் தொகைகளைப் பார்க்கவும்"
+
+msgid "Created"
+msgstr "உருவாக்கப்பட்டது"
+
+
+msgid "View Details"
+msgstr "விவரங்களைக் காண்க"
+
+
+# Loan Details Labels
+msgid "Original Principal"
+msgstr "அசல் தொகை"
+
+msgid "Remaining Balance"
+msgstr "மீதமுள்ள இருப்பு"
+
+msgid "Daily Interest"
+msgstr "தினசரி வட்டி"
+
+msgid "Monthly Interest"
+msgstr "மாதாந்திர வட்டி"
+
+
+# Trackers Dashboard
+msgid "My Investment Trackers"
+msgstr "எனது முதலீட்டு டிராக்கர்கள்"
+
+msgid "My Trackers"
+msgstr "எனது டிராக்கர்கள்"
+
+msgid "Back to Dashboard"
+msgstr "முகப்புப் பக்கத்திற்குத் திரும்பு"
+
+msgid "Total Pending Amount"
+msgstr "மொத்த நிலுவைத் தொகை"
+
+msgid "Tracker Name"
+msgstr "டிராக்கர் பெயர்"
+
+msgid "Investment"
+msgstr "முதலீடு"
+
+msgid "Start Date"
+msgstr "தொடக்க தேதி"
+
+msgid "Per Day Payment"
+msgstr "நாள் ஒன்றுக்கு செலுத்துதல்"
+
+msgid "Days Paid/Total Days"
+msgstr "செலுத்திய நாட்கள்/மொத்த நாட்கள்"
+
+msgid "Last Paid Date"
+msgstr "கடைசி செலுத்திய தேதி"
+
+msgid "No payments yet"
+msgstr "இன்னும் செலுத்துதல் இல்லை"
+
+msgid "Totals"
+msgstr "மொத்தம்"
+
+
+# Loan Detail Page
+msgid "Loan Details"
+msgstr "கடன் விவரங்கள்"
+
+msgid "Details"
+msgstr "விவரங்கள்"
+
+msgid "Loan Information"
+msgstr "கடன் தகவல்"
+
+msgid "Amount Paid"
+msgstr "செலுத்திய தொகை"
+
+msgid "Total Interest Paid"
+msgstr "மொத்த வட்டி செலுத்தப்பட்டது"
+
+msgid "Payment Frequency"
+msgstr "செலுத்தும் அதிர்வெண்"
+
+msgid "Loan Type"
+msgstr "கடன் வகை"
+
+msgid "Days Active"
+msgstr "செயலில் உள்ள நாட்கள்"
+
+msgid "days"
+msgstr "நாட்கள்"
+
+msgid "Financial Summary"
+msgstr "நிதி சுருக்கம்"
+
+msgid "Verified Paid"
+msgstr "சரிபார்க்கப்பட்ட செலுத்தல்"
+
+msgid "Principal Paid"
+msgstr "அசல் செலுத்தப்பட்டது"
+
+msgid "Interest Paid"
+msgstr "வட்டி செலுத்தப்பட்டது"
+
+msgid "Remaining"
+msgstr "மீதமுள்ளது"
+
+msgid "Active"
+msgstr "செயலில்"
+
+msgid "Status"
+msgstr "நிலை"
+
+
+# Payment Form
+msgid "Make Payment"
+msgstr "செலுத்துதல் செய்"
+
+msgid "Payment Amount"
+msgstr "செலுத்தும் தொகை"
+
+msgid "Interest-Only Loan:"
+msgstr "வட்டி மட்டும் கடன்:"
+
+msgid "You can only pay interest"
+msgstr "நீங்கள் வட்டி மட்டுமே செலுத்த முடியும்"
+
+msgid "accumulated"
+msgstr "திரட்டப்பட்டது"
+
+msgid "No interest pending. All interest has been paid."
+msgstr "நிலுவையில் வட்டி இல்லை. அனைத்து வட்டியும் செலுத்தப்பட்டது."
+
+msgid "Maximum:"
+msgstr "அதிகபட்சம்:"
+
+msgid "Payment Method"
+msgstr "செலுத்தும் முறை"
+
+msgid "Select payment method..."
+msgstr "செலுத்தும் முறையைத் தேர்ந்தெடுக்கவும்..."
+
+msgid "Transaction ID / UPI Reference"
+msgstr "பரிவர்த்தனை அடையாள எண் / UPI குறிப்பு"
+
+msgid "Enter your UPI transaction ID or bank reference number"
+msgstr "உங்கள் UPI பரிவர்த்தனை அடையாள எண் அல்லது வங்கி குறிப்பு எண்ணை உள்ளிடவும்"
+
+msgid "Payment Proof (Optional)"
+msgstr "செலுத்தல் ஆதாரம் (விரும்பினால்)"
+
+msgid "Upload screenshot of payment confirmation (JPEG, PNG, GIF, PDF - Max 16MB)"
+msgstr "செலுத்தல் உறுதிப்படுத்தல் திரைப்பிடிப்பை பதிவேற்றவும் (JPEG, PNG, GIF, PDF - அதிகபட்சம் 16MB)"
+
+msgid "Payment Date & Time (Optional)"
+msgstr "செலுத்தல் தேதி & நேரம் (விரும்பினால்)"
+
+msgid "Leave empty to use current date/time, or select when payment was actually made"
+msgstr "தற்போதைய தேதி/நேரத்தைப் பயன்படுத்த காலியாக விடவும், அல்லது செலுத்தப்பட்ட நேரத்தைத் தேர்ந்தெடுக்கவும்"
+
+msgid "No Payment Required"
+msgstr "செலுத்தல் தேவையில்லை"
+
+msgid "Principal amount remains fixed until loan closure."
+msgstr "கடன் மூடும் வரை அசல் தொகை நிலையானதாக இருக்கும்."
+
+msgid "Payments above the interest amount will reduce your principal balance."
+msgstr "வட்டித் தொகைக்கு மேல் செலுத்துதல் உங்கள் அசல் இருப்பைக் குறைக்கும்."
+
+msgid "Payment Tips"
+msgstr "செலுத்தல் குறிப்புகள்"
+
+msgid "Pay daily"
+msgstr "தினசரி செலுத்து"
+
+msgid "to minimize interest"
+msgstr "வட்டியைக் குறைக்க"
+
+msgid "Pay more than interest"
+msgstr "வட்டியை விட அதிகமாக செலுத்து"
+
+msgid "to reduce principal"
+msgstr "அசலைக் குறைக்க"
+
+msgid "Set reminders"
+msgstr "நினைவூட்டல்களை அமை"
+
+msgid "for regular payments"
+msgstr "வழக்கமான செலுத்துதல்களுக்கு"
+
+msgid "Track progress"
+msgstr "முன்னேற்றத்தை கண்காணி"
+
+msgid "to stay motivated"
+msgstr "உந்துதல் பெற"
+
+# Payment History
+msgid "Payment History"
+msgstr "செலுத்தல் வரலாறு"
+
+msgid "Date"
+msgstr "தேதி"
+
+msgid "Amount"
+msgstr "தொகை"
+
+msgid "Interest"
+msgstr "வட்டி"
+
+msgid "Previous Principal"
+msgstr "முந்தைய அசல்"
+
+msgid "Previous Interest Paid"
+msgstr "முந்தைய வட்டி செலுத்தப்பட்டது"
+
+msgid "Transaction ID"
+msgstr "பரிவர்த்தனை அடையாள எண்"
+
+msgid "Method"
+msgstr "முறை"
+
+msgid "Verified"
+msgstr "சரிபார்க்கப்பட்டது"
+
+# Loan Notes
+msgid "Loan Notes"
+msgstr "கடன் குறிப்புகள்"
+
+msgid "Edit"
+msgstr "திருத்து"
+
+msgid "No notes added yet. Click Edit to add notes."
+msgstr "இன்னும் குறிப்புகள் சேர்க்கப்படவில்லை. குறிப்புகளைச் சேர்க்க திருத்து என்பதைக் கிளிக் செய்யவும்."
+
+
+# Lended terminology
+msgid "Lended"
+msgstr "கடன் வழங்கப்பட்டது"
+
+msgid "Lended Date"
+msgstr "கடன் வழங்கிய தேதி"
+
+
+# Principal Payment Progress
+msgid "Paid"
+msgstr "செலுத்தப்பட்டது"
+
+msgid "remaining"
+msgstr "மீதமுள்ளது"
+
+msgid "paid"
+msgstr "செலுத்தப்பட்டது"
+
+# Interest Calculator Section
+msgid "Interest Calculator"
+msgstr "வட்டி கணிப்பான்"
+
+msgid "Interest-Free Loan!"
+msgstr "வட்டி இல்லா கடன்!"
+
+msgid "No interest will be charged on this loan"
+msgstr "இந்த கடனுக்கு வட்டி விதிக்கப்படாது"
+
+msgid "Daily Calculation"
+msgstr "தினசரி கணக்கீடு"
+
+msgid "Monthly Calculation"
+msgstr "மாதாந்திர கணக்கீடு"
+
+msgid "Total interest from loan creation"
+msgstr "கடன் உருவாக்கப்பட்டதிலிருந்து மொத்த வட்டி"
+
+msgid "Click to see detailed calculation"
+msgstr "விரிவான கணக்கீட்டைக் காண கிளிக் செய்க"
+
+msgid "No interest charged on this loan"
+msgstr "இந்த கடனுக்கு வட்டி விதிக்கப்படவில்லை"
+
+msgid "Recommended Payment"
+msgstr "பரிந்துரைக்கப்பட்ட செலுத்தல்"
+
+msgid "Any Amount"
+msgstr "எந்த தொகையும்"
+
+msgid "All payments go directly to principal"
+msgstr "அனைத்து செலுத்தல்களும் நேரடியாக அசலுக்கு செல்கின்றன"
+
+msgid "per"
+msgstr "ஒன்றுக்கு"
+
+msgid "This is an interest-free loan! All payments go directly to reducing your principal."
+msgstr "இது வட்டி இல்லா கடன்! அனைத்து செலுத்தல்களும் நேரடியாக உங்கள் அசலைக் குறைக்கின்றன."
+
+msgid "Interest is calculated daily and added to your balance if not paid."
+msgstr "வட்டி தினசரி கணக்கிடப்பட்டு செலுத்தப்படாவிட்டால் உங்கள் இருப்புடன் சேர்க்கப்படும்."
+
+
+# Fix: add "per daily" as a complete phrase
+msgid "per daily"
+msgstr "தினசரி"
+
+msgid "per monthly"
+msgstr "மாதாந்திரம்"
+
+
+# Admin Loans Page
+msgid "Total Active Loans"
+msgstr "மொத்த செயலில் உள்ள கடன்கள்"
+
+msgid "Total Principal"
+msgstr "மொத்த அசல்"
+
+msgid "Outstanding Balance"
+msgstr "நிலுவையில் உள்ள இருப்பு"
+
+msgid "Total Interest Paid"
+msgstr "மொத்த வட்டி செலுத்தப்பட்டது"
+
+msgid "Filter Loans"
+msgstr "கடன்களை வடிகட்டு"
+
+msgid "Loan Type"
+msgstr "கடன் வகை"
+
+msgid "All Types"
+msgstr "அனைத்து வகைகள்"
+
+msgid "Regular Loans"
+msgstr "சாதாரண கடன்கள்"
+
+msgid "Interest-Only Loans"
+msgstr "வட்டி மட்டும் கடன்கள்"
+
+msgid "Payment Frequency"
+msgstr "செலுத்தும் அதிர்வெண்"
+
+msgid "All Frequencies"
+msgstr "அனைத்து அதிர்வெண்கள்"
+
+msgid "Customer"
+msgstr "வாடிக்கையாளர்"
+
+msgid "All Customers"
+msgstr "அனைத்து வாடிக்கையாளர்கள்"
+
+msgid "Status"
+msgstr "நிலை"
+
+msgid "All Statuses"
+msgstr "அனைத்து நிலைகள்"
+
+msgid "Active"
+msgstr "செயலில்"
+
+msgid "Closed"
+msgstr "மூடப்பட்டது"
+
+msgid "Loan Name"
+msgstr "கடன் பெயர்"
+
+msgid "Interest Rate Range"
+msgstr "வட்டி விகித வரம்பு"
+
+msgid "Min %"
+msgstr "குறைந்தபட்சம் %"
+
+msgid "Max %"
+msgstr "அதிகபட்சம் %"
+
+msgid "Apply Filters"
+msgstr "வடிகட்டிகளைப் பயன்படுத்து"
+
+msgid "Clear Filters"
+msgstr "வடிகட்டிகளை அழி"
+
+msgid "Loan Details"
+msgstr "கடன் விவரங்கள்"
+
+msgid "Create New Loan"
+msgstr "புதிய கடன் உருவாக்கு"
+
+# Create Loan Page
+msgid "Loan Information"
+msgstr "கடன் தகவல்"
+
+msgid "Select Customer"
+msgstr "வாடிக்கையாளரைத் தேர்ந்தெடு"
+
+msgid "Loan Name (Optional)"
+msgstr "கடன் பெயர் (விரும்பினால்)"
+
+msgid "e.g., Business Loan, Personal Loan"
+msgstr "உதாரணம்: வணிக கடன், தனிப்பட்ட கடன்"
+
+msgid "Principal Amount (₹)"
+msgstr "அசல் தொகை (₹)"
+
+msgid "Interest Rate (% per annum)"
+msgstr "வட்டி விகிதம் (% ஆண்டுக்கு)"
+
+msgid "Select Loan Type"
+msgstr "கடன் வகையைத் தேர்ந்தெடு"
+
+msgid "Regular Loan"
+msgstr "சாதாரண கடன்"
+
+msgid "Interest-Only Loan"
+msgstr "வட்டி மட்டும் கடன்"
+
+msgid "Select Payment Frequency"
+msgstr "செலுத்தும் அதிர்வெண்ணைத் தேர்ந்தெடு"
+
+msgid "Loan Creation Date & Time"
+msgstr "கடன் உருவாக்கிய தேதி & நேரம்"
+
+msgid "Leave empty to use current date/time"
+msgstr "தற்போதைய தேதி/நேரத்தைப் பயன்படுத்த காலியாக விடவும்"
+
+msgid "Loan Notes (Optional)"
+msgstr "கடன் குறிப்புகள் (விரும்பினால்)"
+
+msgid "Add any notes about this loan..."
+msgstr "இந்த கடன் பற்றிய குறிப்புகளைச் சேர்க்கவும்..."
+
+msgid "Create Loan"
+msgstr "கடன் உருவாக்கு"
+
+msgid "Cancel"
+msgstr "ரத்து செய்"
+
+# Payments Page
+msgid "All Payments"
+msgstr "அனைத்து செலுத்தல்கள்"
+
+msgid "Total Interest Earned"
+msgstr "மொத்த வட்டி சம்பாதிக்கப்பட்டது"
+
+msgid "Total Payments"
+msgstr "மொத்த செலுத்தல்கள்"
+
+msgid "Payment History"
+msgstr "செலுத்தல் வரலாறு"
+
+msgid "Filter by Customer"
+msgstr "வாடிக்கையாளர் மூலம் வடிகட்டு"
+
+msgid "Filter by Loan"
+msgstr "கடன் மூலம் வடிகட்டு"
+
+msgid "All Loans"
+msgstr "அனைத்து கடன்கள்"
+
+msgid "Verified"
+msgstr "சரிபார்க்கப்பட்டது"
+
+msgid "All"
+msgstr "அனைத்தும்"
+
+msgid "Verified Only"
+msgstr "சரிபார்க்கப்பட்டது மட்டும்"
+
+msgid "Pending Only"
+msgstr "நிலுவையில் மட்டும்"
+
+msgid "cash"
+msgstr "பணம்"
+
+msgid "Export Excel"
+msgstr "எக்செல் ஏற்றுமதி"
+
+# Add Payment Page
+msgid "Add Payment"
+msgstr "செலுத்தல் சேர்"
+
+msgid "Payment Details"
+msgstr "செலுத்தல் விவரங்கள்"
+
+msgid "Select Loan"
+msgstr "கடனைத் தேர்ந்தெடு"
+
+msgid "Payment Date & Time"
+msgstr "செலுத்தல் தேதி & நேரம்"
+
+msgid "Payment Amount (₹)"
+msgstr "செலுத்தும் தொகை (₹)"
+
+msgid "Enter the total payment amount. Interest will be calculated automatically."
+msgstr "மொத்த செலுத்தும் தொகையை உள்ளிடவும். வட்டி தானாகவே கணக்கிடப்படும்."
+
+msgid "Quick Actions"
+msgstr "விரைவு செயல்கள்"
+
+msgid "Note: The total amount must equal the sum of interest and principal amounts. The system will automatically update the loan's remaining principal balance."
+msgstr "குறிப்பு: மொத்த தொகை வட்டி மற்றும் அசல் தொகைகளின் கூட்டுத்தொகைக்கு சமமாக இருக்க வேண்டும். கணினி தானாகவே கடனின் மீதமுள்ள அசல் இருப்பைப் புதுப்பிக்கும்."
+
+# User Management
+msgid "User Management"
+msgstr "பயனர் மேலாண்மை"
+
+msgid "All Users"
+msgstr "அனைத்து பயனர்கள்"
+
+msgid "Total Users"
+msgstr "மொத்த பயனர்கள்"
+
+msgid "Admin Users"
+msgstr "நிர்வாக பயனர்கள்"
+
+msgid "Customer Users"
+msgstr "வாடிக்கையாளர் பயனர்கள்"
+
+msgid "Total Loans"
+msgstr "மொத்த கடன்கள்"
+
+msgid "Create New User"
+msgstr "புதிய பயனரை உருவாக்கு"
+
+msgid "User Information"
+msgstr "பயனர் தகவல்"
+
+msgid "Admin User"
+msgstr "நிர்வாக பயனர்"
+
+msgid "Customer User"
+msgstr "வாடிக்கையாளர் பயனர்"
+
+msgid "Username"
+msgstr "பயனர் பெயர்"
+
+msgid "Password"
+msgstr "கடவுச்சொல்"
+
+msgid "Confirm Password"
+msgstr "கடவுச்சொல்லை உறுதிப்படுத்து"
+
+msgid "User Type"
+msgstr "பயனர் வகை"
+
+msgid "Create User"
+msgstr "பயனரை உருவாக்கு"
+

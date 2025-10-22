@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Moderator Dashboard - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <!-- Main Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
+                        </a>
+                    </li>
+                    
+                    <!-- View All Section -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>View All</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_loans', instance_name=instance_name) }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_daily_trackers', instance_name=instance_name) }}">
+                            <i class="fas fa-calendar-alt me-2"></i>{{ _("All Trackers") }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_users', instance_name=instance_name) }}">
+                            <i class="fas fa-users me-2"></i>All Users
+                        </a>
+                    </li>
+                    
+                    <!-- My Section -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>My Account</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_my_loans', instance_name=instance_name) }}">
+                            <i class="fas fa-file-contract me-2"></i>My Loans
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_my_trackers', instance_name=instance_name) }}">
+                            <i class="fas fa-calendar-check me-2"></i>My Trackers
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-tachometer-alt me-2"></i>Moderator Dashboard
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <span class="badge bg-info">Moderator View</span>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="stats-card">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ total_loans }}</h3>
+                                <p>Total Loans</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-file-invoice-dollar fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>₹{{ "%.2f"|format(total_principal) }}</h3>
+                                <p>Total Principal</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-rupee-sign fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ total_users }}</h3>
+                                <p>Total Users</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>{{ total_trackers }}</h3>
+                                <p>Active Trackers</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-calendar-alt fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Loans Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Recent Loans
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_loans %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Loan Name</th>
+                                    <th>Customer</th>
+                                    <th>Principal</th>
+                                    <th>Remaining</th>
+                                    <th>Interest Rate</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in recent_loans %}
+                                <tr>
+                                    <td>{{ loan.loan_name }}</td>
+                                    <td>{{ loan.customer.username }}</td>
+                                    <td>₹{{ "%.2f"|format(loan.principal_amount) }}</td>
+                                    <td>₹{{ "%.2f"|format(loan.remaining_principal) }}</td>
+                                    <td>{{ loan.interest_rate }}%</td>
+                                    <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}" 
+                                           class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No loans found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

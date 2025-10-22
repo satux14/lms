@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Loan Details - {{ loan.loan_name }} - Admin{% endblock %}
+{% block title %}Loan Details - {{ loan.loan_name }} - Moderator{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -11,13 +11,8 @@
                 <ul class="nav flex-column">
                     <!-- Main Navigation -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                        <a class="nav-link" href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}">
                             <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_interest_rate', instance_name=instance_name) }}">
-                            <i class="fas fa-percentage me-2"></i>{{ _("Interest Rates") }}
                         </a>
                     </li>
                     
@@ -28,59 +23,8 @@
                         </h6>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
+                        <a class="nav-link" href="{{ url_for('moderator_loans', instance_name=instance_name) }}">
                             <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
-                            <i class="fas fa-plus me-2"></i>{{ _("Create Loan") }}
-                        </a>
-                    </li>
-                    
-                    <!-- Payment Management -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("Payment Management") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_payments', instance_name=instance_name) }}">
-                            <i class="fas fa-credit-card me-2"></i>{{ _("All Payments") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_add_payment', instance_name=instance_name) }}">
-                            <i class="fas fa-plus-circle me-2"></i>{{ _("Add Payment") }}
-                        </a>
-                    </li>
-                    
-                    <!-- User Management -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("User Management") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_users', instance_name=instance_name) }}">
-                            <i class="fas fa-users me-2"></i>{{ _("Users") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_user', instance_name=instance_name) }}">
-                            <i class="fas fa-user-plus me-2"></i>{{ _("Create User") }}
-                        </a>
-                    </li>
-                    
-                    <!-- System -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("System") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_backup', instance_name=instance_name) }}">
-                            <i class="fas fa-database me-2"></i>{{ _("Backup") }}
                         </a>
                     </li>
                 </ul>
@@ -94,18 +38,10 @@
                     <i class="fas fa-file-invoice-dollar me-2"></i>Loan Details: {{ loan.loan_name }}
                 </h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
-                    <a href="{{ url_for('admin_loans', instance_name=instance_name) }}" class="btn btn-outline-secondary me-2">
+                    <a href="{{ url_for('moderator_loans', instance_name=instance_name) }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-1"></i>{{ _("Back") }} to All Loans
                     </a>
-                    <a href="{{ url_for('admin_loan_excel', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-success me-2" title="Download 6-month calculation report">
-                        <i class="fas fa-file-excel me-1"></i>Download Excel Report
-                    </a>
-                    <a href="{{ url_for('admin_edit_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-warning me-2">
-                        <i class="fas fa-edit me-1"></i>{{ _("Edit") }} Loan
-                    </a>
-                    <a href="{{ url_for('admin_add_payment', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-success">
-                        <i class="fas fa-plus me-1"></i>{{ _("Add") }} Payment
-                    </a>
+                    <!-- Moderators have read-only access -->
                 </div>
             </div>
 
@@ -322,7 +258,7 @@
             {% endif %}
 
             <!-- Notes Section -->
-            {% if loan.admin_notes or loan.customer_notes %}
+            {% if loan.moderator_notes or loan.customer_notes %}
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
@@ -332,12 +268,12 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            {% if loan.admin_notes %}
+                            {% if loan.moderator_notes %}
                             <div class="alert alert-warning">
                                 <h6 class="alert-heading">
-                                    <i class="fas fa-user-shield me-1"></i>Admin Notes
+                                    <i class="fas fa-user-shield me-1"></i>Moderator Notes
                                 </h6>
-                                <p class="mb-0">{{ loan.admin_notes }}</p>
+                                <p class="mb-0">{{ loan.moderator_notes }}</p>
                             </div>
                             {% endif %}
                             {% if loan.customer_notes %}
@@ -353,81 +289,6 @@
                 </div>
             </div>
             {% endif %}
-
-            <!-- Assigned Moderators -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-user-shield me-2"></i>Assigned Moderators
-                            </h5>
-                            <span class="badge bg-info">{{ loan.assigned_moderators|length }} assigned</span>
-                        </div>
-                        <div class="card-body">
-                            <!-- Current Assigned Moderators -->
-                            {% if loan.assigned_moderators %}
-                            <div class="mb-3">
-                                <h6>Currently Assigned:</h6>
-                                <div class="list-group">
-                                    {% for moderator in loan.assigned_moderators %}
-                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <i class="fas fa-user-shield text-warning me-2"></i>
-                                            <strong>{{ moderator.username }}</strong>
-                                            {% if moderator.email %}
-                                            <small class="text-muted">({{ moderator.email }})</small>
-                                            {% endif %}
-                                        </div>
-                                        <form method="POST" action="{{ url_for('admin_unassign_moderator_from_loan', instance_name=instance_name, loan_id=loan.id, moderator_id=moderator.id) }}" style="display:inline;">
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Unassign Moderator">
-                                                <i class="fas fa-times"></i> Remove
-                                            </button>
-                                        </form>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% else %}
-                            <p class="text-muted">No moderators assigned to this loan.</p>
-                            {% endif %}
-
-                            <!-- Assign New Moderator -->
-                            <hr>
-                            <h6>Assign Moderator:</h6>
-                            <form method="POST" id="assign_moderator_form" class="row g-3">
-                                <div class="col-md-8">
-                                    <select class="form-select" name="moderator_id" id="moderator_id" required>
-                                        <option value="">Select a moderator...</option>
-                                        {% for user in all_moderators %}
-                                        {% if user not in loan.assigned_moderators %}
-                                        <option value="{{ user.id }}">{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
-                                        {% endif %}
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <button type="button" class="btn btn-primary w-100" onclick="assignModerator()">
-                                        <i class="fas fa-plus me-1"></i> Assign
-                                    </button>
-                                </div>
-                            </form>
-                            <script>
-                            function assignModerator() {
-                                const moderatorId = document.getElementById('moderator_id').value;
-                                if (!moderatorId) {
-                                    alert('Please select a moderator');
-                                    return;
-                                }
-                                const form = document.getElementById('assign_moderator_form');
-                                form.action = "{{ url_for('admin_assign_moderator_to_loan', instance_name=instance_name, loan_id=loan.id, moderator_id=0) }}".replace('/0', '/' + moderatorId);
-                                form.submit();
-                            }
-                            </script>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Payment History -->
             <div class="row">
@@ -489,10 +350,8 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
-                                                   class="btn btn-sm btn-outline-warning" title="Edit Payment">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
+                                                <!-- Read-only for moderators -->
+                                                <span class="text-muted">-</span>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -504,9 +363,6 @@
                                 <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
                                 <h5 class="text-muted">No payments yet</h5>
                                 <p class="text-muted">This loan doesn't have any payment history.</p>
-                                <a href="{{ url_for('admin_add_payment', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-primary">
-                                    <i class="fas fa-plus me-1"></i>{{ _("Add") }} First Payment
-                                </a>
                             </div>
                             {% endif %}
                         </div>

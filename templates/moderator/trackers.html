@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Daily Trackers - Admin{% endblock %}
+{% block title %}Daily Trackers - Moderator{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -11,13 +11,8 @@
                 <ul class="nav flex-column">
                     <!-- Main Navigation -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                        <a class="nav-link" href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}">
                             <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_interest_rate', instance_name=instance_name) }}">
-                            <i class="fas fa-percentage me-2"></i>{{ _("Interest Rates") }}
                         </a>
                     </li>
                     
@@ -28,13 +23,8 @@
                         </h6>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
+                        <a class="nav-link" href="{{ url_for('moderator_loans', instance_name=instance_name) }}">
                             <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
-                            <i class="fas fa-plus me-2"></i>{{ _("Create Loan") }}
                         </a>
                     </li>
                     
@@ -45,59 +35,8 @@
                         </h6>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
+                        <a class="nav-link active" href="{{ url_for('moderator_daily_trackers', instance_name=instance_name) }}">
                             <i class="fas fa-calendar-alt me-2"></i>{{ _("All Trackers") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">
-                            <i class="fas fa-plus me-2"></i>{{ _("Create Tracker") }}
-                        </a>
-                    </li>
-                    
-                    <!-- Payment Management -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("Payment Management") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_payments', instance_name=instance_name) }}">
-                            <i class="fas fa-credit-card me-2"></i>{{ _("All Payments") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_add_payment', instance_name=instance_name) }}">
-                            <i class="fas fa-plus-circle me-2"></i>{{ _("Add Payment") }}
-                        </a>
-                    </li>
-                    
-                    <!-- User Management -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("User Management") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_users', instance_name=instance_name) }}">
-                            <i class="fas fa-users me-2"></i>{{ _("Users") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_create_user', instance_name=instance_name) }}">
-                            <i class="fas fa-user-plus me-2"></i>{{ _("Create User") }}
-                        </a>
-                    </li>
-                    
-                    <!-- System -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("System") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_backup', instance_name=instance_name) }}">
-                            <i class="fas fa-database me-2"></i>{{ _("Backup") }}
                         </a>
                     </li>
                 </ul>
@@ -110,13 +49,7 @@
                 <h1 class="h2">
                     <i class="fas fa-calendar-alt me-2"></i>Daily Trackers
                 </h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <a href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-plus me-1"></i>Create Tracker
-                        </a>
-                    </div>
-                </div>
+                <!-- Moderators have read-only access -->
             </div>
 
             <!-- Summary Tiles -->
@@ -161,7 +94,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" id="filterForm">
+                    <form method="GET" action="{{ url_for('moderator_daily_trackers', instance_name=instance_name) }}" id="filterForm">
                         <div class="row">
                             <div class="col-md-3 mb-3">
                                 <label for="user_id" class="form-label">User</label>
@@ -302,40 +235,11 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
-                                               class="btn btn-info" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ url_for('admin_add_tracker_entry', instance_name=instance_name, tracker_id=tracker.id) }}" 
-                                               class="btn btn-primary" title="Add Entry">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{{ url_for('admin_download_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
-                                               class="btn btn-success" title="Download Excel">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                            {% if tracker.is_closed_by_user %}
-                                            <form action="{{ url_for('admin_reopen_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
-                                                  method="POST" style="display: inline;">
-                                                <button type="submit" class="btn btn-warning" title="Reopen for User">
-                                                    <i class="fas fa-folder-open"></i>
-                                                </button>
-                                            </form>
-                                            {% else %}
-                                            <form action="{{ url_for('admin_close_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
-                                                  method="POST" style="display: inline;">
-                                                <button type="submit" class="btn btn-secondary" title="Close Tracker">
-                                                    <i class="fas fa-times-circle"></i>
-                                                </button>
-                                            </form>
-                                            {% endif %}
-                                            <button type="button" class="btn btn-danger" 
-                                                    onclick="confirmDelete({{ tracker.id }}, '{{ tracker.tracker_name }}')" 
-                                                    title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
+                                        <a href="{{ url_for('moderator_view_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                                           class="btn btn-sm btn-info" title="View">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <!-- Moderators have read-only access -->
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -348,7 +252,7 @@
                         {% if filters.user_id or filters.status or filters.tracker_name or filters.per_day_payment or filters.pending_min or filters.pending_max %}
                         <button class="btn btn-sm btn-outline-primary ms-2" onclick="clearFilters()">Clear Filters</button>
                         {% else %}
-                        <a href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">Create one now</a>
+                        <span class="text-muted">No trackers have been assigned to you yet.</span>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -358,52 +262,11 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Are you sure you want to delete this tracker?</strong></p>
-                <p id="trackerNameDisplay"></p>
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Warning:</strong> This action will mark the tracker as deleted. The Excel file will remain, but the tracker won't be accessible through the system.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Yes, Delete
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Moderators have read-only access - no delete modal needed -->
 {% endblock %}
 
 {% block scripts %}
 <script>
-function confirmDelete(trackerId, trackerName) {
-    // Set tracker name in modal
-    document.getElementById('trackerNameDisplay').textContent = 'Tracker: ' + trackerName;
-    
-    // Set form action URL
-    const deleteUrl = '{{ url_for("admin_delete_tracker", instance_name=instance_name, tracker_id=0) }}'.replace('/0/', '/' + trackerId + '/');
-    document.getElementById('deleteForm').action = deleteUrl;
-    
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
-}
-
 function clearFilters() {
     // Clear all form inputs
     document.getElementById('user_id').value = '';
@@ -414,7 +277,7 @@ function clearFilters() {
     document.getElementById('pending_max').value = '';
     
     // Redirect to page without query parameters
-    window.location.href = '{{ url_for("admin_daily_trackers", instance_name=instance_name) }}';
+    window.location.href = '{{ url_for("moderator_daily_trackers", instance_name=instance_name) }}';
 }
 
 // Auto-submit form when dropdown filters change

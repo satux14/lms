@@ -1,0 +1,50 @@
+<!-- 
+Language Toggle Component
+=========================
+Reusable component for switching between English and Tamil
+
+Usage in templates:
+    Include this file: 'components/language_toggle.html'
+
+The component automatically detects current language and displays toggle button
+-->
+
+<div class="language-toggle" style="display: inline-block;">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Language selection">
+        {% if current_language == 'en' %}
+            <a href="{{ url_for('set_language', instance_name=instance_name, language_code='en') }}" 
+               class="btn btn-primary btn-sm active" title="English">
+                <i class="fas fa-globe me-1"></i>EN
+            </a>
+            <a href="{{ url_for('set_language', instance_name=instance_name, language_code='ta') }}" 
+               class="btn btn-outline-primary btn-sm" title="தமிழ்">
+                <i class="fas fa-language me-1"></i>த
+            </a>
+        {% else %}
+            <a href="{{ url_for('set_language', instance_name=instance_name, language_code='en') }}" 
+               class="btn btn-outline-primary btn-sm" title="English">
+                <i class="fas fa-globe me-1"></i>EN
+            </a>
+            <a href="{{ url_for('set_language', instance_name=instance_name, language_code='ta') }}" 
+               class="btn btn-primary btn-sm active" title="தமிழ்">
+                <i class="fas fa-language me-1"></i>த
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.language-toggle .btn {
+    font-weight: 600;
+    min-width: 50px;
+}
+
+.language-toggle .btn.active {
+    pointer-events: none;
+}
+
+.language-toggle .btn:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+</style>
