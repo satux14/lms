@@ -1473,6 +1473,9 @@ msgstr "சுருக்கம்"
 msgid "Note: All days with entries are shown. Days without any data are hidden for better readability."
 msgstr "குறிப்பு: பதிவுகள் உள்ள அனைத்து நாட்களும் காட்டப்படுகின்றன. தரவு இல்லாத நாட்கள் சிறந்த வாசிப்புக்காக மறைக்கப்பட்டுள்ளன."
 
+msgid "Note: Day 0 (initial setup) is hidden. Days 1 onwards with entries are shown. Days without any data are hidden for better readability."
+msgstr "குறிப்பு: நாள் 0 (ஆரம்ப அமைப்பு) மறைக்கப்பட்டுள்ளது. நாள் 1 முதல் பதிவுகள் உள்ள நாட்கள் காட்டப்படுகின்றன. தரவு இல்லாத நாட்கள் சிறந்த வாசிப்புக்காக மறைக்கப்பட்டுள்ளன."
+
 
 # Company Name
 msgid "The SRS Consulting"
