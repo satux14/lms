@@ -140,7 +140,7 @@
                     </thead>
                     <tbody>
                         {% for row in tracker_data.data %}
-                        {% if row.daily_payments is not none %}
+                        {% if row.daily_payments is not none and row.day != 0 %}
                         <tr class="{% if row.daily_payments and row.daily_payments > 0 %}table-success{% endif %}">
                             <td><strong>{{ row.day }}</strong></td>
                             <td>
@@ -181,7 +181,7 @@
             
             <div class="alert alert-info mt-3">
                 <i class="fas fa-info-circle me-2"></i>
-                {{ _('Note: All days with entries are shown. Days without any data are hidden for better readability.') }}
+                {{ _('Note: Day 0 (initial setup) is hidden. Days 1 onwards with entries are shown. Days without any data are hidden for better readability.') }}
             </div>
         </div>
     </div>
