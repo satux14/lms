@@ -69,12 +69,11 @@
                             <th>{{ _('Last Paid Date') }}</th>
                             <th>{{ _('Total Payments') }}</th>
                             <th>{{ _('Pending') }}</th>
-                            <th>{{ _('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for summary in tracker_summaries %}
-                        <tr {% if summary.get('error') %}class="table-warning"{% endif %}>
+                        <tr {% if summary.get('error') %}class="table-warning"{% else %}class="clickable-row" data-href="{{ url_for('customer_daily_tracker', instance_name=instance_name, tracker_id=summary.tracker.id) }}" style="cursor: pointer;"{% endif %}>
                             <td>
                                 <strong>{{ summary.tracker.tracker_name }}</strong>
                                 {% if summary.tracker.scheme_period %}
@@ -116,16 +115,6 @@
                                 <span class="badge bg-success">₹0.00</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                {% if summary.get('error') %}
-                                <span class="badge bg-danger" title="{{ summary.error }}">Error</span>
-                                {% else %}
-                                <a href="{{ url_for('customer_daily_tracker', instance_name=instance_name, tracker_id=summary.tracker.id) }}" 
-                                   class="btn btn-sm btn-primary">
-                                    <i class="fas fa-eye me-1"></i>{{ _("View") }}
-                                </a>
-                                {% endif %}
-                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -140,7 +129,6 @@
                                 <span class="badge bg-success">₹0.00</span>
                                 {% endif %}
                             </th>
-                            <th></th>
                         </tr>
                     </tfoot>
                 </table>
@@ -151,3 +139,24 @@
 </div>
 {% endblock %}
 
+{% block scripts %}
+<script>
+    // Make table rows clickable
+    document.addEventListener('DOMContentLoaded', function() {
+        const clickableRows = document.querySelectorAll('.clickable-row');
+        clickableRows.forEach(row => {
+            row.addEventListener('click', function() {
+                window.location.href = this.dataset.href;
+            });
+            
+            // Add hover effect
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f0f8ff';
+            });
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+    });
+</script>
+{% endblock %}
