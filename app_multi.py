@@ -75,7 +75,9 @@ def load_user(user_id):
         if not db_manager.initialized:
             db_manager.initialize_all_databases()
         
-        user = db_manager.get_query_for_instance(instance, User).get(int(user_id))
+        # Use session.get() instead of query.get() for SQLAlchemy 2.0 compatibility
+        session = db_manager.get_session_for_instance(instance)
+        user = session.get(User, int(user_id))
         return user
     except Exception as e:
         # If there's any error, return None (user not found)
