@@ -75,12 +75,14 @@ def init_i18n(app):
     @app.context_processor
     def inject_i18n():
         from flask_babel import gettext, lazy_gettext
+        from datetime import timedelta
         return {
             'gettext': gettext,
             '_': gettext,
             'lazy_gettext': lazy_gettext,
             'current_language': get_current_language(),
-            'supported_languages': LANGUAGES
+            'supported_languages': LANGUAGES,
+            'timedelta': timedelta  # Make timedelta available in templates
         }
     
     return babel

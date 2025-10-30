@@ -82,7 +82,11 @@
                                 {% endif %}
                             </td>
                             <td>₹{{ "%.2f"|format(summary.tracker.investment) }}</td>
-                            <td>{{ summary.tracker.start_date.strftime('%d %b %Y') }}</td>
+                            <td>
+                                {# Show Day 1 date (start_date + 1 day) for customers #}
+                                {% set day_one_date = (summary.tracker.start_date + timedelta(days=1)) %}
+                                {{ day_one_date.strftime('%d %b %Y') }}
+                            </td>
                             <td>
                                 <span class="badge bg-primary">₹{{ "%.2f"|format(summary.tracker.per_day_payment) }}</span>
                             </td>
