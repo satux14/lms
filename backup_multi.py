@@ -265,6 +265,15 @@ class MultiInstanceBackupManager:
                 # Add Excel export
                 zipf.write(excel_backup, f"{backup_name}/excel/{excel_backup.name}")
                 
+                # Add daily tracker files
+                tracker_dir = Path("instances") / instance / "daily-trackers"
+                tracker_files_added = 0
+                if tracker_dir.exists():
+                    for tracker_file in tracker_dir.glob("*.xlsx"):
+                        zipf.write(tracker_file, f"{backup_name}/daily-trackers/{tracker_file.name}")
+                        tracker_files_added += 1
+                    logger.info(f"Added {tracker_files_added} daily tracker files to backup")
+                
                 # Add backup metadata
                 metadata = {
                     'instance': instance,
@@ -272,7 +281,8 @@ class MultiInstanceBackupManager:
                     'backup_type': 'full',
                     'database_file': db_backup.name,
                     'excel_file': excel_backup.name,
-                    'version': '2.0.0'
+                    'tracker_files_count': tracker_files_added,
+                    'version': '2.0.1'
                 }
                 
                 zipf.writestr(f"{backup_name}/metadata.json", json.dumps(metadata, indent=2))
