@@ -1,0 +1,35 @@
+# Development docker-compose configuration
+# Run with: docker compose -f docker-compose.dev.yml up -d
+#
+# Volume paths are configurable via environment variables:
+#   DATA_DIR - Host directory for instances data (databases, uploads, daily-trackers) (default: ./instances)
+#   BACKUPS_DIR - Host directory for backups (default: ./backups)
+
+version: '3.8'
+
+services:
+  lending-app:
+    build: .
+    container_name: lending-management-system-dev
+    ports:
+      - "9090:8080"
+    environment:
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+      - DATA_DIR=${DATA_DIR:-./instances}
+      - BACKUPS_DIR=${BACKUPS_DIR:-./backups}
+    volumes:
+      # Mount instances directory (contains databases, uploads, daily-trackers per instance)
+      - ${DATA_DIR:-./instances}:/app/instances
+      # Mount backups directory
+      - ${BACKUPS_DIR:-./backups}:/app/backups
+      # Mount daily-trackers template directory (read-only)
+      - ./daily-trackers/template:/app/daily-trackers/template:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
