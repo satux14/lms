@@ -199,8 +199,9 @@ def get_database_uri(instance=None):
     if instance not in VALID_INSTANCES:
         instance = DEFAULT_INSTANCE
     
-    # Create instance directory (singular)
-    instance_dir = Path("instance") / instance
+    # Create instances directory (plural) - consolidated location
+    instances_dir = Path("instances")
+    instance_dir = instances_dir / instance
     instance_dir.mkdir(parents=True, exist_ok=True)
     
     # Create database directory
@@ -1094,28 +1095,42 @@ def admin_dashboard(instance_name):
     total_principal = sum(loan.principal_amount for loan in get_loan_query().all())
     total_interest_earned = sum(payment.interest_amount for payment in get_payment_query().filter_by(status='verified').all())
     total_users = get_user_query().count()
+    tracker_summary_errors = []
+
+    trackers = get_daily_tracker_query().all()
+    active_trackers = [tracker for tracker in trackers if tracker.is_active]
+    total_active_trackers = len(active_trackers)
+
+    total_tracker_investment = Decimal('0')
+    total_tracker_returns = Decimal('0')
+
+    for tracker in active_trackers:
+        investment_value = tracker.investment or Decimal('0')
+        if not isinstance(investment_value, Decimal):
+            investment_value = Decimal(str(investment_value))
+        total_tracker_investment += investment_value
+
+        if tracker.filename:
+            try:
+                summary = get_tracker_summary(instance_name, tracker.filename)
+                payments_value = summary.get('total_payments') or 0
+                total_tracker_returns += Decimal(str(payments_value))
+            except Exception as e:
+                tracker_summary_errors.append((tracker.id, str(e)))
+
+    total_tracker_investment_float = float(total_tracker_investment) if total_tracker_investment else 0.0
+    total_tracker_returns_float = float(total_tracker_returns) if total_tracker_returns else 0.0
     
     return render_template('admin/dashboard.html', 
                          total_loans=total_loans,
                          total_principal=total_principal,
                          total_interest_earned=total_interest_earned,
                          total_users=total_users,
+                         total_active_trackers=total_active_trackers,
+                         total_tracker_investment=total_tracker_investment_float,
+                         total_tracker_returns=total_tracker_returns_float,
+                         tracker_summary_errors=tracker_summary_errors,
                          instance_name=instance_name)
-
-# Admin Interest Rate route
-@app.route('/<instance_name>/admin/interest-rate')
-@login_required
-def admin_interest_rate(instance_name):
-    """Admin interest rate page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # This page is now informational only since each loan has its own rate
-    return render_template('admin/interest_rate.html', instance_name=instance_name)
 
 # Admin Loans route
 @app.route('/<instance_name>/admin/loans')
