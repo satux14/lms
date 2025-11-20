@@ -61,7 +61,7 @@ class MultiInstanceBackupManager:
         if db_uri.startswith('sqlite:///'):
             db_path = db_uri.replace('sqlite:///', '')
             return Path(db_path)
-        return Path(f"instance/{instance}/lending_app.db")
+        return Path(f"instances/{instance}/database/lending_app_{instance}.db")
     
     def create_database_backup(self, instance):
         """Create a backup of the SQLite database for a specific instance"""
