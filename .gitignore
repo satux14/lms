@@ -84,3 +84,5 @@ exports/
 # Backup files
 *.bak
 *.backup
+backups/
+instance-backup/
