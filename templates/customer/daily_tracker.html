@@ -12,104 +12,77 @@
                     <i class="fas fa-calendar-alt me-2"></i>{{ tracker.tracker_name }}
                 </h1>
                 <a href="{{ url_for('customer_trackers_dashboard', instance_name=instance_name) }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>{{ _('Back to Trackers') }}
+                    <i class="fas fa-arrow-left me-2"></i>{{ _('Back to Collections') }}
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Tracker Info Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                <div class="card-body">
-                    <i class="fas fa-rupee-sign fa-2x mb-2"></i>
-                    <h4>₹{{ "%.2f"|format(tracker.investment) }}</h4>
-                    <p class="mb-0">{{ _('Investment') }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
-                <div class="card-body">
-                    <i class="fas fa-calendar fa-2x mb-2"></i>
-                    <h4>{{ tracker.scheme_period }}</h4>
-                    <p class="mb-0">{{ _('Days Period') }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
-                <div class="card-body">
-                    <i class="fas fa-calendar-day fa-2x mb-2"></i>
-                    <h4>{{ tracker.start_date.strftime('%d %b %Y') }}</h4>
-                    <p class="mb-0">{{ _('Start Date') }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
-                <div class="card-body">
-                    <i class="fas fa-coins fa-2x mb-2"></i>
-                    <h4>₹{{ "%.2f"|format(tracker.per_day_payment) }}</h4>
-                    <p class="mb-0">{{ _('Per Day Payment') }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary Section -->
+    <!-- Tracker Information Card (Collapsible) -->
     <div class="card mb-4">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleTrackerInfo()">
             <h5 class="mb-0">
-                <i class="fas fa-chart-line me-2"></i>{{ _('Summary') }}
+                <i class="fas fa-info-circle me-2"></i>{{ _('Tracker Information') }}
             </h5>
+            <i class="fas fa-chevron-down" id="trackerInfoToggleIcon"></i>
         </div>
-        <div class="card-body">
+        
+        <!-- Collapsed View -->
+        <div class="card-body" id="trackerInfoCollapsed">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <h6 class="text-muted mb-1">{{ _('Investment') }}</h6>
+                    <h5 class="text-primary mb-0">₹{{ "%.2f"|format(tracker.investment) }}</h5>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <h6 class="text-muted mb-1">{{ _('Days Paid/Total Days') }}</h6>
+                    <h5 class="text-info mb-0">{{ summary.total_days }}/{{ summary.total_days_count }}</h5>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <h6 class="text-muted mb-1">{{ _('Total Payments') }}</h6>
+                    <h5 class="text-success mb-0">₹{{ "%.2f"|format(summary.total_payments) }}</h5>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <h6 class="text-muted mb-1">{{ _('Pending') }}</h6>
+                    <h5 class="{% if summary.pending > 0 %}text-danger{% else %}text-success{% endif %} mb-0">₹{{ "%.2f"|format(summary.pending) }}</h5>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Expanded View -->
+        <div class="card-body" id="trackerInfoExpanded" style="display: none;">
             <div class="row">
                 <div class="col-md-3 mb-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-primary text-white rounded-circle p-3 me-3">
-                            <i class="fas fa-calendar-check fa-2x"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0">{{ summary.total_days }}/{{ summary.total_days_count }}</h4>
-                            <p class="text-muted mb-0">{{ _('Days Paid/Total Days') }}</p>
-                        </div>
-                    </div>
+                    <h6 class="text-muted">{{ _('Investment') }}</h6>
+                    <h5 class="text-primary">₹{{ "%.2f"|format(tracker.investment) }}</h5>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-info text-white rounded-circle p-3 me-3">
-                            <i class="fas fa-chart-line fa-2x"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0">₹{{ "%.2f"|format(summary.expected_total) }}</h4>
-                            <p class="text-muted mb-0">{{ _('Expected Payment') }}</p>
-                        </div>
-                    </div>
+                    <h6 class="text-muted">{{ _('Days Period') }}</h6>
+                    <h5 class="text-info">{{ tracker.scheme_period }}</h5>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-success text-white rounded-circle p-3 me-3">
-                            <i class="fas fa-coins fa-2x"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0">₹{{ "%.2f"|format(summary.total_payments) }}</h4>
-                            <p class="text-muted mb-0">{{ _('Total Payments') }}</p>
-                        </div>
-                    </div>
+                    <h6 class="text-muted">{{ _('Start Date') }}</h6>
+                    <p class="mb-0">{{ tracker.start_date.strftime('%d %b %Y') }}</p>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="d-flex align-items-center">
-                        <div class="icon-box bg-warning text-white rounded-circle p-3 me-3">
-                            <i class="fas fa-exclamation-circle fa-2x"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-0">₹{{ "%.2f"|format(summary.pending) }}</h4>
-                            <p class="text-muted mb-0">{{ _('Pending') }}</p>
-                        </div>
-                    </div>
+                    <h6 class="text-muted">{{ _('Per Day Payment') }}</h6>
+                    <h5 class="text-success">₹{{ "%.2f"|format(tracker.per_day_payment) }}</h5>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h6 class="text-muted">{{ _('Days Paid/Total Days') }}</h6>
+                    <h5 class="text-info">{{ summary.total_days }}/{{ summary.total_days_count }}</h5>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h6 class="text-muted">{{ _('Expected Payment') }}</h6>
+                    <h5 class="text-warning">₹{{ "%.2f"|format(summary.expected_total) }}</h5>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h6 class="text-muted">{{ _('Total Payments') }}</h6>
+                    <h5 class="text-success">₹{{ "%.2f"|format(summary.total_payments) }}</h5>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h6 class="text-muted">{{ _('Pending') }}</h6>
+                    <h5 class="{% if summary.pending > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ "%.2f"|format(summary.pending) }}</h5>
                 </div>
             </div>
         </div>
@@ -187,15 +160,28 @@
     </div>
 
 </div>
-
-<style>
-.icon-box {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-</style>
 {% endblock %}
 
+{% block scripts %}
+<script>
+function toggleTrackerInfo() {
+    const collapsed = document.getElementById('trackerInfoCollapsed');
+    const expanded = document.getElementById('trackerInfoExpanded');
+    const icon = document.getElementById('trackerInfoToggleIcon');
+    
+    if (collapsed.style.display === 'none') {
+        // Collapse
+        collapsed.style.display = 'block';
+        expanded.style.display = 'none';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    } else {
+        // Expand
+        collapsed.style.display = 'none';
+        expanded.style.display = 'block';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    }
+}
+</script>
+{% endblock %}

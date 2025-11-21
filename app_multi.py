@@ -30,9 +30,14 @@ import sys
 import uuid
 import secrets
 import smtplib
+import hmac
+import hashlib
+import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
+
+# Google Pay UPI uses Payment Request API (browser native) - no server-side SDK needed
 
 # Add daily-trackers to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'daily-trackers'))
@@ -54,6 +59,12 @@ VALID_INSTANCES = ['prod', 'dev', 'testing']
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Google Pay UPI configuration
+app.config['GOOGLE_PAY_MERCHANT_VPA'] = os.environ.get('GOOGLE_PAY_MERCHANT_VPA', '')
+app.config['GOOGLE_PAY_MERCHANT_NAME'] = os.environ.get('GOOGLE_PAY_MERCHANT_NAME', 'The SRS Consulting')
+app.config['GOOGLE_PAY_MERCHANT_CODE'] = os.environ.get('GOOGLE_PAY_MERCHANT_CODE', '0000')  # MCC code
+app.config['GOOGLE_PAY_CALLBACK_URL'] = os.environ.get('GOOGLE_PAY_CALLBACK_URL', '')
 
 # Initialize extensions without database URI first
 db = SQLAlchemy()
@@ -150,6 +161,11 @@ class Payment(db.Model):
     payment_method = db.Column(db.String(20), nullable=True)
     proof_filename = db.Column(db.String(255), nullable=True)
     status = db.Column(db.String(20), default='pending')
+    # Razorpay fields
+    razorpay_order_id = db.Column(db.String(100), nullable=True)
+    razorpay_payment_id = db.Column(db.String(100), nullable=True)
+    razorpay_signature = db.Column(db.String(255), nullable=True)
+    payment_initiated_at = db.Column(db.DateTime, nullable=True)
 
 class PendingInterest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -344,6 +360,27 @@ def init_app():
     # Initialize all database connections
     db_manager.initialize_all_databases()
     
+    # Register payment routes
+    from app_payments import register_payment_routes, process_payment as payment_process_payment
+    register_payment_routes(
+        flask_app=app,
+        flask_db=db,
+        valid_instances=VALID_INSTANCES,
+        payment_model=Payment,
+        loan_model=Loan,
+        payment_query_func=get_payment_query,
+        loan_query_func=get_loan_query,
+        add_instance_func=add_to_current_instance,
+        commit_instance_func=commit_current_instance,
+        verify_payment_func=verify_payment,
+        calc_accumulated_func=calculate_accumulated_interest,
+        calc_daily_func=calculate_daily_interest,
+        calc_monthly_func=calculate_monthly_interest
+    )
+    # Make process_payment available for admin routes
+    global process_payment
+    process_payment = payment_process_payment
+    
     # Create default data for all instances
     with app.app_context():
         for instance in VALID_INSTANCES:
@@ -504,80 +541,6 @@ def calculate_accumulated_interest(loan, as_of_date=None):
             'days_since_creation': 0,
             'months_passed': 0
         }
-
-def process_payment(loan, payment_amount, payment_date=None, transaction_id=None, 
-                   payment_method=None, proof_filename=None):
-    """Process a payment for a loan"""
-    try:
-        if payment_date is None:
-            payment_date = datetime.utcnow()
-        
-        payment_amount = Decimal(str(payment_amount))
-        
-        if loan.loan_type == 'interest_only':
-            # For interest-only loans, calculate total pending interest
-            interest_data = calculate_accumulated_interest(loan, payment_date.date())
-            accumulated_interest = interest_data['daily']  # Use daily calculation for interest-only loans
-            
-            # Get total pending interest from all pending payments
-            pending_interest = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
-                loan_id=loan.id, 
-                status='pending'
-            ).scalar() or 0
-            pending_interest = Decimal(str(pending_interest))
-            
-            total_pending_interest = accumulated_interest + pending_interest
-            
-            # Allow small rounding differences (within 0.01)
-            if payment_amount > total_pending_interest + Decimal('0.01'):
-                raise ValueError(f"Payment amount (₹{payment_amount}) exceeds pending interest (₹{total_pending_interest:.2f}) for interest-only loan. Maximum allowed: ₹{total_pending_interest:.2f}")
-            
-            # All payment goes to interest
-            interest_amount = payment_amount
-            principal_amount = Decimal('0')
-        else:
-            # For regular loans, calculate accumulated interest first
-            interest_data = calculate_accumulated_interest(loan, payment_date.date())
-            accumulated_interest = interest_data['daily']  # Use daily calculation for payment processing
-            
-            if payment_amount >= accumulated_interest:
-                # Payment covers all accumulated interest, remainder goes to principal
-                interest_amount = accumulated_interest
-                principal_amount = payment_amount - accumulated_interest
-            else:
-                # Payment only covers part of accumulated interest
-                interest_amount = payment_amount
-                principal_amount = Decimal('0')
-        
-        # Determine payment type
-        if loan.loan_type == 'interest_only':
-            payment_type = 'interest'
-        elif principal_amount > 0:
-            payment_type = 'both'
-        else:
-            payment_type = 'interest'
-        
-        # Create payment record
-        payment = Payment(
-            loan_id=loan.id,
-            amount=payment_amount,
-            payment_date=payment_date,
-            payment_type=payment_type,
-            interest_amount=interest_amount,
-            principal_amount=principal_amount,
-            transaction_id=transaction_id,
-            payment_method=payment_method,
-            proof_filename=proof_filename,
-            status='pending'  # All payments start as pending
-        )
-        
-        add_to_current_instance(payment)
-        
-        return payment
-        
-    except Exception as e:
-        # Rollback is handled by the instance-specific session
-        raise e
 
 def verify_payment(payment_id):
     """Verify a payment and update loan balance"""
@@ -967,40 +930,94 @@ def moderator_required(f):
 @app.route('/<instance_name>/login', methods=['GET', 'POST'])
 def login(instance_name):
     """User login for specific instance"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # DEBUG: Log login attempt
+    print(f"[DEBUG LOGIN] Login attempt - instance_name: {instance_name}")
+    print(f"[DEBUG LOGIN] VALID_INSTANCES: {VALID_INSTANCES}")
+    print(f"[DEBUG LOGIN] Request method: {request.method}")
+    
     if instance_name not in VALID_INSTANCES:
+        print(f"[DEBUG LOGIN] Invalid instance: {instance_name}, redirecting to /")
         return redirect('/')
     
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        user = get_user_query().filter_by(username=username).first()
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
         
-        if user and check_password_hash(user.password_hash, password):
-            try:
-                # Ensure we're in the correct app context
-                from flask import current_app
-                if not hasattr(current_app, 'login_manager'):
-                    print("Warning: login_manager not found in current_app")
-                    flash('Login system not properly initialized. Please try again.', 'error')
+        print(f"[DEBUG LOGIN] POST request received")
+        print(f"[DEBUG LOGIN] Username: {username}")
+        print(f"[DEBUG LOGIN] Password provided: {'Yes' if password else 'No'}")
+        
+        try:
+            # Get database URI for debugging
+            db_uri = get_database_uri(instance_name)
+            print(f"[DEBUG LOGIN] Database URI: {db_uri}")
+            
+            # Get user query
+            user_query = get_user_query()
+            print(f"[DEBUG LOGIN] User query object: {user_query}")
+            
+            user = user_query.filter_by(username=username).first()
+            print(f"[DEBUG LOGIN] User found: {user is not None}")
+            
+            if user:
+                print(f"[DEBUG LOGIN] User ID: {user.id}")
+                print(f"[DEBUG LOGIN] User username: {user.username}")
+                print(f"[DEBUG LOGIN] User password_hash exists: {hasattr(user, 'password_hash') and user.password_hash is not None}")
+                print(f"[DEBUG LOGIN] User is_admin: {user.is_admin}")
+                print(f"[DEBUG LOGIN] User is_moderator: {user.is_moderator}")
+            
+            if user and check_password_hash(user.password_hash, password):
+                print(f"[DEBUG LOGIN] Password check passed")
+                try:
+                    # Ensure we're in the correct app context
+                    from flask import current_app
+                    if not hasattr(current_app, 'login_manager'):
+                        print("[DEBUG LOGIN] ERROR: login_manager not found in current_app")
+                        flash('Login system not properly initialized. Please try again.', 'error')
+                        return render_template('login.html', instance_name=instance_name)
+                    
+                    print(f"[DEBUG LOGIN] Calling login_user for user: {user.username}")
+                    login_user(user)
+                    print(f"[DEBUG LOGIN] login_user successful")
+                except Exception as e:
+                    print(f"[DEBUG LOGIN] ERROR during login_user: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    flash('Login failed. Please try again.', 'error')
                     return render_template('login.html', instance_name=instance_name)
                 
-                login_user(user)
-            except Exception as e:
-                print(f"Error during login_user: {e}")
-                import traceback
-                traceback.print_exc()
-                flash('Login failed. Please try again.', 'error')
-                return render_template('login.html', instance_name=instance_name)
-            next_page = request.args.get('next')
-            if user.is_admin:
-                return redirect(next_page) if next_page else redirect(url_for('admin_dashboard', instance_name=instance_name))
-            elif user.is_moderator:
-                return redirect(next_page) if next_page else redirect(url_for('moderator_dashboard', instance_name=instance_name))
+                next_page = request.args.get('next')
+                print(f"[DEBUG LOGIN] Next page: {next_page}")
+                
+                if user.is_admin:
+                    redirect_url = next_page if next_page else url_for('admin_dashboard', instance_name=instance_name)
+                    print(f"[DEBUG LOGIN] Redirecting admin to: {redirect_url}")
+                    return redirect(redirect_url)
+                elif user.is_moderator:
+                    redirect_url = next_page if next_page else url_for('moderator_dashboard', instance_name=instance_name)
+                    print(f"[DEBUG LOGIN] Redirecting moderator to: {redirect_url}")
+                    return redirect(redirect_url)
+                else:
+                    redirect_url = next_page if next_page else url_for('customer_dashboard', instance_name=instance_name)
+                    print(f"[DEBUG LOGIN] Redirecting customer to: {redirect_url}")
+                    return redirect(redirect_url)
             else:
-                return redirect(next_page) if next_page else redirect(url_for('customer_dashboard', instance_name=instance_name))
-        else:
-            flash('Invalid username or password')
+                print(f"[DEBUG LOGIN] Password check failed or user not found")
+                if not user:
+                    print(f"[DEBUG LOGIN] User '{username}' not found in database")
+                else:
+                    print(f"[DEBUG LOGIN] Password mismatch for user '{username}'")
+                flash('Invalid username or password')
+        except Exception as e:
+            print(f"[DEBUG LOGIN] EXCEPTION in login route: {e}")
+            import traceback
+            traceback.print_exc()
+            flash(f'Login error: {str(e)}', 'error')
     
+    print(f"[DEBUG LOGIN] Rendering login template for instance: {instance_name}")
     return render_template('login.html', instance_name=instance_name)
 
 @app.route('/<instance_name>/logout')
@@ -2194,6 +2211,56 @@ def customer_dashboard(instance_name):
                          daily_trackers=daily_trackers,
                          instance_name=instance_name)
 
+@app.route('/<instance_name>/customer/loans')
+@login_required
+def customer_all_loans(instance_name):
+    """Customer view all loans page"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard', instance_name=instance_name))
+    
+    # Get customer's active loans only
+    loans = get_loan_query().filter_by(customer_id=current_user.id, is_active=True).all()
+    
+    loan_data = []
+    for loan in loans:
+        daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
+        monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+        interest_data = calculate_accumulated_interest(loan)
+        accumulated_interest_daily = interest_data['daily']
+        accumulated_interest_monthly = interest_data['monthly']
+        
+        # Calculate pending payments for this specific loan
+        pending_payments = get_payment_query().filter_by(loan_id=loan.id, status='pending').all()
+        pending_principal = sum(payment.principal_amount for payment in pending_payments)
+        pending_interest = sum(payment.interest_amount for payment in pending_payments)
+        pending_total = sum(payment.amount for payment in pending_payments)
+        
+        # Calculate verified payments for this specific loan
+        verified_payments = get_payment_query().filter_by(loan_id=loan.id, status='verified').all()
+        verified_principal = sum(payment.principal_amount for payment in verified_payments)
+        verified_interest = sum(payment.interest_amount for payment in verified_payments)
+        
+        loan_data.append({
+            'loan': loan,
+            'daily_interest': daily_interest,
+            'monthly_interest': monthly_interest,
+            'accumulated_interest_daily': accumulated_interest_daily,
+            'accumulated_interest_monthly': accumulated_interest_monthly,
+            'interest_data': interest_data,
+            'pending_principal': pending_principal,
+            'pending_interest': pending_interest,
+            'pending_total': pending_total,
+            'verified_principal': verified_principal,
+            'verified_interest': verified_interest
+        })
+    
+    return render_template('customer/all_loans.html',
+                         loan_data=loan_data,
+                         instance_name=instance_name)
+
 # Customer Loan Detail route
 @app.route('/<instance_name>/customer/loan/<int:loan_id>')
 @login_required
@@ -2280,73 +2347,6 @@ def customer_loan_detail(instance_name, loan_id):
                          payments=payments_with_previous,
                          days_active=days_active,
                          current_date=date.today(),
-                         instance_name=instance_name)
-
-# Customer Make Payment route
-@app.route('/<instance_name>/customer/loan/<int:loan_id>/payment', methods=['GET', 'POST'])
-@login_required
-def customer_make_payment(instance_name, loan_id):
-    """Customer make payment page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    # Check if loan belongs to current user
-    if loan.customer_id != current_user.id:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    if request.method == 'POST':
-        amount = Decimal(request.form['amount'])
-        payment_method = request.form['payment_method']
-        transaction_id = request.form.get('transaction_id', '')
-        payment_date_str = request.form.get('payment_date')
-        
-        # Parse payment date
-        if payment_date_str:
-            try:
-                payment_date = datetime.strptime(payment_date_str, '%Y-%m-%dT%H:%M')
-            except ValueError:
-                flash('Invalid date format')
-                return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
-        else:
-            payment_date = datetime.utcnow()
-        
-        # Process payment using the process_payment function
-        try:
-            payment = process_payment(
-                loan=loan,
-                payment_amount=amount,
-                payment_date=payment_date,
-                transaction_id=transaction_id,
-                payment_method=payment_method,
-                proof_filename=None
-            )
-        except ValueError as e:
-            flash(str(e))
-            return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
-        
-        flash('Payment submitted successfully. It will be verified by admin.')
-        return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
-    
-    # Calculate interest information
-    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
-    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-    interest_data = calculate_accumulated_interest(loan)
-    accumulated_interest_daily = interest_data['daily']
-    accumulated_interest_monthly = interest_data['monthly']
-    
-    return render_template('customer/make_payment.html', 
-                         loan=loan,
-                         daily_interest=daily_interest,
-                         monthly_interest=monthly_interest,
-                         accumulated_interest_daily=accumulated_interest_daily,
-                         accumulated_interest_monthly=accumulated_interest_monthly,
-                         interest_data=interest_data,
                          instance_name=instance_name)
 
 # Customer Edit Notes route

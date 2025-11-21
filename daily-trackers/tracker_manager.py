@@ -517,7 +517,8 @@ def get_tracker_summary(instance, filename):
     
     # Calculate expected and pending
     per_day = float(parameters.get('per_day_payment', 0) or 0)
-    expected_total = highest_day * per_day
+    # Use total_days_count (total days with entries) instead of highest_day
+    expected_total = total_days_count * per_day
     pending = expected_total - total_payments
     
     return {
