@@ -887,6 +887,12 @@ msgstr "உருவாக்கப்பட்டது"
 msgid "View Details"
 msgstr "விவரங்களைக் காண்க"
 
+msgid "Click to view details"
+msgstr "விவரங்களைப் பார்க்க கிளிக் செய்யவும்"
+
+msgid "Show more"
+msgstr "மேலும் காட்டு"
+
 
 # Loan Details Labels
 msgid "Original Principal"
@@ -900,6 +906,9 @@ msgstr "தினசரி வட்டி"
 
 msgid "Monthly Interest"
 msgstr "மாதாந்திர வட்டி"
+
+msgid "Pending Payment"
+msgstr "நிலுவை செலுத்துதல்"
 
 
 # Trackers Dashboard

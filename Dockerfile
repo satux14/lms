@@ -48,6 +48,9 @@ RUN mkdir -p /app/backups/prod/database \
     /app/instances/dev/uploads \
     /app/instances/testing/uploads
 
+# Compile translations
+RUN pybabel compile -d translations -D messages && echo "✅ Translations compiled" || (echo "⚠️  Translation compilation failed, will compile at runtime" && exit 0)
+
 # Set proper permissions
 RUN chmod -R 755 /app/backups \
     && chmod -R 755 /app/instances \
