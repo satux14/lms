@@ -10,9 +10,14 @@
                 <h1 class="h2">
                     <i class="fas fa-file-invoice-dollar me-2"></i>{{ loan.loan_name }} {{ _('Details') }}
                 </h1>
-                <a href="{{ url_for('customer_dashboard', instance_name=instance_name) }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-1"></i>{{ _("Back to Dashboard") }}
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('customer_all_loans', instance_name=instance_name) }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-1"></i>{{ _("Back to All Loans") }}
+                    </a>
+                    <a href="{{ url_for('customer_dashboard', instance_name=instance_name) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-1"></i>{{ _("Back to Dashboard") }}
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -21,62 +26,123 @@
         <!-- Loan Information -->
         <div class="col-lg-8">
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleLoanInfo()">
                     <h5 class="mb-0">
                         <i class="fas fa-info-circle me-2"></i>{{ _('Loan Information') }}
                     </h5>
+                    <i class="fas fa-chevron-down" id="loanInfoToggleIcon"></i>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Loan ID') }}</h6>
-                            <h5>#{{ loan.id }}</h5>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Status') }}</h6>
-                            <span class="badge bg-success fs-6">{{ _('Active') }}</span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Original Principal') }}</h6>
-                            <h5 class="text-primary">₹{{ "%.2f"|format(loan.principal_amount) }}</h5>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Remaining Balance') }}</h6>
-                            <h5 class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</h5>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Amount Paid') }}</h6>
-                            <h5 class="text-success">₹{{ "%.2f"|format(loan.principal_amount - loan.remaining_principal) }}</h5>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Total Interest Paid') }}</h6>
-                            <h5 class="text-info">₹{{ "%.2f"|format(total_interest_paid) }}</h5>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Payment Frequency') }}</h6>
+                <div class="card-body" id="loanInfoBody">
+                    {% set last_payment = payments[0].payment if payments else None %}
+                    
+                    <!-- Collapsed View (for all loans) -->
+                    <div id="loanInfoCollapsed" class="loan-info-collapsed">
+                        <!-- Loan Type and Frequency Tags -->
+                        <div class="mb-3">
+                            <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }} fs-6 me-2">
+                                {% if loan.loan_type == 'regular' %}{{ _('Regular Loan') }}{% else %}{{ _('Interest-Only Loan') }}{% endif %}
+                            </span>
                             <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }} fs-6">
                                 {% if loan.payment_frequency == 'daily' %}{{ _('Daily') }}{% else %}{{ _('Monthly') }}{% endif %}
                             </span>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Loan Type') }}</h6>
-                            <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }} fs-6">
-                                {% if loan.loan_type == 'regular' %}{{ _('Regular Loan') }}{% else %}{{ _('Interest-Only Loan') }}{% endif %}
-                            </span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Lended Date') }}</h6>
-                            <p>{{ loan.created_at.strftime('%B %d, %Y') }}</p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <h6 class="text-muted">{{ _('Days Active') }}</h6>
-                            <p>{{ days_active }} {{ _('days') }}</p>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Principal') }}</h6>
+                                <h5 class="text-primary mb-0">₹{{ "%.2f"|format(loan.principal_amount) }}</h5>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Remaining Balance') }}</h6>
+                                <h5 class="text-warning mb-0">₹{{ "%.2f"|format(loan.remaining_principal) }}</h5>
+                            </div>
+                            {% if loan.payment_frequency == 'daily' %}
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Accumulated Daily Interest') }}</h6>
+                                <h5 class="{% if accumulated_interest_daily > 0 %}text-danger{% else %}text-success{% endif %} mb-0">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h5>
+                            </div>
+                            {% else %}
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Accumulated Monthly Interest') }}</h6>
+                                <h5 class="{% if accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %} mb-0">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h5>
+                            </div>
+                            {% endif %}
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Created Date/Time') }}</h6>
+                                <p class="mb-0">{{ loan.created_at.strftime('%B %d, %Y %H:%M') }}</p>
+                            </div>
+                            {% if last_payment %}
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Last Payment Date/Time') }}</h6>
+                                <p class="mb-0">{{ last_payment.payment_date.strftime('%B %d, %Y %H:%M') }}</p>
+                            </div>
+                            {% else %}
+                            <div class="col-md-6 mb-2">
+                                <h6 class="text-muted mb-1">{{ _('Last Payment Date/Time') }}</h6>
+                                <p class="mb-0 text-muted">{{ _('No payments yet') }}</p>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-
-
+                    
+                    <!-- Expanded View (all fields) -->
+                    <div id="loanInfoExpanded" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Loan ID') }}</h6>
+                                <h5>#{{ loan.id }}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Status') }}</h6>
+                                <span class="badge bg-success fs-6">{{ _('Active') }}</span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Original Principal') }}</h6>
+                                <h5 class="text-primary">₹{{ "%.2f"|format(loan.principal_amount) }}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Remaining Balance') }}</h6>
+                                <h5 class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Amount Paid') }}</h6>
+                                <h5 class="text-success">₹{{ "%.2f"|format(loan.principal_amount - loan.remaining_principal) }}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Total Interest Paid') }}</h6>
+                                <h5 class="text-info">₹{{ "%.2f"|format(total_interest_paid) }}</h5>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Payment Frequency') }}</h6>
+                                <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }} fs-6">
+                                    {% if loan.payment_frequency == 'daily' %}{{ _('Daily') }}{% else %}{{ _('Monthly') }}{% endif %}
+                                </span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Loan Type') }}</h6>
+                                <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }} fs-6">
+                                    {% if loan.loan_type == 'regular' %}{{ _('Regular Loan') }}{% else %}{{ _('Interest-Only Loan') }}{% endif %}
+                                </span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Created Date/Time') }}</h6>
+                                <p>{{ loan.created_at.strftime('%B %d, %Y %H:%M') }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Days Active') }}</h6>
+                                <p>{{ days_active }} {{ _('days') }}</p>
+                            </div>
+                            {% if last_payment %}
+                            <div class="col-md-6 mb-3">
+                                <h6 class="text-muted">{{ _('Last Payment Date/Time') }}</h6>
+                                <p>{{ last_payment.payment_date.strftime('%B %d, %Y %H:%M') }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
                     <!-- Financial Summary -->
-                    <div class="row mt-4">
+                    <div class="row mt-4" id="financialSummarySection" {% if loan.payment_frequency == 'monthly' %}style="display: none;"{% endif %}>
                         <div class="col-12">
                             <div class="card bg-light">
                                 <div class="card-body">
@@ -137,7 +203,7 @@
 
                     <!-- Progress Bar - Only for regular loans with interest -->
                     {% if loan.loan_type != 'interest_only' and loan.interest_rate > 0 %}
-                    <div class="mt-4">
+                    <div class="mt-4" id="progressBarSection" {% if loan.payment_frequency == 'monthly' %}style="display: none;"{% endif %}>
                         <h6 class="text-muted">{{ _('Principal Payment Progress') }}</h6>
                         {% set progress = ((loan.principal_amount - loan.remaining_principal) / loan.principal_amount * 100) %}
                         <div class="progress mb-2" style="height: 25px;">
@@ -175,8 +241,10 @@
                                             <th>{{ _('Date') }}</th>
                                             <th>{{ _('Amount') }}</th>
                                             <th>{{ _('Interest') }}</th>
+                                            {% if not (loan.payment_frequency == 'monthly' and loan.loan_type == 'interest_only') %}
                                             <th>{{ _('Principal') }}</th>
                                             <th>{{ _('Previous Principal') }}</th>
+                                            {% endif %}
                                             <th>{{ _('Previous Interest Paid') }}</th>
                                             <th>{{ _('Method') }}</th>
                                             <th>{{ _('Transaction ID') }}</th>
@@ -190,10 +258,12 @@
                                     <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
                                     <td>₹{{ "%.2f"|format(payment.interest_amount) }}</td>
+                                    {% if not (loan.payment_frequency == 'monthly' and loan.loan_type == 'interest_only') %}
                                     <td>₹{{ "%.2f"|format(payment.principal_amount) }}</td>
                                     <td>
                                         <span class="text-muted">₹{{ "%.2f"|format(payment_data.previous_principal) }}</span>
                                     </td>
+                                    {% endif %}
                                     <td>
                                         <span class="text-muted">₹{{ "%.2f"|format(payment_data.previous_interest_paid) }}</span>
                                     </td>
@@ -275,12 +345,37 @@
         <div class="col-lg-4">
             <!-- Interest Calculator -->
             <div class="card mb-4">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleInterestCalculator()">
                     <h5 class="mb-0">
                         <i class="fas fa-calculator me-2"></i>{{ _('Interest Calculator') }}
                     </h5>
+                    <i class="fas fa-chevron-down" id="interestCalculatorToggleIcon"></i>
                 </div>
-                <div class="card-body text-center">
+                <div class="card-body text-center" id="interestCalculatorBody">
+                    <!-- Collapsed View -->
+                    <div id="interestCalculatorCollapsed">
+                        {% if loan.interest_rate == 0 %}
+                        <div class="alert alert-success text-center mb-0">
+                            <i class="fas fa-gift fa-2x mb-2"></i>
+                            <h4 class="text-success mb-0">{{ _('Interest-Free Loan!') }}</h4>
+                            <p class="mb-0">{{ _('No interest will be charged on this loan') }}</p>
+                        </div>
+                        {% else %}
+                        <div class="row">
+                            <div class="col-6">
+                                <h6 class="text-muted mb-1">{{ _('Daily Interest') }}</h6>
+                                <h4 class="text-success mb-0">₹{{ "%.2f"|format(daily_interest) }}</h4>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="text-muted mb-1">{{ _('Monthly Interest') }}</h6>
+                                <h4 class="text-warning mb-0">₹{{ "%.2f"|format(monthly_interest) }}</h4>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Expanded View -->
+                    <div id="interestCalculatorExpanded" style="display: none;">
                     {% if loan.interest_rate == 0 %}
                     <div class="alert alert-success text-center">
                         <i class="fas fa-gift fa-2x mb-2"></i>
@@ -355,6 +450,7 @@
                         <small>{{ _('Interest is calculated daily and added to your balance if not paid.') }}</small>
                     </div>
                     {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -366,7 +462,52 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('customer_make_payment', instance_name=instance_name, loan_id=loan.id) }}" enctype="multipart/form-data">
+                    <!-- Google Pay Button -->
+                    {% if loan.loan_type != 'interest_only' or accumulated_interest_daily > 0 %}
+                    <div class="mb-4 p-3 border rounded" id="google-pay-section">
+                        <h6 class="mb-3">{{ _('Pay with Google Pay') }}</h6>
+                        <div class="mb-3">
+                            <label for="gpay_amount" class="form-label">{{ _('Payment Amount') }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="gpay_amount" 
+                                       step="0.01" 
+                                       min="0.01" 
+                                       {% if loan.loan_type == 'interest_only' %}
+                                       {% if accumulated_interest_daily > 0 %}
+                                       max="{{ accumulated_interest_daily }}"
+                                       {% else %}
+                                       max="0.01"
+                                       disabled
+                                       {% endif %}
+                                       {% else %}
+                                       max="{{ loan.remaining_principal }}"
+                                       {% endif %}
+                                       placeholder="0.00"
+                                       required>
+                            </div>
+                            <div class="form-text">
+                                {% if loan.loan_type == 'interest_only' %}
+                                    {% if accumulated_interest_daily > 0 %}
+                                        {{ _('Maximum:') }} ₹{{ "%.2f"|format(accumulated_interest_daily) }}
+                                    {% endif %}
+                                {% else %}
+                                    {{ _('Maximum:') }} ₹{{ "%.2f"|format(loan.remaining_principal) }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-lg w-100" id="google-pay-btn">
+                            <i class="fab fa-google-pay me-2"></i>{{ _('Pay with Google Pay') }}
+                        </button>
+                        <div id="gpay-error" class="alert alert-danger mt-2" style="display: none;"></div>
+                    </div>
+                    <hr class="my-4">
+                    {% endif %}
+                    
+                    <h6 class="mb-3">{{ _('Or enter payment manually') }}</h6>
+                    <form method="POST" action="{{ url_for('customer_make_payment', instance_name=instance_name, loan_id=loan.id) }}" enctype="multipart/form-data" id="manual-payment-form">
                         <div class="mb-3">
                             <label for="amount" class="form-label">{{ _('Payment Amount') }}</label>
                             <div class="input-group">
@@ -478,66 +619,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-// Set current date/time as default for payment date
-document.addEventListener('DOMContentLoaded', function() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    
-    const dateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
-    document.getElementById('payment_date').value = dateTimeString;
-});
-
-// Form validation
-document.querySelector('form').addEventListener('submit', function(e) {
-    const amount = parseFloat(document.getElementById('amount').value);
-    const maxAmount = {{ loan.remaining_principal }};
-    
-    if (amount > maxAmount) {
-        e.preventDefault();
-        alert('Payment amount cannot exceed the remaining balance of ₹' + maxAmount.toFixed(2));
-        return;
-    }
-    
-    if (amount <= 0) {
-        e.preventDefault();
-        alert('Payment amount must be greater than ₹0');
-        return;
-    }
-    
-    // Confirmation
-    if (!confirm('Make payment of ₹' + amount.toFixed(2) + '?')) {
-        e.preventDefault();
-    }
-});
-
-// Auto-refresh interest calculations
-setInterval(function() {
-    // This would typically make an API call to refresh interest calculations
-    console.log('Refreshing interest calculations...');
-}, 30000); // Refresh every 30 seconds
-
-// Toggle notes edit mode
-function toggleNotesEdit() {
-    const display = document.getElementById('notesDisplay');
-    const edit = document.getElementById('notesEdit');
-    
-    if (display.style.display === 'none') {
-        display.style.display = 'block';
-        edit.style.display = 'none';
-    } else {
-        display.style.display = 'none';
-        edit.style.display = 'block';
-    }
-}
-</script>
 
 <!-- Interest Calculation Modal -->
 <div class="modal fade" id="interestCalculationModal" tabindex="-1" aria-labelledby="interestCalculationModalLabel" aria-hidden="true">
@@ -734,4 +815,302 @@ function toggleNotesEdit() {
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Toggle loan information collapse/expand - Separate script to ensure it's always available
+function toggleLoanInfo() {
+    const collapsed = document.getElementById('loanInfoCollapsed');
+    const expanded = document.getElementById('loanInfoExpanded');
+    const icon = document.getElementById('loanInfoToggleIcon');
+    const financialSummary = document.getElementById('financialSummarySection');
+    const progressBar = document.getElementById('progressBarSection');
+    
+    if (!expanded || !icon) return;
+    
+    // Check current state by looking at computed style
+    const expandedDisplay = window.getComputedStyle(expanded).display;
+    const isExpanded = expandedDisplay !== 'none';
+    
+    if (collapsed) {
+        // Monthly loan - toggle between collapsed and expanded
+        if (isExpanded) {
+            // Currently expanded, collapse it
+            expanded.style.display = 'none';
+            collapsed.style.display = 'block';
+            if (financialSummary) financialSummary.style.display = 'none';
+            if (progressBar) progressBar.style.display = 'none';
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            // Currently collapsed, expand it
+            expanded.style.display = 'block';
+            collapsed.style.display = 'none';
+            if (financialSummary) financialSummary.style.display = 'block';
+            if (progressBar) progressBar.style.display = 'block';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        }
+    } else {
+        // Non-monthly loan - just toggle expanded view
+        if (isExpanded) {
+            expanded.style.display = 'none';
+            if (financialSummary) financialSummary.style.display = 'none';
+            if (progressBar) progressBar.style.display = 'none';
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            expanded.style.display = 'block';
+            if (financialSummary) financialSummary.style.display = 'block';
+            if (progressBar) progressBar.style.display = 'block';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        }
+    }
+}
+
+// Toggle notes edit mode
+function toggleNotesEdit() {
+    const display = document.getElementById('notesDisplay');
+    const edit = document.getElementById('notesEdit');
+    
+    if (display && edit) {
+        if (display.style.display === 'none') {
+            display.style.display = 'block';
+            edit.style.display = 'none';
+        } else {
+            display.style.display = 'none';
+            edit.style.display = 'block';
+        }
+    }
+}
+
+// Toggle interest calculator collapse/expand
+function toggleInterestCalculator() {
+    const collapsed = document.getElementById('interestCalculatorCollapsed');
+    const expanded = document.getElementById('interestCalculatorExpanded');
+    const icon = document.getElementById('interestCalculatorToggleIcon');
+    
+    if (!collapsed || !expanded || !icon) return;
+    
+    // Check current state by looking at computed style
+    const expandedDisplay = window.getComputedStyle(expanded).display;
+    const isExpanded = expandedDisplay !== 'none';
+    
+    if (isExpanded) {
+        // Currently expanded, collapse it
+        expanded.style.display = 'none';
+        collapsed.style.display = 'block';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    } else {
+        // Currently collapsed, expand it
+        expanded.style.display = 'block';
+        collapsed.style.display = 'none';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    }
+}
+</script>
+
+<script>
+
+// Set current date/time as default for payment date
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentDateInput = document.getElementById('payment_date');
+    if (paymentDateInput) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const dateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+        paymentDateInput.value = dateTimeString;
+    }
+    
+    // Form validation
+    const paymentForm = document.getElementById('manual-payment-form');
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', function(e) {
+            const amountInput = document.getElementById('amount');
+            if (amountInput) {
+                const amount = parseFloat(amountInput.value);
+                const maxAmount = {{ loan.remaining_principal if loan.remaining_principal is not none else 0 }};
+                
+                if (amount > maxAmount) {
+                    e.preventDefault();
+                    alert('Payment amount cannot exceed the remaining balance of ₹' + maxAmount.toFixed(2));
+                    return;
+                }
+                
+                if (amount <= 0) {
+                    e.preventDefault();
+                    alert('Payment amount must be greater than ₹0');
+                    return;
+                }
+                
+                // Confirmation
+                if (!confirm('Make payment of ₹' + amount.toFixed(2) + '?')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+});
+
+// Auto-refresh interest calculations
+setInterval(function() {
+    // This would typically make an API call to refresh interest calculations
+    console.log('Refreshing interest calculations...');
+}, 30000); // Refresh every 30 seconds
+
+
+// Google Pay Payment Request API Script
+document.addEventListener('DOMContentLoaded', function() {
+    const googlePayBtn = document.getElementById('google-pay-btn');
+    const gpayAmountInput = document.getElementById('gpay_amount');
+    const gpayErrorDiv = document.getElementById('gpay-error');
+    const loanId = {{ loan.id }};
+    const instanceName = '{{ instance_name }}';
+    
+    // Translation strings - defined once to avoid syntax errors
+    const translations = {
+        gpayNotSupported: {{ _("Google Pay not supported in this browser")|tojson }},
+        enterValidAmount: {{ _('Please enter a valid amount')|tojson }},
+        processing: {{ _("Processing...")|tojson }},
+        payWithGooglePay: {{ _("Pay with Google Pay")|tojson }},
+        paymentFailed: {{ _("Payment failed")|tojson }},
+        gpayNotAvailable: {{ _('Google Pay is not available. Please use manual payment entry.')|tojson }},
+        paymentInitFailed: {{ _('Payment initiation failed. Please try again or use manual entry.')|tojson }}
+    };
+    
+    // Check if Payment Request API is supported
+    if (!window.PaymentRequest) {
+        if (googlePayBtn) {
+            googlePayBtn.disabled = true;
+            googlePayBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>' + translations.gpayNotSupported;
+        }
+        return;
+    }
+    
+    if (googlePayBtn) {
+        googlePayBtn.addEventListener('click', function() {
+            const amount = parseFloat(gpayAmountInput.value);
+            
+            if (!amount || amount <= 0) {
+                showError(translations.enterValidAmount);
+                return;
+            }
+            
+            // Disable button during processing
+            googlePayBtn.disabled = true;
+            googlePayBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>' + translations.processing;
+            gpayErrorDiv.style.display = 'none';
+            
+            // Initiate payment - get Google Pay configuration
+            fetch(`/${instanceName}/customer/loan/${loanId}/gpay/initiate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ amount: amount })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                    googlePayBtn.disabled = false;
+                    googlePayBtn.innerHTML = '<i class="fab fa-google-pay me-2"></i>' + translations.payWithGooglePay;
+                    return;
+                }
+                
+                // Create Google Pay UPI payment request according to:
+                // https://developers.google.com/pay/india/api/web/create-payment-method
+                const supportedInstruments = [{
+                    supportedMethods: ['https://tez.google.com/pay'],
+                    data: {
+                        pa: data.merchant_vpa,  // Payee address (merchant VPA)
+                        pn: data.merchant_name,  // Payee name
+                        mc: data.merchant_code,  // Merchant category code
+                        tr: data.transaction_ref,  // Transaction reference ID (unique)
+                        url: data.callback_url,  // Transaction reference URL
+                        tn: `Loan Payment - ${data.loan_name}`,  // Transaction note (max 80 chars)
+                    }
+                }];
+                
+                // Payment details (amount and currency go here, not in supportedInstruments)
+                const paymentDetails = {
+                    total: {
+                        label: `Loan Payment - ${data.loan_name}`,
+                        amount: {
+                            currency: data.currency,
+                            value: data.amount
+                        }
+                    }
+                };
+                
+                // Create PaymentRequest object
+                const paymentRequest = new PaymentRequest(
+                    supportedInstruments,
+                    paymentDetails,
+                    {
+                        requestPayerName: false,
+                        requestPayerEmail: false,
+                        requestPayerPhone: false
+                    }
+                );
+                
+                // Check if payment method is available
+                paymentRequest.canMakePayment().then(function(result) {
+                    if (result) {
+                        // Show payment UI
+                        paymentRequest.show()
+                            .then(function(paymentResponse) {
+                                // Payment was successful
+                                // Complete the payment
+                                paymentResponse.complete('success')
+                                    .then(function() {
+                                        // Redirect to success page with transaction details
+                                        const transactionId = paymentResponse.details?.transactionId || data.transaction_ref;
+                                        window.location.href = `/${instanceName}/customer/payment/success?loan_id=${loanId}&transaction_ref=${data.transaction_ref}&amount=${amount}`;
+                                    });
+                            })
+                            .catch(function(error) {
+                                console.error('Payment error:', error);
+                                if (error.name === 'AbortError') {
+                                    // User cancelled payment
+                                    googlePayBtn.disabled = false;
+                                    googlePayBtn.innerHTML = '<i class="fab fa-google-pay me-2"></i>' + translations.payWithGooglePay;
+                                } else {
+                                    // Payment failed - redirect to manual entry
+                                    const errorMsg = encodeURIComponent(translations.paymentFailed);
+                                    window.location.href = `/${instanceName}/customer/payment/manual?loan_id=${loanId}&amount=${amount}&error=${errorMsg}`;
+                                }
+                            });
+                    } else {
+                        showError(translations.gpayNotAvailable);
+                        googlePayBtn.disabled = false;
+                        googlePayBtn.innerHTML = '<i class="fab fa-google-pay me-2"></i>' + translations.payWithGooglePay;
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Payment Request API error:', error);
+                    showError(translations.paymentInitFailed);
+                    googlePayBtn.disabled = false;
+                    googlePayBtn.innerHTML = '<i class="fab fa-google-pay me-2"></i>' + translations.payWithGooglePay;
+                });
+        });
+    }
+    
+    function showError(message) {
+        if (gpayErrorDiv) {
+            gpayErrorDiv.textContent = message;
+            gpayErrorDiv.style.display = 'block';
+        }
+    }
+});
+</script>
 {% endblock %}
