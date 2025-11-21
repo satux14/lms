@@ -3,14 +3,38 @@
 ## Start Production Environment
 
 ```bash
-cd /Users/rsk/Documents/GitHub/lms
+cd /Users/rsk/Documents/GitHub/lms-dev
 docker compose -f docker-compose.prod.yml up -d --build
+```
+
+**Note:** The `--build` flag rebuilds the image before starting, ensuring latest code changes are included.
+
+## Rebuild and Start (Alternative Methods)
+
+**Method 1: Rebuild and start in one command**
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+**Method 2: Rebuild separately, then start**
+```bash
+# Rebuild the image
+docker compose -f docker-compose.prod.yml build
+
+# Start the container
+docker compose -f docker-compose.prod.yml up -d
+```
+
+**Method 3: Force rebuild without cache**
+```bash
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ## Stop Production Environment
 
 ```bash
-cd /Users/rsk/Documents/GitHub/lms
+cd /Users/rsk/Documents/GitHub/lms-dev
 docker compose -f docker-compose.prod.yml down
 ```
 

@@ -96,21 +96,64 @@
     <div class="row">
         {% for data in loan_data %}
         <div class="col-lg-6 mb-4">
-            <div class="card h-100">
+            <div class="card h-100 loan-card" data-loan-id="{{ data.loan.id }}" data-detail-url="{{ url_for('customer_loan_detail', instance_name=instance_name, loan_id=data.loan.id) }}">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-file-invoice-dollar me-2"></i>{{ data.loan.loan_name }}
                     </h5>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 align-items-center">
                         <span class="badge bg-{{ 'primary' if data.loan.loan_type == 'regular' else 'info' }}">
                             {% if data.loan.loan_type == 'regular' %}{{ _('Regular Loan') }}{% else %}{{ _('Interest-Only Loan') }}{% endif %}
                         </span>
                         <span class="badge bg-{{ 'success' if data.loan.payment_frequency == 'daily' else 'warning' }}">
                             {% if data.loan.payment_frequency == 'daily' %}{{ _('Daily') }}{% else %}{{ _('Monthly') }}{% endif %}
                         </span>
+                        <button class="btn btn-sm btn-link p-0 ms-2 loan-toggle" type="button" aria-label="Toggle loan details">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="card-body">
+                
+                <!-- Collapsed State (Default) -->
+                <div class="card-body loan-collapsed">
+                    <div class="row align-items-center mb-2">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <div class="text-center flex-fill">
+                                    {% if data.loan.loan_type == 'interest_only' %}
+                                        <h6 class="text-muted mb-0 small">{{ _('Principal') }}</h6>
+                                        <h5 class="text-primary mb-0">₹{{ "%.2f"|format(data.loan.principal_amount) }}</h5>
+                                    {% else %}
+                                        <h6 class="text-muted mb-0 small">{{ _('Remaining Balance') }}</h6>
+                                        <h5 class="text-warning mb-0">₹{{ "%.2f"|format(data.loan.remaining_principal) }}</h5>
+                                    {% endif %}
+                                </div>
+                                <div class="text-center flex-fill">
+                                    {% if data.loan.payment_frequency == 'monthly' %}
+                                        <h6 class="text-muted mb-0 small">{{ _('Monthly Interest') }}</h6>
+                                        <h5 class="text-info mb-0">₹{{ "%.2f"|format(data.monthly_interest) }}</h5>
+                                    {% else %}
+                                        <h6 class="text-muted mb-0 small">{{ _('Daily Interest') }}</h6>
+                                        <h5 class="text-success mb-0">₹{{ "%.2f"|format(data.daily_interest) }}</h5>
+                                    {% endif %}
+                                </div>
+                                <div class="text-center flex-fill">
+                                    {% set pending_payment = data.accumulated_interest_monthly %}
+                                    <h6 class="text-muted mb-0 small">{{ _('Pending Payment') }}</h6>
+                                    <h5 class="{% if pending_payment == 0 %}text-success{% else %}text-danger{% endif %} mb-0">₹{{ "%.2f"|format(pending_payment) }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="text-center">
+                        <i class="fas fa-arrow-right text-muted me-1"></i>
+                        <small class="text-muted">{{ _('Click to view details') }}</small>
+                    </div>
+                </div>
+
+                <!-- Expanded State -->
+                <div class="card-body loan-expanded" style="display: none;">
                     <!-- Principal Information -->
                     <div class="row mb-3">
                         <div class="col-6">
@@ -125,16 +168,23 @@
 
                     <!-- Interest Information -->
                     <div class="row mb-3">
+                        {% if data.loan.payment_frequency == 'daily' %}
                         <div class="col-4">
                             <h6 class="text-muted">{{ _('Daily Interest') }}</h6>
                             <h5 class="text-success">₹{{ "%.2f"|format(data.daily_interest) }}</h5>
                         </div>
-                        <div class="col-4">
+                        {% endif %}
+                        <div class="col-{{ '4' if data.loan.payment_frequency == 'daily' else '6' }}">
                             <h6 class="text-muted">{{ _('Monthly Interest') }}</h6>
                             <h5 class="text-info">₹{{ "%.2f"|format(data.monthly_interest) }}</h5>
                         </div>
-                        <div class="col-4">
-                            <h6 class="text-muted">{{ _('Accumulated Interest') }}</h6>
+                        <div class="col-{{ '4' if data.loan.payment_frequency == 'daily' else '6' }}">
+                            {% if data.loan.payment_frequency == 'monthly' %}
+                                <h6 class="text-muted">{{ _('Monthly Interest') }}</h6>
+                            {% else %}
+                                <h6 class="text-muted">{{ _('Accumulated Interest') }}</h6>
+                            {% endif %}
+                            {% if data.loan.payment_frequency == 'daily' %}
                             <div class="row">
                                 <div class="col-6">
                                     <h6 class="{% if data.accumulated_interest_daily > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(data.accumulated_interest_daily) }}</h6>
@@ -145,6 +195,10 @@
                                     <small class="text-muted">{{ _('Monthly') }}</small>
                                 </div>
                             </div>
+                            {% else %}
+                            <h6 class="{% if data.accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(data.accumulated_interest_monthly) }}</h6>
+                            <small class="text-muted">{{ _('Monthly') }}</small>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -259,7 +313,87 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+.loan-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.loan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.loan-card.expanded {
+    cursor: default;
+}
+
+.loan-toggle {
+    color: #6c757d;
+    transition: transform 0.3s;
+}
+
+.loan-toggle:hover {
+    color: #495057;
+}
+
+.loan-card.expanded .loan-toggle i {
+    transform: rotate(180deg);
+}
+
+.loan-collapsed {
+    padding: 1rem;
+}
+
+.loan-expanded {
+    padding: 1.25rem;
+}
+</style>
 <script>
+// Collapsible loan cards functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const loanCards = document.querySelectorAll('.loan-card');
+    
+    loanCards.forEach(function(card) {
+        const toggleBtn = card.querySelector('.loan-toggle');
+        const collapsedSection = card.querySelector('.loan-collapsed');
+        const expandedSection = card.querySelector('.loan-expanded');
+        const detailUrl = card.getAttribute('data-detail-url');
+        
+        // Toggle button click handler
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent card click when clicking toggle
+            
+            const isExpanded = card.classList.contains('expanded');
+            
+            if (isExpanded) {
+                // Collapse
+                card.classList.remove('expanded');
+                collapsedSection.style.display = 'block';
+                expandedSection.style.display = 'none';
+            } else {
+                // Expand
+                card.classList.add('expanded');
+                collapsedSection.style.display = 'none';
+                expandedSection.style.display = 'block';
+            }
+        });
+        
+        // Card click handler (only when collapsed)
+        card.addEventListener('click', function(e) {
+            // Don't navigate if clicking on toggle button or expanded content
+            if (e.target.closest('.loan-toggle') || e.target.closest('.loan-expanded') || e.target.closest('a')) {
+                return;
+            }
+            
+            // If collapsed, navigate to details page
+            if (!card.classList.contains('expanded')) {
+                window.location.href = detailUrl;
+            }
+        });
+    });
+});
+
 // Auto-refresh interest calculations every minute
 setInterval(function() {
     // This would typically make an API call to refresh interest calculations
@@ -269,7 +403,7 @@ setInterval(function() {
 // Add payment amount suggestions
 document.querySelectorAll('input[name="amount"]').forEach(function(input) {
     const form = input.closest('form');
-    const suggestedAmount = form.querySelector('.form-text').textContent.match(/\$([\d.]+)/);
+    const suggestedAmount = form.querySelector('.form-text')?.textContent.match(/\$([\d.]+)/);
     
     if (suggestedAmount) {
         input.addEventListener('focus', function() {
