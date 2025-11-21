@@ -18,6 +18,10 @@ services:
       - PYTHONUNBUFFERED=1
       - DATA_DIR=${DATA_DIR:-./instances}
       - BACKUPS_DIR=${BACKUPS_DIR:-./backups}
+      - GOOGLE_PAY_MERCHANT_VPA=${GOOGLE_PAY_MERCHANT_VPA:-}
+      - GOOGLE_PAY_MERCHANT_NAME=${GOOGLE_PAY_MERCHANT_NAME:-The SRS Consulting}
+      - GOOGLE_PAY_MERCHANT_CODE=${GOOGLE_PAY_MERCHANT_CODE:-0000}
+      - GOOGLE_PAY_CALLBACK_URL=${GOOGLE_PAY_CALLBACK_URL:-}
     volumes:
       # Mount instances directory (contains databases, uploads, daily-trackers per instance)
       - ${DATA_DIR:-./instances}:/app/instances

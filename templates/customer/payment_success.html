@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Payment Successful') }} - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>{{ _('Payment Successful') }}
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
+                        <h3 class="text-success">{{ _('Payment Completed Successfully!') }}</h3>
+                    </div>
+                    
+                    {% if payment %}
+                    <div class="alert alert-light border">
+                        <h6 class="mb-3">{{ _('Payment Details') }}</h6>
+                        <div class="row text-start">
+                            <div class="col-6 mb-2">
+                                <strong>{{ _('Amount:') }}</strong>
+                            </div>
+                            <div class="col-6 mb-2 text-end">
+                                ₹{{ "%.2f"|format(payment.amount) }}
+                            </div>
+                            <div class="col-6 mb-2">
+                                <strong>{{ _('Transaction ID:') }}</strong>
+                            </div>
+                            <div class="col-6 mb-2 text-end">
+                                <small>{{ payment.transaction_id or payment.razorpay_payment_id }}</small>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <strong>{{ _('Payment Date:') }}</strong>
+                            </div>
+                            <div class="col-6 mb-2 text-end">
+                                {{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}
+                            </div>
+                            <div class="col-6 mb-2">
+                                <strong>{{ _('Status:') }}</strong>
+                            </div>
+                            <div class="col-6 mb-2 text-end">
+                                <span class="badge bg-success">{{ _('Verified') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>{{ _('Your payment is being processed. It will be verified shortly.') }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{{ url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id) }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>{{ _('Back to Loan Details') }}
+                        </a>
+                        <a href="{{ url_for('customer_dashboard', instance_name=instance_name) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home me-2"></i>{{ _('Go to Dashboard') }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

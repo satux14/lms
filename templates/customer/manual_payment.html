@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Manual Payment Entry') }} - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>{{ _('Manual Payment Entry') }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if request.args.get('error') %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>{{ request.args.get('error') }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>{{ _('Payment could not be completed automatically. Please enter payment details manually.') }}
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('customer_make_payment', instance_name=instance_name, loan_id=loan.id) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="loan_id" value="{{ loan.id }}">
+                        
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">{{ _('Payment Amount') }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="amount" 
+                                       name="amount" 
+                                       step="0.01" 
+                                       min="0.01" 
+                                       value="{{ request.args.get('amount', '') }}"
+                                       {% if loan.loan_type == 'interest_only' %}
+                                       {% if accumulated_interest_daily > 0 %}
+                                       max="{{ accumulated_interest_daily }}"
+                                       {% else %}
+                                       max="0.01"
+                                       disabled
+                                       {% endif %}
+                                       {% else %}
+                                       max="{{ loan.remaining_principal }}"
+                                       {% endif %}
+                                       required>
+                            </div>
+                            <div class="form-text">
+                                {% if loan.loan_type == 'interest_only' %}
+                                    {% if accumulated_interest_daily > 0 %}
+                                        <strong>{{ _('Interest-Only Loan:') }}</strong> {{ _('You can only pay interest') }} (₹{{ "%.2f"|format(accumulated_interest_daily) }} {{ _('accumulated') }})
+                                    {% else %}
+                                        <strong>{{ _('Interest-Only Loan:') }}</strong> {{ _('No interest pending. All interest has been paid.') }}
+                                    {% endif %}
+                                {% else %}
+                                    {{ _('Maximum:') }} ₹{{ "%.2f"|format(loan.remaining_principal) }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_method" class="form-label">{{ _('Payment Method') }}</label>
+                            <select class="form-select" id="payment_method" name="payment_method" required>
+                                <option value="">{{ _('Select payment method...') }}</option>
+                                <option value="gpay" selected>Google Pay (GPay)</option>
+                                <option value="upi">UPI</option>
+                                <option value="phonepay">PhonePe</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="cash">Cash</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="transaction_id" class="form-label">{{ _('Transaction ID / UPI Reference') }}</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="transaction_id" 
+                                   name="transaction_id" 
+                                   placeholder="e.g., UPI123456789 or TXN987654321"
+                                   required>
+                            <div class="form-text">
+                                {{ _('Enter your UPI transaction ID or bank reference number') }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="proof_file" class="form-label">{{ _('Payment Proof (Optional)') }}</label>
+                            <input type="file"
+                                   class="form-control"
+                                   id="proof_file"
+                                   name="proof_file"
+                                   accept=".jpg,.jpeg,.png,.gif,.pdf">
+                            <div class="form-text">
+                                {{ _('Upload screenshot of payment confirmation (JPEG, PNG, GIF, PDF - Max 16MB)') }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_date" class="form-label">{{ _('Payment Date & Time (Optional)') }}</label>
+                            <input type="datetime-local"
+                                   class="form-control"
+                                   id="payment_date"
+                                   name="payment_date">
+                            <div class="form-text">
+                                {{ _('Leave empty to use current date/time, or select when payment was actually made') }}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check me-2"></i>{{ _('Submit Payment') }}
+                            </button>
+                            <a href="{{ url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>{{ _('Back to Loan Details') }}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
