@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Add Payment - {{ loan.loan_name }} - Moderator{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <!-- Main Navigation -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
+                        </a>
+                    </li>
+                    
+                    <!-- Loan Management -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>{{ _("Loan Management") }}</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('moderator_loans', instance_name=instance_name) }}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("Assigned Loans") }}
+                        </a>
+                    </li>
+                    
+                    <!-- Back to Main Dashboard -->
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>Account</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('customer_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-home me-2"></i>{{ _("My Dashboard") }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Add Payment</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Loan Details
+                    </a>
+                </div>
+            </div>
+
+            <!-- Loan Information (Read-Only) -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Loan Information (Read-Only)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Loan Name:</strong></td>
+                                    <td>{{ loan.loan_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Customer:</strong></td>
+                                    <td>{{ loan.customer.username }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Loan Type:</strong></td>
+                                    <td>
+                                        <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }}">
+                                            {{ 'Regular Loan' if loan.loan_type == 'regular' else 'Interest-Only Loan' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Payment Frequency:</strong></td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }}">
+                                            {{ loan.payment_frequency.title() }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Original Principal:</strong></td>
+                                    <td class="text-primary">₹{{ "%.2f"|format(loan.principal_amount) }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Remaining Balance:</strong></td>
+                                    <td class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Interest Rate:</strong></td>
+                                    <td>{{ "%.2f"|format(loan.interest_rate * 100) }}% Annual</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Payment Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Payment Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="loan_id" value="{{ loan.id }}">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="payment_date" class="form-label">Payment Date & Time</label>
+                                    <input type="datetime-local" class="form-control" id="payment_date" name="payment_date" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="payment_method" class="form-label">Payment Method</label>
+                                    <select class="form-select" id="payment_method" name="payment_method" required>
+                                        <option value="">Select payment method...</option>
+                                        <option value="gpay">Google Pay (GPay)</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="phonepay">PhonePe</option>
+                                        <option value="bank_transfer">Bank Transfer</option>
+                                        <option value="cash">Cash</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="amount" class="form-label">Payment Amount (₹)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" 
+                                               placeholder="0.00" required>
+                                    </div>
+                                    <div class="form-text" id="amount-help">
+                                        {% if loan.loan_type == 'interest_only' %}
+                                        <strong>Interest-Only Loan:</strong> Customer can only pay interest. Principal amount remains fixed.
+                                        {% else %}
+                                        Enter the total payment amount. Interest will be calculated automatically.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="transaction_id" class="form-label">Transaction ID / UPI Reference</label>
+                                    <input type="text" class="form-control" id="transaction_id" name="transaction_id" 
+                                           placeholder="Enter transaction reference">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Note:</strong> This payment will be created as pending and requires admin verification before it affects the loan balance.
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Add Payment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current date/time as default
+    const now = new Date();
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('payment_date').value = localDateTime;
+});
+</script>
+{% endblock %}
+
