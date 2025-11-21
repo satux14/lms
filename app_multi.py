@@ -23,7 +23,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, or_
 from sqlalchemy.orm import sessionmaker
 import os
 import sys
@@ -380,6 +380,31 @@ def init_app():
     # Make process_payment available for admin routes
     global process_payment
     process_payment = payment_process_payment
+    
+    # Register moderator routes
+    from app_moderator import register_moderator_routes
+    register_moderator_routes(
+        flask_app=app,
+        flask_db=db,
+        valid_instances=VALID_INSTANCES,
+        default_instance=DEFAULT_INSTANCE,
+        payment_model=Payment,
+        loan_model=Loan,
+        tracker_model=DailyTracker,
+        payment_query_func=get_payment_query,
+        loan_query_func=get_loan_query,
+        user_query_func=get_user_query,
+        tracker_query_func=get_daily_tracker_query,
+        add_instance_func=add_to_current_instance,
+        commit_instance_func=commit_current_instance,
+        calc_accumulated_func=calculate_accumulated_interest,
+        calc_daily_interest_func=calculate_daily_interest,
+        calc_monthly_interest_func=calculate_monthly_interest,
+        process_payment_func=process_payment,
+        get_tracker_data_func=get_tracker_data,
+        get_tracker_summary_func=get_tracker_summary,
+        update_tracker_entry_func=update_tracker_entry
+    )
     
     # Create default data for all instances
     with app.app_context():
@@ -908,21 +933,6 @@ def instance_index(instance_name):
 # DECORATORS
 # ============================================================================
 
-def moderator_required(f):
-    """Decorator to require moderator access"""
-    from functools import wraps
-    
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return redirect(url_for('login', instance_name=kwargs.get('instance_name', DEFAULT_INSTANCE)))
-        if not (current_user.is_moderator or current_user.is_admin):
-            flash('Access denied. Moderator privileges required.', 'error')
-            return redirect(url_for('customer_dashboard', instance_name=kwargs.get('instance_name', DEFAULT_INSTANCE)))
-        return f(*args, **kwargs)
-    return decorated_function
-
-
 # ============================================================================
 # AUTHENTICATION ROUTES
 # ============================================================================
@@ -996,9 +1006,10 @@ def login(instance_name):
                     redirect_url = next_page if next_page else url_for('admin_dashboard', instance_name=instance_name)
                     print(f"[DEBUG LOGIN] Redirecting admin to: {redirect_url}")
                     return redirect(redirect_url)
-                elif user.is_moderator:
-                    redirect_url = next_page if next_page else url_for('moderator_dashboard', instance_name=instance_name)
-                    print(f"[DEBUG LOGIN] Redirecting moderator to: {redirect_url}")
+                elif user.is_moderator or len(user.assigned_loans.filter_by(is_active=True).all()) > 0 or len(user.assigned_trackers.filter_by(is_active=True).all()) > 0:
+                    # User is a moderator - redirect to customer dashboard (they can access moderator view from there)
+                    redirect_url = next_page if next_page else url_for('customer_dashboard', instance_name=instance_name)
+                    print(f"[DEBUG LOGIN] Redirecting moderator to customer dashboard: {redirect_url}")
                     return redirect(redirect_url)
                 else:
                     redirect_url = next_page if next_page else url_for('customer_dashboard', instance_name=instance_name)
@@ -1621,10 +1632,11 @@ def admin_assign_moderator_to_loan(instance_name, loan_id, moderator_id):
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
     loan = get_loan_query().filter_by(id=loan_id).first()
-    moderator = get_user_query().filter_by(id=moderator_id, is_moderator=True).first()
+    # Allow any user (customer or admin) to be assigned as moderator - no need for is_moderator flag
+    moderator = get_user_query().filter_by(id=moderator_id).first()
     
     if not loan or not moderator:
-        flash('Loan or moderator not found', 'error')
+        flash('Loan or user not found', 'error')
         return redirect(url_for('admin_loans', instance_name=instance_name))
     
     if moderator not in loan.assigned_moderators:
@@ -1679,10 +1691,11 @@ def admin_assign_moderator_to_tracker(instance_name, tracker_id, moderator_id):
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
     tracker = get_daily_tracker_query().filter_by(id=tracker_id).first()
-    moderator = get_user_query().filter_by(id=moderator_id, is_moderator=True).first()
+    # Allow any user (customer or admin) to be assigned as moderator - no need for is_moderator flag
+    moderator = get_user_query().filter_by(id=moderator_id).first()
     
     if not tracker or not moderator:
-        flash('Tracker or moderator not found', 'error')
+        flash('Tracker or user not found', 'error')
         return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
     
     if moderator not in tracker.assigned_moderators:
@@ -1822,8 +1835,9 @@ def admin_view_loan(instance_name, loan_id):
     # Calculate days active
     days_active = (date.today() - loan.created_at.date()).days
     
-    # Get all moderators for assignment
-    all_moderators = get_user_query().filter_by(is_moderator=True).all()
+    # Get all users for assignment - any user (customer or admin) can be assigned as moderator
+    # Exclude the current admin user to avoid self-assignment
+    all_moderators = get_user_query().filter(User.id != current_user.id).order_by(User.username).all()
     
     return render_template('admin/view_loan.html', 
                          loan=loan,
@@ -2206,9 +2220,16 @@ def customer_dashboard(instance_name):
         is_closed_by_user=False
     ).all()
     
+    # Check if user has moderator assignments (assigned loans or trackers)
+    assigned_loans_count = len(current_user.assigned_loans.filter_by(is_active=True).all())
+    assigned_trackers_count = len(current_user.assigned_trackers.filter_by(is_active=True).all())
+    has_moderator_assignments = assigned_loans_count > 0 or assigned_trackers_count > 0
+    
     return render_template('customer/dashboard.html',
                          loan_data=loan_data,
                          daily_trackers=daily_trackers,
+                         has_moderator_assignments=has_moderator_assignments,
+                         assigned_items_count=assigned_loans_count + assigned_trackers_count,
                          instance_name=instance_name)
 
 @app.route('/<instance_name>/customer/loans')
@@ -2737,8 +2758,9 @@ def admin_view_daily_tracker(instance_name, tracker_id):
         tracker_data = get_tracker_data(instance_name, tracker.filename)
         summary = get_tracker_summary(instance_name, tracker.filename)
         
-        # Get all moderators for assignment
-        all_moderators = get_user_query().filter_by(is_moderator=True).all()
+        # Get all users for assignment - any user (customer or admin) can be assigned as moderator
+        # Exclude the current admin user to avoid self-assignment
+        all_moderators = get_user_query().filter(User.id != current_user.id).order_by(User.username).all()
         
         return render_template('admin/view_daily_tracker.html',
                              tracker=tracker,
@@ -3187,326 +3209,8 @@ def send_password_reset_email(email, token, instance_name):
 
 
 # ============================================================================
-# MODERATOR ROUTES
+# MODERATOR ROUTES - Moved to app_moderator.py
 # ============================================================================
-
-@app.route('/<instance_name>/moderator/dashboard')
-@login_required
-@moderator_required
-def moderator_dashboard(instance_name):
-    """Moderator dashboard - overview of assigned loans and trackers"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    # Get assigned loans summary
-    assigned_loans = current_user.assigned_loans.filter_by(is_active=True).all()
-    total_principal = sum(loan.principal_amount for loan in assigned_loans)
-    total_loans = len(assigned_loans)
-    
-    # Get all users count (for information)
-    total_users = get_user_query().filter_by(is_admin=False, is_moderator=False).count()
-    
-    # Get assigned trackers
-    assigned_trackers = current_user.assigned_trackers.filter_by(is_active=True).all()
-    total_trackers = len(assigned_trackers)
-    
-    # Get recent assigned loans (last 10)
-    recent_loans = current_user.assigned_loans.filter_by(is_active=True).order_by(Loan.created_at.desc()).limit(10).all()
-    
-    return render_template('moderator/dashboard.html',
-                         total_principal=total_principal,
-                         total_loans=total_loans,
-                         total_users=total_users,
-                         total_trackers=total_trackers,
-                         recent_loans=recent_loans,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/moderator/loans')
-@login_required
-@moderator_required
-def moderator_loans(instance_name):
-    """View assigned loans (moderator view)"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    status_filter = request.args.get('status', 'active')
-    sort_by = request.args.get('sort_by', 'created_at')
-    sort_order = request.args.get('sort_order', 'desc')
-    
-    # Get only loans assigned to this moderator
-    query = current_user.assigned_loans
-    
-    if status_filter == 'active':
-        query = query.filter_by(is_active=True, status='active')
-    elif status_filter == 'closed':
-        query = query.filter_by(status='closed')
-    elif status_filter == 'paid_off':
-        query = query.filter(Loan.remaining_principal <= 0, Loan.is_active == True)
-    
-    # Apply sorting
-    if sort_by == 'created_at':
-        query = query.order_by(Loan.created_at.desc() if sort_order == 'desc' else Loan.created_at.asc())
-    elif sort_by == 'principal_amount':
-        query = query.order_by(Loan.principal_amount.desc() if sort_order == 'desc' else Loan.principal_amount.asc())
-    elif sort_by == 'remaining_principal':
-        query = query.order_by(Loan.remaining_principal.desc() if sort_order == 'desc' else Loan.remaining_principal.asc())
-    
-    loans = query.all()
-    
-    # Calculate interest paid for each loan
-    loans_with_interest = []
-    for loan in loans:
-        interest_paid = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
-            loan_id=loan.id,
-            status='verified'
-        ).scalar() or 0
-        loans_with_interest.append({
-            'loan': loan,
-            'interest_paid': Decimal(str(interest_paid))
-        })
-    
-    return render_template('moderator/loans.html',
-                         loans=loans_with_interest,
-                         status_filter=status_filter,
-                         sort_by=sort_by,
-                         sort_order=sort_order,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/moderator/loan/<int:loan_id>')
-@login_required
-@moderator_required
-def moderator_view_loan(instance_name, loan_id):
-    """View detailed loan information (moderator view)"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    loan = get_loan_query().filter_by(id=loan_id).first()
-    if not loan:
-        flash('Loan not found', 'error')
-        return redirect(url_for('moderator_loans', instance_name=instance_name))
-    
-    # Check if moderator has access to this loan
-    if current_user not in loan.assigned_moderators:
-        flash('Access denied. You are not assigned to this loan.', 'error')
-        return redirect(url_for('moderator_loans', instance_name=instance_name))
-    
-    # Get all payments for this loan
-    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
-    
-    # Calculate accumulated interest
-    interest_data = calculate_accumulated_interest(loan)
-    accumulated_interest_daily = interest_data['daily']
-    accumulated_interest_monthly = interest_data['monthly']
-    
-    return render_template('moderator/view_loan.html',
-                         loan=loan,
-                         payments=payments,
-                         accumulated_interest_daily=accumulated_interest_daily,
-                         accumulated_interest_monthly=accumulated_interest_monthly,
-                         interest_data=interest_data,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/moderator/trackers')
-@login_required
-@moderator_required
-def moderator_daily_trackers(instance_name):
-    """View assigned daily trackers (moderator view)"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    # Get filter parameters (for display purposes - moderators see only assigned trackers)
-    filters = {
-        'user_id': request.args.get('user_id', type=int),
-        'status': request.args.get('status', ''),
-        'tracker_name': request.args.get('tracker_name', ''),
-        'per_day_payment': request.args.get('per_day_payment', type=float),
-        'pending_min': request.args.get('pending_min', type=float),
-        'pending_max': request.args.get('pending_max', type=float)
-    }
-    
-    # Get only trackers assigned to this moderator
-    trackers = current_user.assigned_trackers.filter_by(is_active=True).order_by(DailyTracker.created_at.desc()).all()
-    
-    # Get summary for each tracker
-    tracker_summaries = []
-    total_pending_sum = 0
-    total_payments_sum = 0
-    total_trackers = len(trackers)
-    
-    for tracker in trackers:
-        try:
-            summary = get_tracker_summary(instance_name, tracker.filename)
-            pending = summary.get('pending', 0)
-            total_payments = summary.get('total_payments', 0)
-            
-            total_pending_sum += pending
-            total_payments_sum += total_payments
-            
-            tracker_summaries.append({
-                'tracker': tracker,
-                'last_paid_date': summary.get('last_paid_date'),
-                'total_payments': total_payments,
-                'pending': pending,
-                'balance': summary.get('balance', 0),
-                'cumulative': summary.get('cumulative', 0),
-                'days_with_payments': summary.get('total_days', 0),
-                'total_days_count': summary.get('total_days_count', 0)
-            })
-        except Exception as e:
-            print(f"Error processing tracker {tracker.id}: {e}")
-            tracker_summaries.append({
-                'tracker': tracker,
-                'last_paid_date': None,
-                'total_payments': 0,
-                'pending': 0,
-                'balance': 0,
-                'cumulative': 0,
-                'days_with_payments': 0,
-                'total_days_count': 0,
-                'error': str(e)
-            })
-    
-    # Get all users for filter dropdown
-    users = get_user_query().filter_by(is_admin=False).all()
-    
-    return render_template('moderator/trackers.html',
-                         tracker_summaries=tracker_summaries,
-                         total_trackers=total_trackers,
-                         total_pending_sum=total_pending_sum,
-                         total_payments_sum=total_payments_sum,
-                         filters=filters,
-                         users=users,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/moderator/tracker/<int:tracker_id>')
-@login_required
-@moderator_required
-def moderator_view_tracker(instance_name, tracker_id):
-    """View specific tracker details (moderator view)"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('moderator_daily_trackers', instance_name=instance_name))
-    
-    # Check if moderator has access to this tracker
-    if current_user not in tracker.assigned_moderators:
-        flash('Access denied. You are not assigned to this tracker.', 'error')
-        return redirect(url_for('moderator_daily_trackers', instance_name=instance_name))
-    
-    try:
-        tracker_data = get_tracker_data(instance_name, tracker.filename)
-        summary = get_tracker_summary(instance_name, tracker.filename)
-        
-        return render_template('moderator/view_tracker.html',
-                             tracker=tracker,
-                             tracker_data=tracker_data,
-                             summary=summary,
-                             instance_name=instance_name)
-    except Exception as e:
-        flash(f'Error reading tracker data: {str(e)}', 'error')
-        return redirect(url_for('moderator_daily_trackers', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/moderator/users')
-@login_required
-@moderator_required
-def moderator_users(instance_name):
-    """View all users (moderator view)"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    users = get_user_query().filter_by(is_admin=False, is_moderator=False).all()
-    
-    # Get loan count for each user
-    user_data = []
-    for user in users:
-        loan_count = get_loan_query().filter_by(customer_id=user.id, is_active=True).count()
-        tracker_count = get_daily_tracker_query().filter_by(user_id=user.id, is_active=True).count()
-        user_data.append({
-            'user': user,
-            'loan_count': loan_count,
-            'tracker_count': tracker_count
-        })
-    
-    return render_template('moderator/users.html',
-                         user_data=user_data,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/moderator/my-loans')
-@login_required
-@moderator_required
-def moderator_my_loans(instance_name):
-    """Moderator's own loans"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    loans = get_loan_query().filter_by(customer_id=current_user.id, is_active=True).all()
-    
-    loans_data = []
-    for loan in loans:
-        interest_data = calculate_accumulated_interest(loan)
-        loans_data.append({
-            'loan': loan,
-            'accumulated_interest_daily': interest_data['daily'],
-            'accumulated_interest_monthly': interest_data['monthly']
-        })
-    
-    return render_template('moderator/my_loans.html',
-                         loans_data=loans_data,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/moderator/my-trackers')
-@login_required
-@moderator_required
-def moderator_my_trackers(instance_name):
-    """Moderator's own trackers"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    trackers = get_daily_tracker_query().filter_by(
-        user_id=current_user.id, 
-        is_active=True,
-        is_closed_by_user=False
-    ).all()
-    
-    tracker_summaries = []
-    total_pending = 0
-    
-    for tracker in trackers:
-        try:
-            summary = get_tracker_summary(instance_name, tracker.filename)
-            total_pending += summary.get('pending', 0)
-            
-            tracker_summaries.append({
-                'tracker': tracker,
-                'last_paid_date': summary.get('last_paid_date'),
-                'total_payments': summary['total_payments'],
-                'pending': summary.get('pending', 0),
-                'balance': summary.get('balance', 0),
-                'cumulative': summary.get('cumulative', 0),
-                'days_with_payments': summary['total_days'],
-                'total_days_count': summary['total_days_count']
-            })
-        except Exception as e:
-            print(f"Error processing tracker {tracker.id}: {e}")
-            tracker_summaries.append({
-                'tracker': tracker,
-                'error': str(e)
-            })
-    
-    return render_template('moderator/my_trackers.html',
-                         tracker_summaries=tracker_summaries,
-                         total_pending=total_pending,
-                         instance_name=instance_name)
 
 
 # Initialize the app only when run directly

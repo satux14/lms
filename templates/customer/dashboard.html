@@ -68,38 +68,25 @@
         {% endif %}
     </div>
 
-    <!-- Show messages only when nothing is available -->
-    {% if not loan_data and not daily_trackers %}
-    <div class="row">
-        <!-- No Trackers Message -->
-        <div class="col-lg-6 mb-4">
-            <div class="card">
-                <div class="card-body text-center py-5">
-                    <i class="fas fa-calendar-times fa-4x text-muted mb-4"></i>
-                    <h3 class="text-muted">No Collections</h3>
-                    <p class="text-muted mb-4">
-                        You don't have any investment trackers at the moment. Contact an administrator to create a tracker.
-                    </p>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Need a tracker?</strong> Contact your administrator to set up investment tracking.
+    <!-- Moderator View Card (below Loans and Collections) -->
+    {% if has_moderator_assignments %}
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100" style="background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); color: white;">
+                <div class="card-body d-flex flex-column">
+                    <div class="flex-grow-1">
+                        <h4 class="mb-2">
+                            <i class="fas fa-user-shield me-2"></i>{{ _('Moderator View') }}
+                        </h4>
+                        <p class="mb-0">
+                            <strong>{{ _('Assigned Items') }}:</strong> {{ assigned_items_count }}
+                        </p>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- No Loans Message -->
-        <div class="col-lg-6 mb-4">
-            <div class="card">
-                <div class="card-body text-center py-5">
-                    <i class="fas fa-inbox fa-4x text-muted mb-4"></i>
-                    <h3 class="text-muted">No Active Loans</h3>
-                    <p class="text-muted mb-4">
-                        You don't have any active loans at the moment. Contact an administrator to create a new loan.
-                    </p>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Need a loan?</strong> Contact your administrator to set up a new loan with flexible payment options.
+                    <div class="mt-3">
+                        <a href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}" 
+                           class="btn btn-light btn-lg w-100">
+                            <i class="fas fa-tachometer-alt me-2"></i>{{ _('Go to Moderator Dashboard') }}
+                        </a>
                     </div>
                 </div>
             </div>

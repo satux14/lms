@@ -171,6 +171,23 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- Parameters Section -->
+                    <div class="row mb-4 pb-3 border-bottom">
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Tracker Type:</strong></p>
+                            <p>{{ tracker_data.parameters.tracker_type }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Per Day Payment:</strong></p>
+                            <p>₹{{ tracker_data.parameters.per_day_payment }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Scheme Period:</strong></p>
+                            <p>{{ tracker_data.parameters.scheme_period }}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Summary Statistics -->
                     <div class="row">
                         <div class="col-md-2">
                             <p class="mb-1"><strong>Total Days:</strong></p>
@@ -198,31 +215,6 @@
                             <h4>₹{{ "%.2f"|format(summary.balance) }}</h4>
                         </div>
                         {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Parameters -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-cog me-2"></i>Parameters
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <p class="mb-1"><strong>Tracker Type:</strong></p>
-                            <p>{{ tracker_data.parameters.tracker_type }}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <p class="mb-1"><strong>Per Day Payment:</strong></p>
-                            <p>₹{{ tracker_data.parameters.per_day_payment }}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <p class="mb-1"><strong>Scheme Period:</strong></p>
-                            <p>{{ tracker_data.parameters.scheme_period }}</p>
-                        </div>
                     </div>
                 </div>
             </div>

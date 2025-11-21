@@ -4,41 +4,15 @@
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 sidebar">
-            <div class="position-sticky pt-3">
-                <ul class="nav flex-column">
-                    <!-- Main Navigation -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}">
-                            <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
-                        </a>
-                    </li>
-                    
-                    <!-- Loan Management -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>{{ _("Loan Management") }}</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('moderator_loans', instance_name=instance_name) }}">
-                            <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Main content -->
-        <div class="col-md-9 col-lg-10 main-content">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">
-                    <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
-                </h1>
-                <!-- Moderators have read-only access -->
-            </div>
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
+        </h1>
+        <a href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}" 
+           class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>{{ _("Back to Dashboard") }}
+        </a>
+    </div>
 
             <!-- Summary Cards -->
             <div class="row mb-4">
@@ -82,141 +56,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-filter me-2"></i>Filter Loans
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <form method="GET" class="row g-3">
-                                <div class="col-md-3">
-                                    <label for="loan_type_filter" class="form-label">Loan Type</label>
-                                    <select class="form-select" id="loan_type_filter" name="loan_type">
-                                        <option value="">All Types</option>
-                                        <option value="regular" {% if request.args.get('loan_type') == 'regular' %}selected{% endif %}>Regular Loans</option>
-                                        <option value="interest_only" {% if request.args.get('loan_type') == 'interest_only' %}selected{% endif %}>Interest-Only Loans</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="frequency_filter" class="form-label">Payment Frequency</label>
-                                    <select class="form-select" id="frequency_filter" name="frequency">
-                                        <option value="">All Frequencies</option>
-                                        <option value="daily" {% if request.args.get('frequency') == 'daily' %}selected{% endif %}>Daily</option>
-                                        <option value="monthly" {% if request.args.get('frequency') == 'monthly' %}selected{% endif %}>Monthly</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="customer_filter" class="form-label">Customer</label>
-                                    <select class="form-select" id="customer_filter" name="customer">
-                                        <option value="">All Customers</option>
-                                        {% for customer in customers %}
-                                        <option value="{{ customer.id }}" {% if request.args.get('customer') == customer.id|string %}selected{% endif %}>
-                                            {{ customer.username }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                        <div class="col-md-3">
-                            <label for="status_filter" class="form-label">Status</label>
-                            <select class="form-select" id="status_filter" name="status">
-                                <option value="">All Status</option>
-                                <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Active</option>
-                                <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>Closed</option>
-                                <option value="paid_off" {% if request.args.get('status') == 'paid_off' %}selected{% endif %}>Paid Off</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="loan_name_filter" class="form-label">Loan Name</label>
-                            <input type="text" class="form-control" id="loan_name_filter" name="loan_name" 
-                                   value="{{ request.args.get('loan_name', '') }}" 
-                                   placeholder="Search by loan name...">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="interest_rate_filter" class="form-label">Interest Rate Range</label>
-                            <div class="row">
-                                <div class="col-6">
-                                    <input type="number" class="form-control" id="min_rate_filter" name="min_rate" 
-                                           value="{{ request.args.get('min_rate', '') }}" 
-                                           placeholder="Min %" step="0.01" min="0" max="100">
-                                </div>
-                                <div class="col-6">
-                                    <input type="number" class="form-control" id="max_rate_filter" name="max_rate" 
-                                           value="{{ request.args.get('max_rate', '') }}" 
-                                           placeholder="Max %" step="0.01" min="0" max="100">
-                                </div>
-                            </div>
-                        </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary me-2">
-                                        <i class="fas fa-search me-1"></i>Apply Filters
-                                    </button>
-                                    <a href="{{ url_for('moderator_loans', instance_name=instance_name) }}" class="btn btn-outline-secondary">
-                                        <i class="fas fa-times me-1"></i>Clear Filters
-                                    </a>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Active Filters Summary -->
-            {% if request.args.get('loan_type') or request.args.get('frequency') or request.args.get('customer') or request.args.get('status') or request.args.get('loan_name') or request.args.get('min_rate') or request.args.get('max_rate') %}
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        <h6 class="mb-2">
-                            <i class="fas fa-filter me-2"></i>Active Filters:
-                        </h6>
-                        <div class="d-flex flex-wrap gap-2">
-                            {% if request.args.get('loan_type') %}
-                            <span class="badge bg-primary">
-                                Type: {{ 'Regular Loans' if request.args.get('loan_type') == 'regular' else 'Interest-Only Loans' }}
-                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
-                            </span>
-                            {% endif %}
-                            {% if request.args.get('frequency') %}
-                            <span class="badge bg-primary">
-                                Frequency: {{ request.args.get('frequency').title() }}
-                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
-                            </span>
-                            {% endif %}
-                            {% if request.args.get('customer') %}
-                            <span class="badge bg-primary">
-                                Customer: {{ (customers|selectattr('id', 'equalto', request.args.get('customer')|int)|first).username }}
-                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
-                            </span>
-                            {% endif %}
-                            {% if request.args.get('status') %}
-                            <span class="badge bg-primary">
-                                Status: {{ 'Active' if request.args.get('status') == 'active' else 'Paid Off' }}
-                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
-                            </span>
-                            {% endif %}
-                            {% if request.args.get('loan_name') %}
-                            <span class="badge bg-primary">
-                                Name: "{{ request.args.get('loan_name') }}"
-                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
-                            </span>
-                            {% endif %}
-                            {% if request.args.get('min_rate') or request.args.get('max_rate') %}
-                            <span class="badge bg-primary">
-                                Rate: {{ request.args.get('min_rate', '0') }}% - {{ request.args.get('max_rate', '∞') }}%
-                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
             <!-- Loans Table -->
             <div class="row">
                 <div class="col-12">
@@ -233,18 +72,7 @@
                                     <thead>
                                         <tr>
                                             <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='id', order=('asc' if request.args.get('sort') == 'id' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Loan ID
-                                                    {% if request.args.get('sort') == 'id' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
-                                            <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='loan_name', order=('asc' if request.args.get('sort') == 'loan_name' and request.args.get('order') == 'desc' else 'desc')) }}" 
+                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='loan_name', order=('asc' if request.args.get('sort') == 'loan_name' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Loan Name
                                                     {% if request.args.get('sort') == 'loan_name' %}
@@ -255,7 +83,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='customer', order=('asc' if request.args.get('sort') == 'customer' and request.args.get('order') == 'desc' else 'desc')) }}" 
+                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='customer', order=('asc' if request.args.get('sort') == 'customer' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Customer
                                                     {% if request.args.get('sort') == 'customer' %}
@@ -266,18 +94,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='loan_type', order=('asc' if request.args.get('sort') == 'loan_type' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Type
-                                                    {% if request.args.get('sort') == 'loan_type' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
-                                            <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='principal', order=('asc' if request.args.get('sort') == 'principal' and request.args.get('order') == 'desc' else 'desc')) }}" 
+                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='principal', order=('asc' if request.args.get('sort') == 'principal' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Principal
                                                     {% if request.args.get('sort') == 'principal' %}
@@ -288,7 +105,7 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='remaining', order=('asc' if request.args.get('sort') == 'remaining' and request.args.get('order') == 'desc' else 'desc')) }}" 
+                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='remaining', order=('asc' if request.args.get('sort') == 'remaining' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Remaining
                                                     {% if request.args.get('sort') == 'remaining' %}
@@ -298,31 +115,10 @@
                                                     {% endif %}
                                                 </a>
                                             </th>
-                                            <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='interest_rate', order=('asc' if request.args.get('sort') == 'interest_rate' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Interest Rate
-                                                    {% if request.args.get('sort') == 'interest_rate' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
+                                            <th>Interest</th>
                                             <th>Interest Paid</th>
                                             <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='frequency', order=('asc' if request.args.get('sort') == 'frequency' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Frequency
-                                                    {% if request.args.get('sort') == 'frequency' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
-                                            <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc')) }}" 
+                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Created
                                                     {% if request.args.get('sort') == 'created' %}
@@ -332,7 +128,6 @@
                                                     {% endif %}
                                                 </a>
                                             </th>
-                                            <th>Status</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -340,9 +135,6 @@
                                         {% for loan_data in loans %}
                                         {% set loan = loan_data.loan %}
                                         <tr>
-                                            <td>
-                                                <strong>#{{ loan.id }}</strong>
-                                            </td>
                                             <td>
                                                 <strong>{{ loan.loan_name }}</strong>
                                             </td>
@@ -354,11 +146,6 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }}">
-                                                    {{ 'Regular' if loan.loan_type == 'regular' else 'Interest-Only' }}
-                                                </span>
-                                            </td>
-                                            <td>
                                                 <strong>₹{{ "%.2f"|format(loan.principal_amount) }}</strong>
                                             </td>
                                             <td>
@@ -367,36 +154,29 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-info">
-                                                    {{ "%.2f"|format(loan.interest_rate * 100) }}%
-                                                </span>
+                                                {% if loan.payment_frequency == 'monthly' %}
+                                                    ₹{{ "%.2f"|format(loan_data.accumulated_interest_monthly) }}
+                                                {% else %}
+                                                    ₹{{ "%.2f"|format(loan_data.accumulated_interest_daily) }}
+                                                {% endif %}
                                             </td>
                                             <td>
                                                 <span class="badge bg-success">
                                                     ₹{{ "%.2f"|format(loan_data.interest_paid) }}
                                                 </span>
                                             </td>
-                                            <td>
-                                                <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }}">
-                                                    {{ loan.payment_frequency.title() }}
-                                                </span>
-                                            </td>
                                             <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
                                             <td>
-                                                {% if loan.status == 'active' %}
-                                                    <span class="badge bg-success">Active</span>
-                                                {% elif loan.status == 'closed' %}
-                                                    <span class="badge bg-warning">Closed</span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">Inactive</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-sm btn-outline-primary" 
-                                                        onclick="viewLoanDetails({{ loan.id }})"
-                                                        title="View Details">
-                                                    <i class="fas fa-eye"></i> View
-                                                </button>
+                                                <a href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary me-1"
+                                                   title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ url_for('moderator_add_payment', instance_name=instance_name, loan_id=loan.id) }}" 
+                                                   class="btn btn-sm btn-outline-success"
+                                                   title="Add Payment">
+                                                    <i class="fas fa-plus-circle"></i>
+                                                </a>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -414,8 +194,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 </div>
 
 <!-- Loan Details Modal -->
@@ -456,8 +234,8 @@
 {% block scripts %}
 <script>
 function viewLoanDetails(loanId) {
-    // Redirect to the loan details page
-    window.location.href = `/{{ instance_name }}/admin/loan/${loanId}`;
+    // Redirect to the moderator loan details page
+    window.location.href = `/{{ instance_name }}/moderator/loan/${loanId}`;
 }
 
 function viewPayments(loanId) {
