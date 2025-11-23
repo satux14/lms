@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Metrics Dashboard - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>{{ _('Dashboard') }}
+                        </a>
+                    </li>
+                    <li class="nav-item mt-3">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                            <span>{{ _('Logging & Metrics') }}</span>
+                        </h6>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_activity_logs', instance_name=instance_name) }}">
+                            <i class="fas fa-list-alt me-2"></i>{{ _('Activity Logs') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin_metrics', instance_name=instance_name) }}">
+                            <i class="fas fa-chart-line me-2"></i>{{ _('Metrics') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_config', instance_name=instance_name) }}">
+                            <i class="fas fa-cog me-2"></i>{{ _('Configuration') }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-line me-2"></i>Metrics Dashboard</h2>
+                <div class="btn-group">
+                    <a href="{{ url_for('admin_metrics', instance_name=instance_name, period='today') }}" 
+                       class="btn btn-sm {% if period == 'today' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        Today
+                    </a>
+                    <a href="{{ url_for('admin_metrics', instance_name=instance_name, period='week') }}" 
+                       class="btn btn-sm {% if period == 'week' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        This Week
+                    </a>
+                    <a href="{{ url_for('admin_metrics', instance_name=instance_name, period='month') }}" 
+                       class="btn btn-sm {% if period == 'month' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                        This Month
+                    </a>
+                </div>
+            </div>
+
+            <!-- Payment Metrics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <h5 class="card-title">Pending Payments</h5>
+                            <h3>{{ today_pending_count }}</h3>
+                            <p class="mb-0">Amount: ₹{{ "{:,.2f}".format(today_pending_amount) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <h5 class="card-title">Today's Payments</h5>
+                            <h3>{{ today_payment_metrics.pending.count + today_payment_metrics.verified.count }}</h3>
+                            <p class="mb-0">Total: ₹{{ "{:,.2f}".format(today_payment_metrics.pending.total + today_payment_metrics.verified.total) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <h5 class="card-title">Verified Payments</h5>
+                            <h3>{{ today_payment_metrics.verified.count }}</h3>
+                            <p class="mb-0">Amount: ₹{{ "{:,.2f}".format(today_payment_metrics.verified.total) }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body">
+                            <h5 class="card-title">Overdue Loans</h5>
+                            <h3>{{ overdue_loans|length }}</h3>
+                            <p class="mb-0">Threshold: {{ threshold_days }} days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Loans Table -->
+            {% if overdue_loans %}
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Loans with Overdue Interest (>{{ threshold_days }} days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Loan Name</th>
+                                    <th>Customer</th>
+                                    <th>Type</th>
+                                    <th>Principal</th>
+                                    <th>Remaining</th>
+                                    <th>Days Overdue</th>
+                                    <th>Accumulated Interest</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in overdue_loans %}
+                                <tr class="table-danger">
+                                    <td>{{ item.loan.loan_name }}</td>
+                                    <td>{{ item.loan.customer.username }}</td>
+                                    <td>
+                                        {% if item.loan_type == 'monthly' %}
+                                            <span class="badge bg-info">Monthly</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Daily</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>₹{{ "{:,.2f}".format(item.loan.principal_amount) }}</td>
+                                    <td>₹{{ "{:,.2f}".format(item.loan.remaining_principal) }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">{{ item.days_overdue }} days</span>
+                                    </td>
+                                    <td>
+                                        ₹{{ "{:,.2f}".format(item.accumulated_interest) }}
+                                        <small class="text-muted d-block">
+                                            {% if item.loan_type == 'monthly' %}
+                                                (Monthly)
+                                            {% else %}
+                                                (Daily)
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=item.loan.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i>
+                No loans with overdue interest payments (threshold: {{ threshold_days }} days)
+            </div>
+            {% endif %}
+
+            <!-- Period Comparison -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Today</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Pending:</strong> {{ today_payment_metrics.pending.count }} (₹{{ "{:,.2f}".format(today_payment_metrics.pending.total) }})</p>
+                            <p><strong>Verified:</strong> {{ today_payment_metrics.verified.count }} (₹{{ "{:,.2f}".format(today_payment_metrics.verified.total) }})</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">This Week</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Pending:</strong> {{ week_payment_metrics.pending.count }} (₹{{ "{:,.2f}".format(week_payment_metrics.pending.total) }})</p>
+                            <p><strong>Verified:</strong> {{ week_payment_metrics.verified.count }} (₹{{ "{:,.2f}".format(week_payment_metrics.verified.total) }})</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">This Month</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Pending:</strong> {{ month_payment_metrics.pending.count }} (₹{{ "{:,.2f}".format(month_payment_metrics.pending.total) }})</p>
+                            <p><strong>Verified:</strong> {{ month_payment_metrics.verified.count }} (₹{{ "{:,.2f}".format(month_payment_metrics.verified.total) }})</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -528,6 +528,30 @@ def process_payment(loan, payment_amount, payment_date=None, transaction_id=None
         
         add_to_current_instance(payment)
         
+        # Log payment creation
+        try:
+            from flask import g
+            instance_name = getattr(g, 'current_instance', 'prod')
+            from lms_logging import get_logging_manager
+            from lms_metrics import get_metrics_manager
+            
+            username = None
+            try:
+                from flask_login import current_user
+                if hasattr(current_user, 'username'):
+                    username = current_user.username
+            except:
+                pass
+            
+            logging_mgr = get_logging_manager(instance_name)
+            metrics_mgr = get_metrics_manager(instance_name)
+            
+            logging_mgr.log_payment('add_payment', loan.id, payment.id, payment_amount, username)
+            metrics_mgr.record_payment(username or 'anonymous', float(payment_amount), status='pending')
+        except Exception as log_error:
+            # Don't fail payment if logging fails
+            print(f"[ERROR] Failed to log payment: {log_error}")
+        
         return payment
         
     except Exception as e:
