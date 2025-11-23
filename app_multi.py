@@ -337,6 +337,24 @@ class DatabaseManager:
 # Global database manager
 db_manager = DatabaseManager()
 
+# Initialize logging and metrics for each instance
+from lms_logging import init_logging, get_logging_manager
+from lms_metrics import init_metrics, get_metrics_manager
+
+def initialize_logging_and_metrics():
+    """Initialize logging and metrics for all instances"""
+    for instance in VALID_INSTANCES:
+        # Get engine for this instance
+        engine = db_manager.get_engine_for_instance(instance)
+        
+        # Initialize logging (same DB, different tables)
+        init_logging(instance_name=instance, db_engine=engine)
+        
+        # Initialize metrics (same DB, different tables)
+        init_metrics(instance_name=instance, db_engine=engine)
+    
+    print("Logging and metrics initialized for all instances!")
+
 # Custom database initialization function
 def init_database_for_instance(instance):
     """Initialize database for specific instance"""
@@ -359,6 +377,9 @@ def init_app():
     
     # Initialize all database connections
     db_manager.initialize_all_databases()
+    
+    # Initialize logging and metrics for all instances
+    initialize_logging_and_metrics()
     
     # Register payment routes
     from app_payments import register_payment_routes, process_payment as payment_process_payment
@@ -992,6 +1013,15 @@ def login(instance_name):
                     print(f"[DEBUG LOGIN] Calling login_user for user: {user.username}")
                     login_user(user)
                     print(f"[DEBUG LOGIN] login_user successful")
+                    
+                    # Log successful login
+                    try:
+                        logging_mgr = get_logging_manager(instance_name)
+                        metrics_mgr = get_metrics_manager(instance_name)
+                        logging_mgr.log_login(user.username, success=True)
+                        metrics_mgr.record_login(user.username, success=True)
+                    except Exception as log_error:
+                        print(f"[DEBUG LOGIN] Error logging login: {log_error}")
                 except Exception as e:
                     print(f"[DEBUG LOGIN] ERROR during login_user: {e}")
                     import traceback
@@ -1021,6 +1051,17 @@ def login(instance_name):
                     print(f"[DEBUG LOGIN] User '{username}' not found in database")
                 else:
                     print(f"[DEBUG LOGIN] Password mismatch for user '{username}'")
+                
+                # Log failed login attempt
+                try:
+                    logging_mgr = get_logging_manager(instance_name)
+                    metrics_mgr = get_metrics_manager(instance_name)
+                    reason = 'User not found' if not user else 'Invalid password'
+                    logging_mgr.log_login(username, success=False, reason=reason)
+                    metrics_mgr.record_login(username, success=False)
+                except Exception as log_error:
+                    print(f"[DEBUG LOGIN] Error logging failed login: {log_error}")
+                
                 flash('Invalid username or password')
         except Exception as e:
             print(f"[DEBUG LOGIN] EXCEPTION in login route: {e}")
@@ -1035,6 +1076,17 @@ def login(instance_name):
 @login_required
 def logout(instance_name):
     """User logout"""
+    username = current_user.username if hasattr(current_user, 'username') else 'unknown'
+    
+    # Log logout
+    try:
+        logging_mgr = get_logging_manager(instance_name)
+        metrics_mgr = get_metrics_manager(instance_name)
+        logging_mgr.log_logout(username)
+        metrics_mgr.record_logout(username)
+    except Exception as log_error:
+        print(f"[DEBUG LOGOUT] Error logging logout: {log_error}")
+    
     logout_user()
     return redirect(url_for('login', instance_name=instance_name))
 
@@ -1158,6 +1210,288 @@ def admin_dashboard(instance_name):
                          total_tracker_investment=total_tracker_investment_float,
                          total_tracker_returns=total_tracker_returns_float,
                          tracker_summary_errors=tracker_summary_errors,
+                         instance_name=instance_name)
+
+# Admin Activity Logs route
+@app.route('/<instance_name>/admin/activity-logs')
+@login_required
+def admin_activity_logs(instance_name):
+    """Admin activity logs page"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from datetime import datetime, timedelta
+    from lms_logging import get_logging_manager, ActivityLog
+    from sqlalchemy.orm import sessionmaker
+    
+    # Get date filter
+    date_filter = request.args.get('date', 'today')
+    if date_filter == 'today':
+        start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = datetime.utcnow()
+    elif date_filter == 'week':
+        start_date = datetime.utcnow() - timedelta(days=7)
+        end_date = datetime.utcnow()
+    elif date_filter == 'month':
+        start_date = datetime.utcnow() - timedelta(days=30)
+        end_date = datetime.utcnow()
+    else:
+        start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = datetime.utcnow()
+    
+    # Get filter parameters
+    action_filter = request.args.get('action', '')
+    username_filter = request.args.get('username', '')
+    
+    logging_mgr = get_logging_manager(instance_name)
+    engine = db_manager.get_engine_for_instance(instance_name)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    
+    try:
+        # Query activity logs
+        query = session.query(ActivityLog).filter(
+            ActivityLog.created_at >= start_date,
+            ActivityLog.created_at <= end_date
+        )
+        
+        if action_filter:
+            query = query.filter(ActivityLog.action == action_filter)
+        if username_filter:
+            query = query.filter(ActivityLog.username == username_filter)
+        
+        logs = query.order_by(ActivityLog.created_at.desc()).limit(500).all()
+        
+        # Get unique actions and usernames for filters
+        all_actions = session.query(ActivityLog.action).distinct().all()
+        all_usernames = session.query(ActivityLog.username).distinct().all()
+        
+        # Get today's summary
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_logins = session.query(ActivityLog).filter_by(action='login_success').filter(
+            ActivityLog.created_at >= today_start
+        ).count()
+        today_logouts = session.query(ActivityLog).filter_by(action='logout').filter(
+            ActivityLog.created_at >= today_start
+        ).count()
+        today_payments = session.query(ActivityLog).filter(
+            ActivityLog.action.like('%payment%')
+        ).filter(
+            ActivityLog.created_at >= today_start
+        ).count()
+        today_admin_actions = session.query(ActivityLog).filter(
+            ActivityLog.action.like('admin_%')
+        ).filter(
+            ActivityLog.created_at >= today_start
+        ).count()
+        
+    finally:
+        session.close()
+    
+    return render_template('admin/activity_logs.html',
+                         logs=logs,
+                         date_filter=date_filter,
+                         action_filter=action_filter,
+                         username_filter=username_filter,
+                         all_actions=[a[0] for a in all_actions],
+                         all_usernames=[u[0] for u in all_usernames],
+                         today_logins=today_logins,
+                         today_logouts=today_logouts,
+                         today_payments=today_payments,
+                         today_admin_actions=today_admin_actions,
+                         instance_name=instance_name)
+
+# Admin Metrics Dashboard route
+@app.route('/<instance_name>/admin/metrics')
+@login_required
+def admin_metrics(instance_name):
+    """Admin metrics dashboard"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from datetime import date, timedelta, datetime
+    from lms_metrics import get_metrics_manager
+    from lms_logging import get_logging_manager
+    from decimal import Decimal
+    
+    # Get period filter
+    period = request.args.get('period', 'today')
+    
+    metrics_mgr = get_metrics_manager(instance_name)
+    logging_mgr = get_logging_manager(instance_name)
+    
+    # Get threshold for overdue interest
+    threshold_days = int(logging_mgr.get_config('interest_payment_threshold_days', '30'))
+    
+    # Calculate date ranges
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+    
+    # Get payment metrics from main database
+    from sqlalchemy import func
+    engine = db_manager.get_engine_for_instance(instance_name)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    
+    try:
+        # Get pending payments (all time)
+        pending_payments_query = get_payment_query().filter_by(status='pending')
+        pending_payments_count = pending_payments_query.count()
+        pending_payments_amount = pending_payments_query.with_entities(
+            func.sum(Payment.amount)
+        ).scalar() or Decimal('0')
+        
+        # Calculate today's payment metrics
+        today_start = datetime.combine(today, datetime.min.time())
+        today_payments = get_payment_query().filter(
+            Payment.payment_date >= today_start
+        ).all()
+        today_pending = [p for p in today_payments if p.status == 'pending']
+        today_verified = [p for p in today_payments if p.status == 'verified']
+        today_payment_metrics = {
+            'pending': {
+                'count': len(today_pending),
+                'total': float(sum(p.amount for p in today_pending))
+            },
+            'verified': {
+                'count': len(today_verified),
+                'total': float(sum(p.amount for p in today_verified))
+            }
+        }
+        
+        # Calculate week's payment metrics
+        week_start = datetime.combine(week_start, datetime.min.time())
+        week_payments = get_payment_query().filter(
+            Payment.payment_date >= week_start
+        ).all()
+        week_pending = [p for p in week_payments if p.status == 'pending']
+        week_verified = [p for p in week_payments if p.status == 'verified']
+        week_payment_metrics = {
+            'pending': {
+                'count': len(week_pending),
+                'total': float(sum(p.amount for p in week_pending))
+            },
+            'verified': {
+                'count': len(week_verified),
+                'total': float(sum(p.amount for p in week_verified))
+            }
+        }
+        
+        # Calculate month's payment metrics
+        month_start = datetime.combine(month_start, datetime.min.time())
+        month_payments = get_payment_query().filter(
+            Payment.payment_date >= month_start
+        ).all()
+        month_pending = [p for p in month_payments if p.status == 'pending']
+        month_verified = [p for p in month_payments if p.status == 'verified']
+        month_payment_metrics = {
+            'pending': {
+                'count': len(month_pending),
+                'total': float(sum(p.amount for p in month_pending))
+            },
+            'verified': {
+                'count': len(month_verified),
+                'total': float(sum(p.amount for p in month_verified))
+            }
+        }
+        
+        # Get loans with overdue interest
+        all_loans = get_loan_query().filter_by(is_active=True, status='active').all()
+        overdue_loans = []
+        
+        for loan in all_loans:
+            # Calculate days since last payment
+            last_payment = get_payment_query().filter_by(
+                loan_id=loan.id,
+                status='verified'
+            ).order_by(Payment.payment_date.desc()).first()
+            
+            if last_payment:
+                days_since_payment = (date.today() - last_payment.payment_date.date()).days
+            else:
+                # No verified payments, use loan creation date
+                days_since_payment = (date.today() - loan.created_at.date()).days
+            
+            if days_since_payment > threshold_days:
+                # Calculate accumulated interest based on loan frequency
+                interest_data = calculate_accumulated_interest(loan, date.today())
+                
+                # Use monthly interest for monthly loans, daily for daily loans
+                if loan.payment_frequency == 'monthly':
+                    accumulated_interest = interest_data.get('monthly', Decimal('0'))
+                else:  # daily
+                    accumulated_interest = interest_data.get('daily', Decimal('0'))
+                
+                overdue_loans.append({
+                    'loan': loan,
+                    'days_overdue': days_since_payment,
+                    'accumulated_interest': accumulated_interest,
+                    'loan_type': loan.payment_frequency  # 'monthly' or 'daily'
+                })
+        
+        # Sort by days overdue (most overdue first)
+        overdue_loans.sort(key=lambda x: x['days_overdue'], reverse=True)
+        
+    finally:
+        session.close()
+    
+    return render_template('admin/metrics.html',
+                         period=period,
+                         threshold_days=threshold_days,
+                         today_pending_count=pending_payments_count,
+                         today_pending_amount=float(pending_payments_amount),
+                         today_payment_metrics=today_payment_metrics,
+                         week_payment_metrics=week_payment_metrics,
+                         month_payment_metrics=month_payment_metrics,
+                         overdue_loans=overdue_loans,
+                         instance_name=instance_name)
+
+# Admin System Configuration route
+@app.route('/<instance_name>/admin/config', methods=['GET', 'POST'])
+@login_required
+def admin_config(instance_name):
+    """Admin system configuration page"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    from lms_logging import get_logging_manager
+    
+    logging_mgr = get_logging_manager(instance_name)
+    
+    if request.method == 'POST':
+        threshold_days = request.form.get('interest_payment_threshold_days', '30')
+        
+        try:
+            logging_mgr.set_config(
+                'interest_payment_threshold_days',
+                threshold_days,
+                description='Days threshold for highlighting overdue interest payments',
+                updated_by=current_user.id
+            )
+            flash('Configuration updated successfully', 'success')
+        except Exception as e:
+            flash(f'Error updating configuration: {str(e)}', 'error')
+        
+        return redirect(url_for('admin_config', instance_name=instance_name))
+    
+    # Get current config
+    threshold = logging_mgr.get_config('interest_payment_threshold_days', '30')
+    
+    return render_template('admin/config.html',
+                         threshold=threshold,
                          instance_name=instance_name)
 
 # Admin Loans route
@@ -1911,6 +2245,23 @@ def admin_edit_payment(instance_name, payment_id):
             pass
         
         commit_current_instance()
+        
+        # Log admin action
+        try:
+            logging_mgr = get_logging_manager(instance_name)
+            metrics_mgr = get_metrics_manager(instance_name)
+            action = 'verify_payment' if payment.status == 'verified' and old_status == 'pending' else 'edit_payment'
+            logging_mgr.log_admin_action(action, 'payment', payment.id, 
+                                       username=current_user.username,
+                                       details={'old_status': old_status, 'new_status': payment.status})
+            metrics_mgr.record_admin_action(action, current_user.username)
+            
+            # Update payment metrics if status changed
+            if payment.status == 'verified' and old_status == 'pending':
+                metrics_mgr.record_payment(current_user.username, float(payment.amount), status='verified')
+        except Exception as log_error:
+            print(f"[ERROR] Failed to log admin action: {log_error}")
+        
         flash('Payment updated successfully')
         return redirect(url_for('admin_payments', instance_name=instance_name))
     
@@ -1946,6 +2297,17 @@ def admin_delete_payment(instance_name, payment_id):
         # Delete the payment
         get_payment_query().filter_by(id=payment_id).delete()
         commit_current_instance()
+        
+        # Log admin action
+        try:
+            logging_mgr = get_logging_manager(instance_name)
+            metrics_mgr = get_metrics_manager(instance_name)
+            logging_mgr.log_admin_action('delete_payment', 'payment', payment_id, 
+                                       username=current_user.username,
+                                       details={'payment_amount': str(payment.amount), 'loan_id': loan.id})
+            metrics_mgr.record_admin_action('delete_payment', current_user.username)
+        except Exception as log_error:
+            print(f"[ERROR] Failed to log admin action: {log_error}")
         
         flash(f'Payment of ₹{payment.amount:,.2f} deleted successfully')
         return redirect(url_for('admin_payments', instance_name=instance_name))
