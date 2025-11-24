@@ -141,7 +141,11 @@
                                 {% if logs %}
                                     {% for log in logs %}
                                     <tr>
-                                        <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        <td>
+                                            {% set local_time = logging_mgr.convert_to_local_time(log.created_at) %}
+                                            {{ local_time.strftime('%Y-%m-%d %H:%M:%S') if local_time else log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                            <br><small class="text-muted">({{ timezone_str }})</small>
+                                        </td>
                                         <td>{{ log.username }}</td>
                                         <td>
                                             {% if log.action == 'login_success' %}
@@ -150,6 +154,8 @@
                                                 <span class="badge bg-danger">{{ log.action }}</span>
                                             {% elif 'payment' in log.action %}
                                                 <span class="badge bg-info">{{ log.action }}</span>
+                                            {% elif 'tracker' in log.action %}
+                                                <span class="badge bg-primary">{{ log.action }}</span>
                                             {% elif 'admin' in log.action %}
                                                 <span class="badge bg-warning">{{ log.action }}</span>
                                             {% else %}

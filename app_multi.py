@@ -1292,6 +1292,9 @@ def admin_activity_logs(instance_name):
     finally:
         session.close()
     
+    # Get timezone info
+    timezone_str = logging_mgr.get_config('system_timezone', 'Asia/Kolkata')
+    
     return render_template('admin/activity_logs.html',
                          logs=logs,
                          date_filter=date_filter,
@@ -1303,6 +1306,8 @@ def admin_activity_logs(instance_name):
                          today_logouts=today_logouts,
                          today_payments=today_payments,
                          today_admin_actions=today_admin_actions,
+                         logging_mgr=logging_mgr,
+                         timezone_str=timezone_str,
                          instance_name=instance_name)
 
 # Admin Metrics Dashboard route
@@ -1441,6 +1446,65 @@ def admin_metrics(instance_name):
         # Sort by days overdue (most overdue first)
         overdue_loans.sort(key=lambda x: x['days_overdue'], reverse=True)
         
+        # Get trackers with pending > 0 for more than configured threshold days
+        # tracker_manager is already imported at the top of the file
+        all_trackers = get_daily_tracker_query().filter_by(is_active=True).all()
+        overdue_trackers = []
+        tracker_pending_threshold = int(logging_mgr.get_config('tracker_pending_threshold_days', '5'))
+        
+        for tracker in all_trackers:
+            try:
+                tracker_data = get_tracker_data(instance_name, tracker.filename)
+                summary = get_tracker_summary(instance_name, tracker.filename)
+                pending = float(summary.get('pending', 0))
+                
+                # Only consider trackers with positive pending (outstanding payments)
+                if pending > 0:
+                    # Find last paid date
+                    last_paid_date = None
+                    for row in reversed(tracker_data['data']):
+                        daily_payment = row.get('daily_payments', 0)
+                        if daily_payment and float(daily_payment or 0) > 0:
+                            row_date = row.get('date')
+                            if row_date:
+                                try:
+                                    # Date can be date object, datetime object, or string
+                                    if isinstance(row_date, date):
+                                        last_paid_date = row_date
+                                    elif isinstance(row_date, datetime):
+                                        last_paid_date = row_date.date()
+                                    elif isinstance(row_date, str):
+                                        last_paid_date = datetime.strptime(row_date, '%Y-%m-%d').date()
+                                    break
+                                except Exception as e:
+                                    # Skip invalid dates
+                                    pass
+                    
+                    # Calculate days since last payment
+                    if last_paid_date:
+                        days_since_payment = (date.today() - last_paid_date).days
+                    else:
+                        # No payment found, use tracker creation date
+                        days_since_payment = (date.today() - tracker.created_at.date()).days
+                    
+                    # If pending > 0 and more than 5 days since last payment
+                    if days_since_payment > tracker_pending_threshold:
+                        overdue_trackers.append({
+                            'tracker': tracker,
+                            'pending': pending,
+                            'days_since_payment': days_since_payment,
+                            'last_paid_date': last_paid_date,
+                            'total_payments': summary.get('total_payments', 0),
+                            'expected_total': summary.get('expected_total', 0)
+                        })
+            except Exception as e:
+                # Skip trackers with errors
+                print(f"Error processing tracker {tracker.id}: {e}")
+                continue
+        
+        # Sort by days since payment (most overdue first)
+        overdue_trackers.sort(key=lambda x: x['days_since_payment'], reverse=True)
+        
     finally:
         session.close()
     
@@ -1453,6 +1517,8 @@ def admin_metrics(instance_name):
                          week_payment_metrics=week_payment_metrics,
                          month_payment_metrics=month_payment_metrics,
                          overdue_loans=overdue_loans,
+                         overdue_trackers=overdue_trackers,
+                         tracker_pending_threshold=tracker_pending_threshold,
                          instance_name=instance_name)
 
 # Admin System Configuration route
@@ -1473,12 +1539,26 @@ def admin_config(instance_name):
     
     if request.method == 'POST':
         threshold_days = request.form.get('interest_payment_threshold_days', '30')
+        timezone = request.form.get('system_timezone', 'Asia/Kolkata')
+        tracker_threshold = request.form.get('tracker_pending_threshold_days', '5')
         
         try:
             logging_mgr.set_config(
                 'interest_payment_threshold_days',
                 threshold_days,
                 description='Days threshold for highlighting overdue interest payments',
+                updated_by=current_user.id
+            )
+            logging_mgr.set_config(
+                'system_timezone',
+                timezone,
+                description='System timezone for displaying timestamps',
+                updated_by=current_user.id
+            )
+            logging_mgr.set_config(
+                'tracker_pending_threshold_days',
+                tracker_threshold,
+                description='Days threshold for highlighting trackers with pending payments',
                 updated_by=current_user.id
             )
             flash('Configuration updated successfully', 'success')
@@ -1489,9 +1569,13 @@ def admin_config(instance_name):
     
     # Get current config
     threshold = logging_mgr.get_config('interest_payment_threshold_days', '30')
+    timezone = logging_mgr.get_config('system_timezone', 'Asia/Kolkata')
+    tracker_threshold = logging_mgr.get_config('tracker_pending_threshold_days', '5')
     
     return render_template('admin/config.html',
                          threshold=threshold,
+                         timezone=timezone,
+                         tracker_threshold=tracker_threshold,
                          instance_name=instance_name)
 
 # Admin Loans route
@@ -3176,6 +3260,31 @@ def admin_add_tracker_entry(instance_name, tracker_id):
             tracker.updated_at = datetime.utcnow()
             commit_current_instance()
             
+            # Log tracker entry update
+            from lms_logging import get_logging_manager
+            from lms_metrics import get_metrics_manager
+            logging_mgr = get_logging_manager(instance_name)
+            metrics_mgr = get_metrics_manager(instance_name)
+            
+            daily_payment = entry_data.get('daily_payments', 0)
+            logging_mgr.log_admin_action(
+                action='admin_tracker_entry_update',
+                resource_type='tracker',
+                resource_id=tracker_id,
+                username=current_user.username,
+                details={
+                    'tracker_name': tracker.tracker_name,
+                    'day': day,
+                    'daily_payment': str(daily_payment),
+                    'customer': tracker.user.username if tracker.user else None
+                }
+            )
+            metrics_mgr.record_tracker_entry(
+                tracker_id=tracker_id,
+                username=current_user.username,
+                amount=float(daily_payment) if daily_payment else 0
+            )
+            
             flash(f'Entry for Day {day} updated successfully', 'success')
             return redirect(url_for('admin_view_daily_tracker', 
                                   instance_name=instance_name, 
@@ -3256,6 +3365,32 @@ def admin_edit_tracker_entry(instance_name, tracker_id, row_index):
             # Update the tracker's updated_at timestamp
             tracker.updated_at = datetime.utcnow()
             commit_current_instance()
+            
+            # Log tracker entry update
+            from lms_logging import get_logging_manager
+            from lms_metrics import get_metrics_manager
+            logging_mgr = get_logging_manager(instance_name)
+            metrics_mgr = get_metrics_manager(instance_name)
+            
+            daily_payment = entry_data.get('daily_payments', 0)
+            logging_mgr.log_admin_action(
+                action='admin_tracker_entry_update',
+                resource_type='tracker',
+                resource_id=tracker_id,
+                username=current_user.username,
+                details={
+                    'tracker_name': tracker.tracker_name,
+                    'day': row_data.get('day', row_index),
+                    'daily_payment': str(daily_payment),
+                    'customer': tracker.user.username if tracker.user else None,
+                    'row_index': row_index
+                }
+            )
+            metrics_mgr.record_tracker_entry(
+                tracker_id=tracker_id,
+                username=current_user.username,
+                amount=float(daily_payment) if daily_payment else 0
+            )
             
             flash(f'Entry for Day {row_data.get("day", row_index)} updated successfully', 'success')
             return redirect(url_for('admin_view_daily_tracker', 

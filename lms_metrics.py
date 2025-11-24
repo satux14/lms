@@ -76,6 +76,10 @@ class MetricsManager:
         """Record moderator action metric"""
         self._record_metric('moderator_actions', username, 1, {'action': action})
     
+    def record_tracker_entry(self, tracker_id, username, amount=0):
+        """Record tracker entry metric"""
+        self._record_metric('tracker_entries', username, amount, {'tracker_id': tracker_id})
+    
     def _record_metric(self, metric_name, username, value, metadata=None):
         """Record a metric to database"""
         from sqlalchemy.orm import sessionmaker

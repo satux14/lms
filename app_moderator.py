@@ -487,6 +487,31 @@ def register_routes():
                 tracker.updated_at = datetime.utcnow()
                 commit_current_instance()
                 
+                # Log tracker entry update
+                from lms_logging import get_logging_manager
+                from lms_metrics import get_metrics_manager
+                logging_mgr = get_logging_manager(instance_name)
+                metrics_mgr = get_metrics_manager(instance_name)
+                
+                daily_payment = entry_data.get('daily_payments', 0)
+                logging_mgr.log_moderator_action(
+                    action='moderator_tracker_entry_update',
+                    resource_type='tracker',
+                    resource_id=tracker_id,
+                    username=current_user.username,
+                    details={
+                        'tracker_name': tracker.tracker_name,
+                        'day': day,
+                        'daily_payment': str(daily_payment),
+                        'customer': tracker.user.username if tracker.user else None
+                    }
+                )
+                metrics_mgr.record_tracker_entry(
+                    tracker_id=tracker_id,
+                    username=current_user.username,
+                    amount=float(daily_payment) if daily_payment else 0
+                )
+                
                 flash(f'Entry for Day {day} added successfully', 'success')
                 return redirect(url_for('moderator_view_tracker', 
                                       instance_name=instance_name, 
@@ -569,6 +594,32 @@ def register_routes():
                 tracker.updated_at = datetime.utcnow()
                 commit_current_instance()
                 
+                # Log tracker entry update
+                from lms_logging import get_logging_manager
+                from lms_metrics import get_metrics_manager
+                logging_mgr = get_logging_manager(instance_name)
+                metrics_mgr = get_metrics_manager(instance_name)
+                
+                daily_payment = entry_data.get('daily_payments', 0)
+                logging_mgr.log_moderator_action(
+                    action='moderator_tracker_entry_update',
+                    resource_type='tracker',
+                    resource_id=tracker_id,
+                    username=current_user.username,
+                    details={
+                        'tracker_name': tracker.tracker_name,
+                        'day': row_data.get('day', row_index),
+                        'daily_payment': str(daily_payment),
+                        'customer': tracker.user.username if tracker.user else None,
+                        'row_index': row_index
+                    }
+                )
+                metrics_mgr.record_tracker_entry(
+                    tracker_id=tracker_id,
+                    username=current_user.username,
+                    amount=float(daily_payment) if daily_payment else 0
+                )
+                
                 flash(f'Entry for Day {row_data.get("day", row_index)} updated successfully', 'success')
                 return redirect(url_for('moderator_view_tracker', 
                                       instance_name=instance_name, 
@@ -628,6 +679,33 @@ def register_routes():
             # Update the tracker's updated_at timestamp
             tracker.updated_at = datetime.utcnow()
             commit_current_instance()
+            
+            # Log tracker entry update
+            from lms_logging import get_logging_manager
+            from lms_metrics import get_metrics_manager
+            logging_mgr = get_logging_manager(instance_name)
+            metrics_mgr = get_metrics_manager(instance_name)
+            
+            logging_mgr.log_moderator_action(
+                action='moderator_tracker_entry_update',
+                resource_type='tracker',
+                resource_id=tracker_id,
+                username=current_user.username,
+                    details={
+                        'tracker_name': tracker.tracker_name,
+                        'day': row_data.get('day', row_index),
+                        'daily_payment': '0',
+                        'payment_mode': 'Other',
+                        'action': 'no_payment_today',
+                        'customer': tracker.user.username if tracker.user else None,
+                        'row_index': row_index
+                    }
+            )
+            metrics_mgr.record_tracker_entry(
+                tracker_id=tracker_id,
+                username=current_user.username,
+                amount=0.0
+            )
             
             return jsonify({
                 'success': True,
