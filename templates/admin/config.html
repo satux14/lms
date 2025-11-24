@@ -44,7 +44,7 @@
                 <h2><i class="fas fa-cog me-2"></i>System Configuration</h2>
             </div>
 
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">Interest Payment Threshold</h5>
                 </div>
@@ -63,6 +63,41 @@
                                    required>
                             <div class="form-text">
                                 Loans with interest payments overdue by more than this number of days will be highlighted in the metrics dashboard.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="system_timezone" class="form-label">
+                                System Timezone
+                            </label>
+                            <select class="form-select" 
+                                    id="system_timezone" 
+                                    name="system_timezone" 
+                                    required>
+                                <option value="Asia/Kolkata" {% if timezone == 'Asia/Kolkata' %}selected{% endif %}>Asia/Kolkata (IST - UTC+5:30)</option>
+                                <option value="UTC" {% if timezone == 'UTC' %}selected{% endif %}>UTC (Coordinated Universal Time)</option>
+                                <option value="America/New_York" {% if timezone == 'America/New_York' %}selected{% endif %}>America/New_York (EST/EDT)</option>
+                                <option value="America/Los_Angeles" {% if timezone == 'America/Los_Angeles' %}selected{% endif %}>America/Los_Angeles (PST/PDT)</option>
+                                <option value="Europe/London" {% if timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT/BST)</option>
+                                <option value="Asia/Dubai" {% if timezone == 'Asia/Dubai' %}selected{% endif %}>Asia/Dubai (GST - UTC+4)</option>
+                                <option value="Asia/Singapore" {% if timezone == 'Asia/Singapore' %}selected{% endif %}>Asia/Singapore (SGT - UTC+8)</option>
+                            </select>
+                            <div class="form-text">
+                                Timezone used for displaying timestamps in activity logs. Default: Asia/Kolkata (IST).
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tracker_pending_threshold_days" class="form-label">
+                                Tracker Pending Payment Threshold (Days)
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="tracker_pending_threshold_days" 
+                                   name="tracker_pending_threshold_days" 
+                                   value="{{ tracker_threshold }}" 
+                                   min="1" 
+                                   required>
+                            <div class="form-text">
+                                Trackers with pending payments for more than this number of days will be highlighted in the metrics dashboard.
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary">

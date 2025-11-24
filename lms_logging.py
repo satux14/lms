@@ -6,11 +6,17 @@ Uses same database, different tables for isolation
 import logging
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import request
 from flask_login import current_user
 from sqlalchemy import Column, Integer, String, Text, DateTime, Index
 from sqlalchemy.ext.declarative import declarative_base
+
+try:
+    import pytz
+    PYTZ_AVAILABLE = True
+except ImportError:
+    PYTZ_AVAILABLE = False
 
 # Base for logging models - separate from main app models
 LoggingBase = declarative_base()
@@ -252,6 +258,46 @@ class LoggingManager:
             raise
         finally:
             session.close()
+    
+    def get_timezone(self):
+        """Get configured timezone, default to IST"""
+        if not PYTZ_AVAILABLE:
+            return None
+        
+        timezone_str = self.get_config('system_timezone', 'Asia/Kolkata')
+        try:
+            return pytz.timezone(timezone_str)
+        except:
+            # Fallback to IST if invalid timezone
+            try:
+                return pytz.timezone('Asia/Kolkata')
+            except:
+                return None
+    
+    def convert_to_local_time(self, utc_datetime):
+        """Convert UTC datetime to configured local timezone"""
+        if utc_datetime is None:
+            return None
+        
+        if not PYTZ_AVAILABLE:
+            # If pytz not available, return as-is
+            return utc_datetime
+        
+        try:
+            # If datetime is naive, assume it's UTC
+            if utc_datetime.tzinfo is None:
+                utc_datetime = pytz.UTC.localize(utc_datetime)
+            
+            # Convert to configured timezone
+            local_tz = self.get_timezone()
+            if local_tz:
+                local_datetime = utc_datetime.astimezone(local_tz)
+                return local_datetime
+        except Exception as e:
+            self.logger.error(f"Error converting timezone: {e}")
+        
+        # Fallback: return original datetime
+        return utc_datetime
     
     def get_activity_logs(self, action=None, username=None, resource_type=None, 
                          start_date=None, end_date=None, limit=100):
