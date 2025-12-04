@@ -433,8 +433,15 @@ def register_routes():
             return redirect(url_for('moderator_daily_trackers', instance_name=instance_name))
         
         try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"[MODERATOR_VIEW_TRACKER] Starting view for tracker {tracker_id}, filename: {tracker.filename}")
+            
             tracker_data = get_tracker_data(instance_name, tracker.filename)
+            logger.info(f"[MODERATOR_VIEW_TRACKER] Tracker data loaded, rows: {len(tracker_data.get('data', []))}")
+            
             summary = get_tracker_summary(instance_name, tracker.filename)
+            logger.info(f"[MODERATOR_VIEW_TRACKER] Summary loaded: {summary}")
             
             # Get pending entries for this tracker
             from app_multi import TrackerEntry, get_tracker_entry_query, get_tracker_day_cashback, get_tracker_cashback_total
@@ -458,6 +465,32 @@ def register_routes():
             # Update tracker_data to include pending entries
             # For each row, if there's a pending entry for that day, use pending data
             merged_data = []
+            seen_days = set()  # Track days to prevent duplicates
+            
+            # Helper function to convert numeric values
+            def convert_numeric_value(value, field_name=''):
+                """Convert value to float, handling strings with currency symbols"""
+                if value is None:
+                    return None
+                if isinstance(value, (int, float, Decimal)):
+                    return float(value)
+                if isinstance(value, str):
+                    try:
+                        # Remove currency symbols, commas, and whitespace
+                        cleaned = value.replace('₹', '').replace('$', '').replace(',', '').strip()
+                        if not cleaned:
+                            return None
+                        return float(cleaned)
+                    except (ValueError, AttributeError, TypeError):
+                        logger.warning(f"[MODERATOR_VIEW_TRACKER] Failed to convert {field_name} '{value}' to float")
+                        return None
+                # Try to convert unknown types
+                try:
+                    return float(value)
+                except (ValueError, TypeError, AttributeError):
+                    logger.warning(f"[MODERATOR_VIEW_TRACKER] Failed to convert {field_name} '{value}' to float")
+                    return None
+            
             for row in tracker_data['data']:
                 day = row.get('day')
                 # Convert day to int if needed
@@ -469,6 +502,22 @@ def register_routes():
                 elif isinstance(day, float):
                     day = int(day)
                 
+                # Skip if day is None or duplicate
+                if day is None:
+                    continue
+                
+                # Handle duplicate days - prefer pending entry, skip duplicate Excel rows
+                if day in seen_days:
+                    if day in pending_entries_map:
+                        # Already added as pending entry, skip this Excel row
+                        continue
+                    else:
+                        # Duplicate Excel row, skip it
+                        logger.warning(f"[MODERATOR_VIEW_TRACKER] Skipping duplicate day {day} in Excel data")
+                        continue
+                
+                seen_days.add(day)
+                
                 if day is not None and day in pending_entries_map:
                     # Use pending entry data, but keep some fields from Excel (like cumulative formulas)
                     pending_data = pending_entries_map[day]['data'].copy()
@@ -477,6 +526,16 @@ def register_routes():
                     merged_row.update(pending_data)
                     merged_row['is_pending'] = True
                     merged_row['pending_entry_id'] = pending_entries_map[day]['entry'].id
+                    
+                    # Convert all numeric fields to float
+                    for numeric_field in ['daily_payments', 'cumulative', 'balance', 
+                                         'reinvest', 'pocket_money', 'total_invested']:
+                        if numeric_field in merged_row:
+                            merged_row[numeric_field] = convert_numeric_value(
+                                merged_row[numeric_field], 
+                                field_name=numeric_field
+                            )
+                    
                     merged_data.append(merged_row)
                 else:
                     # Use Excel data
@@ -495,6 +554,16 @@ def register_routes():
                             merged_row['is_pending'] = None
                     else:
                         merged_row['is_pending'] = None
+                    
+                    # Convert all numeric fields to float
+                    for numeric_field in ['daily_payments', 'cumulative', 'balance', 
+                                         'reinvest', 'pocket_money', 'total_invested']:
+                        if numeric_field in merged_row:
+                            merged_row[numeric_field] = convert_numeric_value(
+                                merged_row[numeric_field], 
+                                field_name=numeric_field
+                            )
+                    
                     merged_data.append(merged_row)
             
             # Recalculate summary including pending entries
@@ -519,8 +588,21 @@ def register_routes():
             tracker_cashback_total = get_tracker_cashback_total(tracker_id, instance_name)
             
             # Updated summary with pending included
+            logger.info(f"[MODERATOR_VIEW_TRACKER] total_payments_from_excel: {total_payments_from_excel} (type: {type(total_payments_from_excel).__name__})")
+            logger.info(f"[MODERATOR_VIEW_TRACKER] pending_payments_sum: {pending_payments_sum} (type: {type(pending_payments_sum).__name__})")
+            
             updated_summary = summary.copy()
-            updated_summary['total_payments'] = float(total_payments_from_excel) + float(pending_payments_sum)
+            try:
+                total_payments_from_excel_float = float(total_payments_from_excel) if not isinstance(total_payments_from_excel, (int, float)) else float(total_payments_from_excel)
+                pending_payments_sum_float = float(pending_payments_sum) if not isinstance(pending_payments_sum, (int, float)) else float(pending_payments_sum)
+                logger.info(f"[MODERATOR_VIEW_TRACKER] Converting to float: {total_payments_from_excel_float} + {pending_payments_sum_float}")
+                updated_summary['total_payments'] = total_payments_from_excel_float + pending_payments_sum_float
+            except (ValueError, TypeError) as e:
+                logger.error(f"[MODERATOR_VIEW_TRACKER] Error converting payments to float: {e}")
+                logger.error(f"[MODERATOR_VIEW_TRACKER] total_payments_from_excel: {total_payments_from_excel} (type: {type(total_payments_from_excel).__name__})")
+                logger.error(f"[MODERATOR_VIEW_TRACKER] pending_payments_sum: {pending_payments_sum} (type: {type(pending_payments_sum).__name__})")
+                raise
+            
             updated_summary['pending_entries_count'] = len(pending_entries)
             updated_summary['pending_payments_sum'] = float(pending_payments_sum)
             updated_summary['cashback_total'] = float(tracker_cashback_total)
@@ -549,6 +631,11 @@ def register_routes():
                                  day_cashback_map=day_cashback_map,
                                  instance_name=instance_name)
         except Exception as e:
+            import logging
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.error(f"[MODERATOR_VIEW_TRACKER] Error reading tracker data for tracker {tracker_id}: {str(e)}")
+            logger.error(f"[MODERATOR_VIEW_TRACKER] Traceback: {traceback.format_exc()}")
             flash(f'Error reading tracker data: {str(e)}', 'error')
             return redirect(url_for('moderator_daily_trackers', instance_name=instance_name))
 

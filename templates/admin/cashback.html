@@ -3,22 +3,40 @@
 {% block title %}Cashback Management - {{ _('The SRS Consulting') }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid">
     <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+        {% include 'admin/_sidebar.html' %}
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">
                     <i class="fas fa-coins me-2"></i>Cashback Management
                 </h1>
-                <div>
-                    <a href="{{ url_for('admin_add_cashback', instance_name=instance_name) }}" class="btn btn-primary me-2">
-                        <i class="fas fa-plus me-2"></i>Add Cashback
-                    </a>
-                    <a href="{{ url_for('admin_dashboard', instance_name=instance_name) }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-                    </a>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ url_for('admin_add_cashback', instance_name=instance_name) }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add Cashback
+                        </a>
+                    </div>
                 </div>
             </div>
+
+    <!-- Navigation Tabs -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('admin_cashback', instance_name=instance_name) }}">
+                        <i class="fas fa-coins me-1"></i>Cashback Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_cashback_redeem', instance_name=instance_name) }}">
+                        <i class="fas fa-gift me-1"></i>Redeem
+                    </a>
+                </li>
+            </ul>
         </div>
     </div>
 
@@ -34,219 +52,6 @@
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- Redemption Summary -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-gift me-2"></i>Redemption Summary
-                    </h5>
-                    <div>
-                        <span class="badge bg-warning me-2">Pending: {{ redemption_stats.pending }} (₹{{ "%.2f"|format(redemption_stats.total_pending_amount) }})</span>
-                        <span class="badge bg-success me-2">Completed: {{ redemption_stats.completed }} (₹{{ "%.2f"|format(redemption_stats.total_completed_amount) }})</span>
-                        <span class="badge bg-danger">Cancelled: {{ redemption_stats.cancelled }} (₹{{ "%.2f"|format(redemption_stats.total_cancelled_amount) }})</span>
-                    </div>
-                </div>
-                <div class="card-body">
-                    {% if pending_redemptions %}
-                    <div class="alert alert-warning mb-3">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>{{ pending_redemptions|length }} pending redemption request{{ 's' if pending_redemptions|length != 1 else '' }} need attention</strong>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>User</th>
-                                    <th>Amount</th>
-                                    <th>Type</th>
-                                    <th>Payment Details</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for redemption in pending_redemptions %}
-                                <tr>
-                                    <td>{{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                    <td>
-                                        <strong>{{ redemption.user.username }}</strong>
-                                        {% if redemption.user.email %}
-                                            <br><small class="text-muted">{{ redemption.user.email }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <strong class="text-danger">₹{{ "%.2f"|format(redemption.amount) }}</strong>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info">
-                                            {{ redemption.redemption_type.replace('_', ' ').title() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if redemption.account_name %}
-                                            <strong>{{ redemption.account_name }}</strong><br>
-                                        {% endif %}
-                                        {% if redemption.account_number %}
-                                            <small class="text-muted">Account/ID: {{ redemption.account_number }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.bank_name %}
-                                            <small class="text-muted">Bank: {{ redemption.bank_name }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.ifsc_code %}
-                                            <small class="text-muted">IFSC: {{ redemption.ifsc_code }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.upi_id %}
-                                            <small class="text-muted">UPI: {{ redemption.upi_id }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.gpay_id %}
-                                            <small class="text-muted">GPay: {{ redemption.gpay_id }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.phone_number %}
-                                            <small class="text-muted">Phone: {{ redemption.phone_number }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.address %}
-                                            <small class="text-muted">Address: {{ redemption.address }}</small>
-                                        {% endif %}
-                                        {% if not redemption.account_name and not redemption.account_number and not redemption.bank_name and not redemption.upi_id and not redemption.gpay_id and not redemption.phone_number and not redemption.address %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{{ url_for('admin_process_redemption', instance_name=instance_name, redemption_id=redemption.id) }}" 
-                                           class="btn btn-sm btn-primary">
-                                            <i class="fas fa-check me-1"></i>Process
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle me-2"></i>
-                        <strong>No pending redemption requests</strong> - All redemption requests have been processed.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- All Redemption History -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history me-2"></i>All Redemption History
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if all_redemptions %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>User</th>
-                                    <th>Amount</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Payment Details</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for redemption in all_redemptions %}
-                                <tr>
-                                    <td>{{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                    <td>
-                                        <strong>{{ redemption.user.username }}</strong>
-                                        {% if redemption.user.email %}
-                                            <br><small class="text-muted">{{ redemption.user.email }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <strong class="text-danger">₹{{ "%.2f"|format(redemption.amount) }}</strong>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info">
-                                            {{ redemption.redemption_type.replace('_', ' ').title() }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if redemption.status == 'pending' %}
-                                            <span class="badge bg-warning">Pending</span>
-                                        {% elif redemption.status == 'completed' %}
-                                            <span class="badge bg-success">Completed</span>
-                                        {% elif redemption.status == 'cancelled' %}
-                                            <span class="badge bg-danger">Cancelled</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if redemption.account_name %}
-                                            <strong>{{ redemption.account_name }}</strong><br>
-                                        {% endif %}
-                                        {% if redemption.account_number %}
-                                            <small class="text-muted">Account/ID: {{ redemption.account_number }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.bank_name %}
-                                            <small class="text-muted">Bank: {{ redemption.bank_name }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.ifsc_code %}
-                                            <small class="text-muted">IFSC: {{ redemption.ifsc_code }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.upi_id %}
-                                            <small class="text-muted">UPI: {{ redemption.upi_id }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.gpay_id %}
-                                            <small class="text-muted">GPay: {{ redemption.gpay_id }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.phone_number %}
-                                            <small class="text-muted">Phone: {{ redemption.phone_number }}</small><br>
-                                        {% endif %}
-                                        {% if redemption.address %}
-                                            <small class="text-muted">Address: {{ redemption.address }}</small>
-                                        {% endif %}
-                                        {% if not redemption.account_name and not redemption.account_number and not redemption.bank_name and not redemption.upi_id and not redemption.gpay_id and not redemption.phone_number and not redemption.address %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
-                                        {% if redemption.admin_notes %}
-                                            <br><small class="text-info"><strong>Admin Notes:</strong> {{ redemption.admin_notes }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if redemption.status == 'pending' %}
-                                            <a href="{{ url_for('admin_process_redemption', instance_name=instance_name, redemption_id=redemption.id) }}" 
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-check me-1"></i>Process
-                                            </a>
-                                        {% else %}
-                                            <a href="{{ url_for('admin_process_redemption', instance_name=instance_name, redemption_id=redemption.id) }}" 
-                                               class="btn btn-sm btn-outline-secondary">
-                                                <i class="fas fa-eye me-1"></i>View
-                                            </a>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>No redemption history</strong> - No redemption requests have been made yet.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
         </div>
     </div>
 
