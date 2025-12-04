@@ -224,12 +224,28 @@ def get_tracker_data(instance, filename):
     config = SHEET_CONFIGS[tracker_type]
     
     # Read parameters
+    # Helper to safely convert numeric parameters
+    def safe_numeric(value, default=0):
+        """Safely convert value to float/int"""
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                # Remove any non-numeric characters except decimal point and minus
+                cleaned = value.replace(',', '').strip()
+                return float(cleaned)
+            except (ValueError, AttributeError):
+                return default
+        return default
+    
     parameters = {
         'tracker_name': ws[config['tracker_name_cell']].value,
-        'investment': ws[config['investment_cell']].value,
-        'scheme_period': ws[config['scheme_period_cell']].value,
+        'investment': safe_numeric(ws[config['investment_cell']].value),
+        'scheme_period': safe_numeric(ws[config['scheme_period_cell']].value),
         'start_date': ws[config['start_date_cell']].value,
-        'per_day_payment': ws[config['per_day_payment_cell']].value,
+        'per_day_payment': safe_numeric(ws[config['per_day_payment_cell']].value),
         'tracker_type': tracker_type
     }
     
@@ -274,6 +290,25 @@ def get_tracker_data(instance, filename):
             # Handle date formatting
             if col_name == 'date' and isinstance(value, datetime):
                 value = value.date()
+            
+            # Convert numeric columns from string to appropriate type
+            if col_name in ['daily_payments', 'cumulative', 'balance', 
+                          'reinvest', 'pocket_money', 'total_invested']:
+                if isinstance(value, str):
+                    try:
+                        # Remove commas and convert to float
+                        value = float(value.replace(',', '').strip())
+                    except (ValueError, AttributeError):
+                        # Keep as None if conversion fails
+                        value = None
+                elif value is None:
+                    value = None
+                else:
+                    # Ensure it's a float
+                    try:
+                        value = float(value)
+                    except (TypeError, ValueError):
+                        value = None
             
             row_data[col_name] = value
         
@@ -565,9 +600,11 @@ def get_tracker_summary(instance, filename):
     
     # Calculate expected and pending
     per_day = safe_float(parameters.get('per_day_payment', 0))
+    # Ensure total_days_count is an integer
+    total_days_count = int(total_days_count) if total_days_count else 0
     # Use total_days_count (total days with entries) instead of highest_day
-    expected_total = total_days_count * per_day
-    pending = expected_total - total_payments
+    expected_total = float(total_days_count) * float(per_day)
+    pending = float(expected_total) - float(total_payments)
     
     return {
         'total_days': total_days,

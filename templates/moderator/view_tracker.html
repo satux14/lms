@@ -256,9 +256,13 @@
                                             <span class="badge bg-warning text-dark">
                                                 <i class="fas fa-clock me-1"></i>Pending Approval
                                             </span>
-                                        {% else %}
+                                        {% elif row.is_pending == False and row.daily_payments and (row.daily_payments|float > 0) %}
                                             <span class="badge bg-success">
                                                 <i class="fas fa-check me-1"></i>Approved
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-minus me-1"></i>Not Filled
                                             </span>
                                         {% endif %}
                                     </td>
