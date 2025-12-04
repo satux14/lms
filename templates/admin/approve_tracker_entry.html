@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Approve Tracker Entry - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-check-circle me-2"></i>Review Tracker Entry
+                </h1>
+                <a href="{{ url_for('admin_pending_tracker_entries', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Pending
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Entry Details</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Tracker:</th>
+                            <td>
+                                <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}">
+                                    {{ tracker.tracker_name }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>User:</th>
+                            <td>{{ tracker.user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Day:</th>
+                            <td><strong>Day {{ entry.day }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Submitted By:</th>
+                            <td>{{ entry.submitted_by.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Submitted At:</th>
+                            <td>{{ entry.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        </tr>
+                    </table>
+
+                    <h6 class="mt-3 mb-2">Entry Data:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            {% for key, value in entry_data.items() %}
+                            <tr>
+                                <th width="30%">{{ key.replace('_', ' ').title() }}:</th>
+                                <td>
+                                    {% if value is number %}
+                                        ₹{{ "%.2f"|format(value) }}
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <form method="POST" id="approvalForm">
+                <!-- Cashback Points Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Cashback Points</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if configured_cashback %}
+                        <div class="alert alert-info">
+                            <strong>Configured Cashback:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for cb in configured_cashback %}
+                                <li>{{ cb.username }}: ₹{{ "%.2f"|format(cb.points) }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <div id="cashbackContainer">
+                            {% if configured_cashback %}
+                                {% for cb in configured_cashback %}
+                                <div class="cashback-entry mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="cashback_username[]" 
+                                               value="{{ cb.username }}" placeholder="Username" required>
+                                        <input type="number" step="0.01" class="form-control" name="cashback_points[]" 
+                                               value="{{ "%.2f"|format(cb.points) }}" placeholder="Points" required>
+                                        <button type="button" class="btn btn-danger remove-cashback">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="cashback-entry mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="cashback_username[]" placeholder="Username" required>
+                                        <input type="number" step="0.01" class="form-control" name="cashback_points[]" placeholder="Points" required>
+                                        <button type="button" class="btn btn-danger remove-cashback" style="display: none;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary mt-2" id="addCashback">
+                            <i class="fas fa-plus me-1"></i>Add Cashback
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Approval Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="submit" name="action" value="approve" class="btn btn-success btn-block mb-2">
+                            <i class="fas fa-check me-2"></i>Approve Entry
+                        </button>
+                        <button type="button" class="btn btn-danger btn-block" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="fas fa-times me-2"></i>Reject Entry
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Entry</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_approve_tracker_entry', instance_name=instance_name, entry_id=entry.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Rejection Reason (Optional):</label>
+                        <textarea class="form-control" name="rejection_reason" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">Reject Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('cashbackContainer');
+    const addBtn = document.getElementById('addCashback');
+    
+    addBtn.addEventListener('click', function() {
+        const newEntry = container.querySelector('.cashback-entry').cloneNode(true);
+        newEntry.querySelector('input[name="cashback_username[]"]').value = '';
+        newEntry.querySelector('input[name="cashback_points[]"]').value = '';
+        const removeBtn = newEntry.querySelector('.remove-cashback');
+        if (removeBtn) {
+            removeBtn.style.display = 'block';
+        }
+        container.appendChild(newEntry);
+    });
+    
+    // Update remove button visibility on page load
+    const entries = container.querySelectorAll('.cashback-entry');
+    entries.forEach((entry, index) => {
+        const removeBtn = entry.querySelector('.remove-cashback');
+        if (removeBtn) {
+            removeBtn.style.display = entries.length > 1 ? 'block' : 'none';
+        }
+    });
+    
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-cashback')) {
+            if (container.querySelectorAll('.cashback-entry').length > 1) {
+                e.target.closest('.cashback-entry').remove();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+

@@ -205,6 +205,101 @@
                             <strong>Note:</strong> Changing the principal amount will automatically adjust the loan's remaining principal balance.
                         </div>
 
+                        <!-- Cashback Points Section -->
+                        <div class="card mt-4" id="cashbackSection" style="display: none;">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-coins me-2"></i>Cashback Points</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if configured_cashback %}
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Configured Cashback:</strong> This loan has automatic cashback configuration. 
+                                    The calculated points are shown below. You can edit or split these points among users.
+                                    <ul class="mb-0 mt-2">
+                                        {% for cb in configured_cashback %}
+                                        <li>
+                                            <strong>{{ cb.user.username }}</strong>: 
+                                            ₹{{ "%.2f"|format(cb.points) }} 
+                                            {% if cb.type == 'percentage' %}
+                                                ({{ "%.2f"|format(cb.value * 100) }}% of interest)
+                                            {% else %}
+                                                (Fixed amount)
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% else %}
+                                <p class="text-muted small mb-3">
+                                    Add cashback points to users when verifying this payment. 
+                                    {% if payment.interest_amount > 0 %}
+                                    Interest amount: ₹{{ "%.2f"|format(payment.interest_amount) }}
+                                    {% endif %}
+                                </p>
+                                {% endif %}
+                                
+                                <div id="cashbackUsersContainer">
+                                    {% if configured_cashback %}
+                                        {% for cb in configured_cashback %}
+                                        <div class="cashback-user-entry mb-3 p-3 border rounded">
+                                            <div class="row">
+                                                <div class="col-md-5 mb-2">
+                                                    <label class="form-label">Username</label>
+                                                    <input type="text" class="form-control" 
+                                                           name="cashback_username[]" 
+                                                           value="{{ cb.user.username }}" 
+                                                           placeholder="Enter username" required>
+                                                </div>
+                                                <div class="col-md-5 mb-2">
+                                                    <label class="form-label">Points</label>
+                                                    <input type="number" class="form-control" 
+                                                           name="cashback_points[]" 
+                                                           step="0.01" min="0.01" 
+                                                           value="{{ "%.2f"|format(cb.points) }}" 
+                                                           placeholder="0.00" required>
+                                                </div>
+                                                <div class="col-md-2 mb-2 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger w-100 remove-cashback-user">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="cashback-user-entry mb-3 p-3 border rounded">
+                                            <div class="row">
+                                                <div class="col-md-5 mb-2">
+                                                    <label class="form-label">Username</label>
+                                                    <input type="text" class="form-control" 
+                                                           name="cashback_username[]" placeholder="Enter username">
+                                                </div>
+                                                <div class="col-md-5 mb-2">
+                                                    <label class="form-label">Points</label>
+                                                    <input type="number" class="form-control" 
+                                                           name="cashback_points[]" step="0.01" min="0.01" placeholder="0.00">
+                                                </div>
+                                                <div class="col-md-2 mb-2 d-flex align-items-end">
+                                                    <button type="button" class="btn btn-danger w-100 remove-cashback-user" style="display: none;">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addCashbackUserBtn">
+                                    <i class="fas fa-plus me-2"></i>Add Another User
+                                </button>
+                                <small class="form-text text-muted d-block mt-2">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    Tip: If you provide manual cashback, it will override the automatic configuration. 
+                                    You can split points among multiple users or modify the amounts.
+                                </small>
+                            </div>
+                        </div>
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-between">
                             <button type="button" 
                                     class="btn btn-outline-danger" 
@@ -248,6 +343,64 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     amountInput.addEventListener('input', updatePrincipal);
+    
+    // Show/hide cashback section based on status
+    const statusSelect = document.getElementById('status');
+    const cashbackSection = document.getElementById('cashbackSection');
+    
+    function toggleCashbackSection() {
+        if (statusSelect.value === 'verified') {
+            cashbackSection.style.display = 'block';
+        } else {
+            cashbackSection.style.display = 'none';
+        }
+    }
+    
+    statusSelect.addEventListener('change', toggleCashbackSection);
+    toggleCashbackSection(); // Initial check
+    
+    // Cashback user management
+    const cashbackContainer = document.getElementById('cashbackUsersContainer');
+    const addCashbackBtn = document.getElementById('addCashbackUserBtn');
+    
+    // Show remove buttons if there are multiple entries
+    function updateRemoveButtons() {
+        const entries = cashbackContainer.querySelectorAll('.cashback-user-entry');
+        entries.forEach((entry) => {
+            const removeBtn = entry.querySelector('.remove-cashback-user');
+            if (entries.length > 1) {
+                removeBtn.style.display = 'block';
+            } else {
+                removeBtn.style.display = 'none';
+            }
+        });
+    }
+    
+    // Initialize remove buttons visibility
+    updateRemoveButtons();
+    
+    if (addCashbackBtn) {
+        addCashbackBtn.addEventListener('click', function() {
+            const newEntry = cashbackContainer.firstElementChild.cloneNode(true);
+            
+            // Clear input values
+            newEntry.querySelector('input[name="cashback_username[]"]').value = '';
+            newEntry.querySelector('input[name="cashback_points[]"]').value = '';
+            
+            cashbackContainer.appendChild(newEntry);
+            updateRemoveButtons();
+        });
+    }
+    
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-cashback-user')) {
+            const container = document.getElementById('cashbackUsersContainer');
+            if (container.children.length > 1) {
+                e.target.closest('.cashback-user-entry').remove();
+                updateRemoveButtons();
+            }
+        }
+    });
 });
 </script>
 

@@ -116,7 +116,7 @@
 
             <!-- Summary Tiles -->
             <div class="row mb-4">
-                <div class="col-md-4 mb-3">
+                <div class="col-md-3 mb-3">
                     <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <div class="card-body text-center">
                             <i class="fas fa-list fa-3x mb-3"></i>
@@ -125,7 +125,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
+                <div class="col-md-3 mb-3">
                     <div class="card text-white" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
                         <div class="card-body text-center">
                             <i class="fas fa-coins fa-3x mb-3"></i>
@@ -134,12 +134,21 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
+                <div class="col-md-3 mb-3">
                     <div class="card text-white" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
                         <div class="card-body text-center">
                             <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
                             <h3>₹{{ "%.2f"|format(total_pending_sum) }}</h3>
                             <p class="mb-0">Total Pending</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%);">
+                        <div class="card-body text-center">
+                            <i class="fas fa-coins fa-3x mb-3"></i>
+                            <h3>₹{{ "%.2f"|format(total_cashback) }}</h3>
+                            <p class="mb-0">Total Cashback</p>
                         </div>
                     </div>
                 </div>
@@ -235,6 +244,7 @@
                                     <th>Days Paid/Total Days</th>
                                     <th>Total Payments</th>
                                     <th>Pending</th>
+                                    <th>Cashback</th>
                                     <th>Start Date</th>
                                     <th>Status</th>
                                     <th>Actions</th>
@@ -287,6 +297,11 @@
                                         {% else %}
                                         <span class="badge bg-success">₹0.00</span>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                            <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(item.cashback_total) }}
+                                        </span>
                                     </td>
                                     <td>{{ tracker.start_date.strftime('%Y-%m-%d') }}</td>
                                     <td>

@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Redeem Cashback Points - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-gift me-2"></i>Redeem Cashback Points
+                </h1>
+                <a href="{{ url_for('user_cashback', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Cashback
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-wallet me-2"></i>Redemption Request
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Available Balance:</strong> ₹{{ "%.2f"|format(balance) }}
+                    </div>
+
+                    <form method="POST" id="redeemForm">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount to Redeem (₹)</label>
+                            <input type="number" class="form-control" id="amount" name="amount" 
+                                   step="0.01" min="0.01" max="{{ balance }}" required 
+                                   placeholder="Enter amount">
+                            <small class="form-text text-muted">Maximum: ₹{{ "%.2f"|format(balance) }}</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="redemption_type" class="form-label">Redemption Type</label>
+                            <select class="form-select" id="redemption_type" name="redemption_type" required>
+                                <option value="">Select redemption type</option>
+                                <option value="cash">Cash</option>
+                                <option value="gpay">GPay</option>
+                                <option value="upi">UPI</option>
+                                <option value="account">Bank Account</option>
+                                <option value="amazon_gift_card">Amazon Gift Card</option>
+                            </select>
+                            <small class="form-text text-muted" id="amazon_note" style="display: none;">
+                                Amazon gift card amounts must be in multiples of ₹500
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="payment_method_id" class="form-label">Use Saved Payment Method</label>
+                            <select class="form-select" id="payment_method_id" name="payment_method_id">
+                                <option value="">Enter new payment details</option>
+                                {% for pm in payment_methods %}
+                                <option value="{{ pm.id }}" data-type="{{ pm.payment_type }}">
+                                    {{ pm.payment_type.replace('_', ' ').title() }}
+                                    {% if pm.account_name %}- {{ pm.account_name }}{% endif %}
+                                    {% if pm.is_default %}(Default){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="mt-2">
+                                <a href="{{ url_for('user_payment_methods', instance_name=instance_name) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-plus me-1"></i>Manage Payment Methods
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Payment Details Fields -->
+                        <div id="paymentDetails">
+                            <div class="mb-3" id="account_name_field">
+                                <label for="account_name" class="form-label">Account Holder Name</label>
+                                <input type="text" class="form-control" id="account_name" name="account_name" 
+                                       placeholder="Enter account holder name">
+                            </div>
+
+                            <div class="mb-3" id="account_number_field">
+                                <label for="account_number" class="form-label">Account Number / UPI ID / GPay ID</label>
+                                <input type="text" class="form-control" id="account_number" name="account_number" 
+                                       placeholder="Enter account number, UPI ID, or GPay ID">
+                            </div>
+
+                            <div class="mb-3" id="ifsc_field" style="display: none;">
+                                <label for="ifsc_code" class="form-label">IFSC Code</label>
+                                <input type="text" class="form-control" id="ifsc_code" name="ifsc_code" 
+                                       placeholder="Enter IFSC code">
+                            </div>
+
+                            <div class="mb-3" id="bank_name_field" style="display: none;">
+                                <label for="bank_name" class="form-label">Bank Name</label>
+                                <input type="text" class="form-control" id="bank_name" name="bank_name" 
+                                       placeholder="Enter bank name">
+                            </div>
+
+                            <div class="mb-3" id="upi_id_field" style="display: none;">
+                                <label for="upi_id" class="form-label">UPI ID</label>
+                                <input type="text" class="form-control" id="upi_id" name="upi_id" 
+                                       placeholder="Enter UPI ID">
+                            </div>
+
+                            <div class="mb-3" id="gpay_id_field" style="display: none;">
+                                <label for="gpay_id" class="form-label">GPay ID / Phone Number</label>
+                                <input type="text" class="form-control" id="gpay_id" name="gpay_id" 
+                                       placeholder="Enter GPay ID or phone number">
+                            </div>
+
+                            <div class="mb-3" id="phone_number_field" style="display: none;">
+                                <label for="phone_number" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                       placeholder="Enter phone number">
+                            </div>
+
+                            <div class="mb-3" id="address_field" style="display: none;">
+                                <label for="address" class="form-label">Delivery Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="3" 
+                                          placeholder="Enter delivery address for cash"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check me-2"></i>Submit Redemption Request
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('redemption_type').addEventListener('change', function() {
+    const type = this.value;
+    const amazonNote = document.getElementById('amazon_note');
+    
+    // Show/hide Amazon note
+    if (type === 'amazon_gift_card') {
+        amazonNote.style.display = 'block';
+    } else {
+        amazonNote.style.display = 'none';
+    }
+    
+    // Show/hide relevant fields based on type
+    document.getElementById('ifsc_field').style.display = (type === 'account') ? 'block' : 'none';
+    document.getElementById('bank_name_field').style.display = (type === 'account') ? 'block' : 'none';
+    document.getElementById('upi_id_field').style.display = (type === 'upi') ? 'block' : 'none';
+    document.getElementById('gpay_id_field').style.display = (type === 'gpay') ? 'block' : 'none';
+    document.getElementById('phone_number_field').style.display = (type === 'cash' || type === 'gpay') ? 'block' : 'none';
+    document.getElementById('address_field').style.display = (type === 'cash') ? 'block' : 'none';
+});
+
+document.getElementById('payment_method_id').addEventListener('change', function() {
+    const methodId = this.value;
+    if (!methodId) {
+        // Clear fields if no method selected
+        document.getElementById('account_name').value = '';
+        document.getElementById('account_number').value = '';
+        document.getElementById('ifsc_code').value = '';
+        document.getElementById('bank_name').value = '';
+        document.getElementById('upi_id').value = '';
+        document.getElementById('gpay_id').value = '';
+        document.getElementById('phone_number').value = '';
+        document.getElementById('address').value = '';
+        return;
+    }
+    
+    // Fetch payment method details (would need AJAX call in real implementation)
+    // For now, fields will be filled server-side or via JavaScript
+});
+
+document.getElementById('redeemForm').addEventListener('submit', function(e) {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const redemptionType = document.getElementById('redemption_type').value;
+    
+    if (amount > {{ balance }}) {
+        e.preventDefault();
+        alert('Amount cannot exceed available balance');
+        return false;
+    }
+    
+    if (redemptionType === 'amazon_gift_card' && amount % 500 !== 0) {
+        e.preventDefault();
+        alert('Amazon gift card amount must be in multiples of ₹500');
+        return false;
+    }
+});
+</script>
+{% endblock %}
+

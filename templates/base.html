@@ -224,38 +224,51 @@
                     </li>
                     
                     {% if current_user.is_authenticated %}
+                        <!-- Cashback Balance Display -->
+                        <li class="nav-item me-3 d-flex align-items-center">
+                            <a href="{{ url_for('user_cashback', instance_name=current_instance) }}" 
+                               class="nav-link text-white d-flex align-items-center" 
+                               style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); border-radius: 20px; padding: 8px 16px; text-decoration: none;">
+                                <i class="fas fa-coins me-2"></i>
+                                <span><strong>₹{{ "%.2f"|format(cashback_balance) }}</strong></span>
+                            </a>
+                        </li>
+                        
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-user me-1"></i>{{ current_user.username }}
                             </a>
                             <ul class="dropdown-menu">
                                 {% if current_user.is_admin %}
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_dashboard', instance_name=current_instance) }}">
                                         <i class="fas fa-tachometer-alt me-2"></i>{{ _('Admin Dashboard') }}
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_loans', instance_name=current_instance) }}">
                                         <i class="fas fa-file-invoice-dollar me-2"></i>{{ _('All Loans') }}
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('admin_create_loan', instance_name=current_instance) }}">
                                         <i class="fas fa-plus me-2"></i>{{ _('Create Loan') }}
                                     </a></li>
                                 {% else %}
-                                    <li><a class="dropdown-item" href="{{ url_for('customer_dashboard', instance_name=instance_name) }}">
+                                    <li><a class="dropdown-item" href="{{ url_for('customer_dashboard', instance_name=current_instance) }}">
                                         <i class="fas fa-tachometer-alt me-2"></i>{{ _('My Dashboard') }}
                                     </a></li>
                                 {% endif %}
+                                <li><a class="dropdown-item" href="{{ url_for('user_cashback', instance_name=current_instance) }}">
+                                    <i class="fas fa-coins me-2"></i>{{ _('Cashback Points') }}
+                                </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('change_password', instance_name=instance_name) }}">
+                                <li><a class="dropdown-item" href="{{ url_for('change_password', instance_name=current_instance) }}">
                                     <i class="fas fa-key me-2"></i>{{ _('Change Password') }}
                                 </a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('logout', instance_name=instance_name) }}">
+                                <li><a class="dropdown-item" href="{{ url_for('logout', instance_name=current_instance) }}">
                                     <i class="fas fa-sign-out-alt me-2"></i>{{ _('Logout') }}
                                 </a></li>
                             </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('login', instance_name=instance_name) }}">
+                            <a class="nav-link" href="{{ url_for('login', instance_name=current_instance) }}">
                                 <i class="fas fa-sign-in-alt me-1"></i>Login
                             </a>
                         </li>

@@ -46,7 +46,7 @@
 
             <!-- Today's Summary Cards -->
             <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-white bg-primary">
                         <div class="card-body">
                             <h5 class="card-title">Today's Logins</h5>
@@ -54,7 +54,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-white bg-info">
                         <div class="card-body">
                             <h5 class="card-title">Today's Logouts</h5>
@@ -62,7 +62,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-white bg-success">
                         <div class="card-body">
                             <h5 class="card-title">Today's Payments</h5>
@@ -70,7 +70,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <div class="card text-white" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%);">
+                        <div class="card-body">
+                            <h5 class="card-title">Today's Cashback</h5>
+                            <h3>{{ today_cashback }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="card text-white bg-warning">
                         <div class="card-body">
                             <h5 class="card-title">Admin Actions</h5>
@@ -156,6 +164,8 @@
                                                 <span class="badge bg-info">{{ log.action }}</span>
                                             {% elif 'tracker' in log.action %}
                                                 <span class="badge bg-primary">{{ log.action }}</span>
+                                            {% elif 'cashback' in log.action %}
+                                                <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">{{ log.action }}</span>
                                             {% elif 'admin' in log.action %}
                                                 <span class="badge bg-warning">{{ log.action }}</span>
                                             {% else %}

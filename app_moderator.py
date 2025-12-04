@@ -12,9 +12,10 @@ This module handles all moderator-related functionality including:
 from flask import request, redirect, url_for, flash, render_template, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime, date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 import sys
+import json
 from pathlib import Path
 
 # Import from app_multi - these will be set when register_moderator_routes is called
@@ -435,10 +436,104 @@ def register_routes():
             tracker_data = get_tracker_data(instance_name, tracker.filename)
             summary = get_tracker_summary(instance_name, tracker.filename)
             
+            # Get pending entries for this tracker
+            from app_multi import TrackerEntry, get_tracker_entry_query, get_tracker_day_cashback, get_tracker_cashback_total
+            pending_entries = get_tracker_entry_query().filter_by(
+                tracker_id=tracker_id,
+                status='pending'
+            ).order_by(TrackerEntry.day).all()
+            
+            # Merge pending entries with tracker data
+            # Create a map of day -> pending entry data
+            pending_entries_map = {}
+            for entry in pending_entries:
+                entry_data = json.loads(entry.entry_data)
+                day = entry.day
+                pending_entries_map[day] = {
+                    'entry': entry,
+                    'data': entry_data,
+                    'is_pending': True
+                }
+            
+            # Update tracker_data to include pending entries
+            # For each row, if there's a pending entry for that day, use pending data
+            merged_data = []
+            for row in tracker_data['data']:
+                day = row.get('day')
+                # Convert day to int if needed
+                if isinstance(day, str):
+                    try:
+                        day = int(float(day.replace(',', '').strip()))
+                    except (ValueError, AttributeError):
+                        day = None
+                elif isinstance(day, float):
+                    day = int(day)
+                
+                if day is not None and day in pending_entries_map:
+                    # Use pending entry data, but keep some fields from Excel (like cumulative formulas)
+                    pending_data = pending_entries_map[day]['data'].copy()
+                    # Merge with Excel row, pending data takes precedence
+                    merged_row = row.copy()
+                    merged_row.update(pending_data)
+                    merged_row['is_pending'] = True
+                    merged_row['pending_entry_id'] = pending_entries_map[day]['entry'].id
+                    merged_data.append(merged_row)
+                else:
+                    # Use Excel data
+                    merged_row = row.copy()
+                    merged_row['is_pending'] = False
+                    merged_data.append(merged_row)
+            
+            # Recalculate summary including pending entries
+            # Calculate totals as if pending entries are approved
+            total_payments_from_excel = summary.get('total_payments', 0)
+            pending_payments_sum = Decimal('0')
+            for entry in pending_entries:
+                entry_data = json.loads(entry.entry_data)
+                daily_payment = entry_data.get('daily_payments', 0)
+                if isinstance(daily_payment, str):
+                    try:
+                        daily_payment = Decimal(str(daily_payment).replace(',', '').strip())
+                    except (ValueError, InvalidOperation):
+                        daily_payment = Decimal('0')
+                elif daily_payment is None:
+                    daily_payment = Decimal('0')
+                else:
+                    daily_payment = Decimal(str(daily_payment))
+                pending_payments_sum += daily_payment
+            
+            # Calculate total cashback for tracker
+            tracker_cashback_total = get_tracker_cashback_total(tracker_id, instance_name)
+            
+            # Updated summary with pending included
+            updated_summary = summary.copy()
+            updated_summary['total_payments'] = float(total_payments_from_excel) + float(pending_payments_sum)
+            updated_summary['pending_entries_count'] = len(pending_entries)
+            updated_summary['pending_payments_sum'] = float(pending_payments_sum)
+            updated_summary['cashback_total'] = float(tracker_cashback_total)
+            
+            # Calculate cashback for each day
+            day_cashback_map = {}
+            for row in merged_data:
+                day = row.get('day')
+                if day is not None:
+                    if isinstance(day, str):
+                        try:
+                            day = int(float(day.replace(',', '').strip()))
+                        except (ValueError, AttributeError):
+                            continue
+                    elif isinstance(day, float):
+                        day = int(day)
+                    
+                    day_cashback = get_tracker_day_cashback(tracker_id, day, instance_name)
+                    day_cashback_map[day] = day_cashback
+            
             return render_template('moderator/view_tracker.html',
                                  tracker=tracker,
-                                 tracker_data=tracker_data,
-                                 summary=summary,
+                                 tracker_data={'data': merged_data, 'parameters': tracker_data['parameters'], 'tracker_type': tracker_data['tracker_type']},
+                                 summary=updated_summary,
+                                 pending_entries=pending_entries,
+                                 day_cashback_map=day_cashback_map,
                                  instance_name=instance_name)
         except Exception as e:
             flash(f'Error reading tracker data: {str(e)}', 'error')
@@ -471,7 +566,7 @@ def register_routes():
                 for key, value in request.form.items():
                     if key != 'day' and value.strip():
                         # Convert numeric fields
-                        if key in ['daily_payments', 'withdrawn', 'cumulative', 'balance', 
+                        if key in ['daily_payments', 'cumulative', 'balance', 
                                   'reinvest', 'pocket_money', 'total_invested']:
                             try:
                                 entry_data[key] = Decimal(value)
@@ -480,8 +575,45 @@ def register_routes():
                         else:
                             entry_data[key] = value
                 
-                # Update the tracker
-                update_tracker_entry(instance_name, tracker.filename, day, entry_data)
+                # Create TrackerEntry record with pending status (don't update Excel yet)
+                import json
+                from app_multi import TrackerEntry, get_tracker_entry_query, add_to_current_instance
+                
+                # Convert Decimal values to strings for JSON serialization
+                def convert_decimals(obj):
+                    """Recursively convert Decimal values to strings for JSON serialization"""
+                    if isinstance(obj, Decimal):
+                        return str(obj)
+                    elif isinstance(obj, dict):
+                        return {key: convert_decimals(value) for key, value in obj.items()}
+                    elif isinstance(obj, list):
+                        return [convert_decimals(item) for item in obj]
+                    else:
+                        return obj
+                
+                entry_data_json = json.dumps(convert_decimals(entry_data))
+                
+                # Check if there's already a pending entry for this day
+                existing_entry = get_tracker_entry_query().filter_by(
+                    tracker_id=tracker_id,
+                    day=day,
+                    status='pending'
+                ).first()
+                
+                if existing_entry:
+                    # Update existing pending entry
+                    existing_entry.entry_data = entry_data_json
+                    existing_entry.submitted_at = datetime.utcnow()
+                else:
+                    # Create new pending entry
+                    tracker_entry = TrackerEntry(
+                        tracker_id=tracker_id,
+                        day=day,
+                        entry_data=entry_data_json,
+                        status='pending',
+                        submitted_by_user_id=current_user.id
+                    )
+                    add_to_current_instance(tracker_entry)
                 
                 # Update the tracker's updated_at timestamp
                 tracker.updated_at = datetime.utcnow()
@@ -512,7 +644,7 @@ def register_routes():
                     amount=float(daily_payment) if daily_payment else 0
                 )
                 
-                flash(f'Entry for Day {day} added successfully', 'success')
+                flash(f'Entry for Day {day} submitted for approval', 'success')
                 return redirect(url_for('moderator_view_tracker', 
                                       instance_name=instance_name, 
                                       tracker_id=tracker_id))
@@ -573,7 +705,7 @@ def register_routes():
                     # Include all non-empty values (including "0" for numeric fields)
                     if value is not None and value.strip() != '':
                         # Convert numeric fields
-                        if key in ['day', 'daily_payments', 'withdrawn', 'cumulative', 'balance', 
+                        if key in ['day', 'daily_payments', 'cumulative', 'balance', 
                                   'reinvest', 'pocket_money', 'total_invested']:
                             try:
                                 entry_data[key] = Decimal(value) if key != 'day' else int(value)
@@ -585,10 +717,47 @@ def register_routes():
                     elif key == 'daily_payments' and value == '0':
                         entry_data[key] = Decimal('0')
                 
-                # Update the tracker by row index
-                sys.path.insert(0, str(Path(__file__).parent / 'daily-trackers'))
-                from tracker_manager import update_tracker_entry_by_index
-                update_tracker_entry_by_index(instance_name, tracker.filename, row_index, entry_data)
+                # Create TrackerEntry record with pending status (don't update Excel yet)
+                import json
+                from app_multi import TrackerEntry, get_tracker_entry_query, add_to_current_instance
+                
+                day = entry_data.get('day', row_data.get('day', row_index + 1))
+                
+                # Convert Decimal values to strings for JSON serialization
+                def convert_decimals(obj):
+                    """Recursively convert Decimal values to strings for JSON serialization"""
+                    if isinstance(obj, Decimal):
+                        return str(obj)
+                    elif isinstance(obj, dict):
+                        return {key: convert_decimals(value) for key, value in obj.items()}
+                    elif isinstance(obj, list):
+                        return [convert_decimals(item) for item in obj]
+                    else:
+                        return obj
+                
+                entry_data_json = json.dumps(convert_decimals(entry_data))
+                
+                # Check if there's already a pending entry for this day
+                existing_entry = get_tracker_entry_query().filter_by(
+                    tracker_id=tracker_id,
+                    day=day,
+                    status='pending'
+                ).first()
+                
+                if existing_entry:
+                    # Update existing pending entry
+                    existing_entry.entry_data = entry_data_json
+                    existing_entry.submitted_at = datetime.utcnow()
+                else:
+                    # Create new pending entry
+                    tracker_entry = TrackerEntry(
+                        tracker_id=tracker_id,
+                        day=day,
+                        entry_data=entry_data_json,
+                        status='pending',
+                        submitted_by_user_id=current_user.id
+                    )
+                    add_to_current_instance(tracker_entry)
                 
                 # Update the tracker's updated_at timestamp
                 tracker.updated_at = datetime.utcnow()
@@ -620,7 +789,7 @@ def register_routes():
                     amount=float(daily_payment) if daily_payment else 0
                 )
                 
-                flash(f'Entry for Day {row_data.get("day", row_index)} updated successfully', 'success')
+                flash(f'Entry for Day {row_data.get("day", row_index)} submitted for approval', 'success')
                 return redirect(url_for('moderator_view_tracker', 
                                       instance_name=instance_name, 
                                       tracker_id=tracker_id))

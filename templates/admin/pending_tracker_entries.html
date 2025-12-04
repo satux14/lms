@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Tracker Entries - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-clock me-2"></i>Pending Tracker Entries
+                </h1>
+                <a href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Trackers
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if pending_entries %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>{{ pending_entries|length }} Pending Entr{{ 'y' if pending_entries|length == 1 else 'ies' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tracker</th>
+                                    <th>Day</th>
+                                    <th>Submitted By</th>
+                                    <th>Submitted At</th>
+                                    <th>Daily Payment</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in pending_entries %}
+                                {% set entry_data = entry.entry_data|from_json %}
+                                {% set daily_payment = entry_data.get('daily_payments', 0) %}
+                                {% if daily_payment is string %}
+                                    {% set daily_payment = (daily_payment|float) if daily_payment else 0 %}
+                                {% elif daily_payment is none %}
+                                    {% set daily_payment = 0 %}
+                                {% endif %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=entry.tracker.id) }}">
+                                            {{ entry.tracker.tracker_name }}
+                                        </a>
+                                        <br>
+                                        <small class="text-muted">{{ entry.tracker.user.username }}</small>
+                                    </td>
+                                    <td><strong>Day {{ entry.day }}</strong></td>
+                                    <td>{{ entry.submitted_by.username }}</td>
+                                    <td>{{ entry.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>₹{{ "%.2f"|format(daily_payment) }}</td>
+                                    <td>
+                                        <a href="{{ url_for('admin_approve_tracker_entry', instance_name=instance_name, entry_id=entry.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-check me-1"></i>Review
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5>No Pending Entries</h5>
+                    <p class="text-muted">All tracker entries have been processed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
