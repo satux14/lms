@@ -229,16 +229,22 @@ def get_tracker_data(instance, filename):
         """Safely convert value to float/int"""
         if value is None:
             return default
-        if isinstance(value, (int, float)):
+        if isinstance(value, (int, float, Decimal)):
             return float(value)
         if isinstance(value, str):
             try:
                 # Remove any non-numeric characters except decimal point and minus
-                cleaned = value.replace(',', '').strip()
+                cleaned = value.replace(',', '').replace('₹', '').replace('$', '').strip()
+                if not cleaned:
+                    return default
                 return float(cleaned)
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError, TypeError):
                 return default
-        return default
+        # Try to convert unknown types
+        try:
+            return float(value)
+        except (ValueError, TypeError, AttributeError):
+            return default
     
     parameters = {
         'tracker_name': ws[config['tracker_name_cell']].value,
@@ -269,11 +275,16 @@ def get_tracker_data(instance, filename):
         # Convert day_value to int if it's a string or float
         if isinstance(day_value, str):
             try:
-                day_value = int(float(day_value.replace(',', '').strip()))
-            except (ValueError, AttributeError):
-                day_value = day_value  # Keep as string if conversion fails
-        elif isinstance(day_value, float):
+                cleaned = day_value.replace(',', '').strip()
+                day_value = int(float(cleaned)) if cleaned else None
+            except (ValueError, AttributeError, TypeError):
+                # Skip this row if day conversion fails
+                continue
+        elif isinstance(day_value, (int, float)):
             day_value = int(day_value)
+        else:
+            # Skip if day is not a valid numeric type
+            continue
         
         row_data = {
             'row_num': row_num,
@@ -296,9 +307,10 @@ def get_tracker_data(instance, filename):
                           'reinvest', 'pocket_money', 'total_invested']:
                 if isinstance(value, str):
                     try:
-                        # Remove commas and convert to float
-                        value = float(value.replace(',', '').strip())
-                    except (ValueError, AttributeError):
+                        # Remove commas, currency symbols, and convert to float
+                        cleaned = value.replace(',', '').replace('₹', '').replace('$', '').strip()
+                        value = float(cleaned) if cleaned else None
+                    except (ValueError, AttributeError, TypeError):
                         # Keep as None if conversion fails
                         value = None
                 elif value is None:
@@ -306,8 +318,11 @@ def get_tracker_data(instance, filename):
                 else:
                     # Ensure it's a float
                     try:
-                        value = float(value)
-                    except (TypeError, ValueError):
+                        if isinstance(value, Decimal):
+                            value = float(value)
+                        else:
+                            value = float(value)
+                    except (TypeError, ValueError, AttributeError):
                         value = None
             
             row_data[col_name] = value
@@ -540,81 +555,135 @@ def get_tracker_summary(instance, filename):
     Returns:
         Dictionary containing summary information
     """
-    data = get_tracker_data(instance, filename)
-    parameters = data['parameters']
-    rows = data['data']
+    import logging
+    logger = logging.getLogger(__name__)
     
-    # Helper function to safely convert to float
-    def safe_float(value, default=0):
-        """Safely convert value to float, handling strings and None"""
-        if value is None:
-            return default
-        if isinstance(value, (int, float)):
-            return float(value)
-        if isinstance(value, str):
-            try:
-                return float(value.replace(',', '').strip())
-            except (ValueError, AttributeError):
+    try:
+        logger.info(f"[TRACKER_SUMMARY] Starting summary for {filename}")
+        data = get_tracker_data(instance, filename)
+        parameters = data['parameters']
+        rows = data['data']
+        
+        logger.info(f"[TRACKER_SUMMARY] Parameters: {parameters}")
+        logger.info(f"[TRACKER_SUMMARY] Parameters types: {[(k, type(v).__name__) for k, v in parameters.items()]}")
+        
+        # Helper function to safely convert to float
+        def safe_float(value, default=0):
+            """Safely convert value to float, handling strings and None"""
+            if value is None:
                 return default
-        return default
-    
-    # Calculate summary - just read from Excel, don't calculate ourselves
-    # Count days with payment entries (including ₹0.00)
-    days_with_entries = [r for r in rows if r.get('daily_payments') is not None]
-    total_days_count = len(days_with_entries)  # Total days with entries (including ₹0.00)
-    total_days = len([r for r in days_with_entries if safe_float(r.get('daily_payments', 0)) > 0])  # Days with actual non-zero payments
-    
-    # Get the latest row with data
-    latest_row = None
-    highest_day = 0
-    
-    for row in reversed(rows):
-        if row.get('daily_payments') is not None:
-            if latest_row is None:
-                latest_row = row
-            # Track the highest day number with a payment
-            day_num = row.get('day', 0)
-            if isinstance(day_num, (int, float)):
-                day_num = int(day_num)
-            elif isinstance(day_num, str):
+            if isinstance(value, (int, float, Decimal)):
+                return float(value)
+            if isinstance(value, str):
                 try:
-                    day_num = int(float(day_num))
-                except (ValueError, TypeError):
+                    # Remove commas, currency symbols, and whitespace
+                    cleaned = value.replace(',', '').replace('₹', '').replace('$', '').strip()
+                    if not cleaned:
+                        return default
+                    return float(cleaned)
+                except (ValueError, AttributeError, TypeError) as e:
+                    logger.warning(f"[TRACKER_SUMMARY] Failed to convert string '{value}' to float: {e}")
+                    return default
+            # Try to convert unknown types
+            try:
+                logger.warning(f"[TRACKER_SUMMARY] Converting unknown type {type(value).__name__}: {value}")
+                return float(value)
+            except (ValueError, TypeError, AttributeError) as e:
+                logger.warning(f"[TRACKER_SUMMARY] Failed to convert {type(value).__name__} '{value}' to float: {e}")
+                return default
+        
+        # Calculate summary - just read from Excel, don't calculate ourselves
+        # Count days with payment entries (including ₹0.00)
+        days_with_entries = [r for r in rows if r.get('daily_payments') is not None]
+        total_days_count = len(days_with_entries)  # Total days with entries (including ₹0.00)
+        total_days = len([r for r in days_with_entries if safe_float(r.get('daily_payments', 0)) > 0])  # Days with actual non-zero payments
+        
+        logger.info(f"[TRACKER_SUMMARY] Found {total_days_count} days with entries, {total_days} with non-zero payments")
+        
+        # Get the latest row with data
+        latest_row = None
+        highest_day = 0
+        
+        for row in reversed(rows):
+            if row.get('daily_payments') is not None:
+                if latest_row is None:
+                    latest_row = row
+                # Track the highest day number with a payment
+                day_num = row.get('day', 0)
+                if isinstance(day_num, (int, float)):
+                    day_num = int(day_num)
+                elif isinstance(day_num, str):
+                    try:
+                        day_num = int(float(day_num))
+                    except (ValueError, TypeError):
+                        day_num = 0
+                else:
                     day_num = 0
-            else:
-                day_num = 0
-            if day_num > highest_day:
-                highest_day = day_num
+                if day_num > highest_day:
+                    highest_day = day_num
+        
+        # Read values directly from Excel (they have formulas)
+        balance = 0
+        cumulative = 0
+        total_payments = 0
+        
+        if latest_row:
+            logger.info(f"[TRACKER_SUMMARY] Latest row: {latest_row}")
+            if data['tracker_type'] in ['50K', '1L']:
+                balance_value = latest_row.get('balance', 0)
+                logger.info(f"[TRACKER_SUMMARY] balance value: {balance_value} (type: {type(balance_value).__name__})")
+                balance = safe_float(balance_value)
+            # Cumulative from Excel = total of all payments
+            cumulative_value = latest_row.get('cumulative', 0)
+            logger.info(f"[TRACKER_SUMMARY] cumulative value: {cumulative_value} (type: {type(cumulative_value).__name__})")
+            cumulative = safe_float(cumulative_value)
+            total_payments = cumulative  # Cumulative IS the total payments
     
-    # Read values directly from Excel (they have formulas)
-    balance = 0
-    cumulative = 0
-    total_payments = 0
-    
-    if latest_row:
-        if data['tracker_type'] in ['50K', '1L']:
-            balance = safe_float(latest_row.get('balance', 0))
-        # Cumulative from Excel = total of all payments
-        cumulative = safe_float(latest_row.get('cumulative', 0))
-        total_payments = cumulative  # Cumulative IS the total payments
-    
-    # Calculate expected and pending
-    per_day = safe_float(parameters.get('per_day_payment', 0))
-    # Ensure total_days_count is an integer
-    total_days_count = int(total_days_count) if total_days_count else 0
-    # Use total_days_count (total days with entries) instead of highest_day
-    expected_total = float(total_days_count) * float(per_day)
-    pending = float(expected_total) - float(total_payments)
-    
-    return {
-        'total_days': total_days,
-        'total_days_count': total_days_count,
-        'total_payments': total_payments,
-        'balance': balance,
-        'cumulative': cumulative,
-        'pending': pending,
-        'expected_total': expected_total,
-        'highest_day': highest_day,
-        'parameters': parameters
-    }
+        # Calculate expected and pending
+        per_day_value = parameters.get('per_day_payment', 0)
+        logger.info(f"[TRACKER_SUMMARY] per_day_value: {per_day_value} (type: {type(per_day_value).__name__})")
+        per_day = safe_float(per_day_value)
+        logger.info(f"[TRACKER_SUMMARY] per_day after safe_float: {per_day} (type: {type(per_day).__name__})")
+        # Ensure per_day is definitely a float
+        if not isinstance(per_day, (int, float)):
+            logger.warning(f"[TRACKER_SUMMARY] per_day is not numeric, re-converting: {per_day} (type: {type(per_day).__name__})")
+            per_day = safe_float(per_day)
+        per_day = float(per_day)
+        logger.info(f"[TRACKER_SUMMARY] per_day final: {per_day} (type: {type(per_day).__name__})")
+        
+        # Ensure total_days_count is an integer
+        logger.info(f"[TRACKER_SUMMARY] total_days_count before conversion: {total_days_count} (type: {type(total_days_count).__name__})")
+        total_days_count = int(total_days_count) if total_days_count else 0
+        logger.info(f"[TRACKER_SUMMARY] total_days_count after conversion: {total_days_count} (type: {type(total_days_count).__name__})")
+        
+        # Ensure total_payments is a float
+        logger.info(f"[TRACKER_SUMMARY] total_payments before conversion: {total_payments} (type: {type(total_payments).__name__})")
+        total_payments = safe_float(total_payments)
+        logger.info(f"[TRACKER_SUMMARY] total_payments after conversion: {total_payments} (type: {type(total_payments).__name__})")
+        
+        # Use total_days_count (total days with entries) instead of highest_day
+        logger.info(f"[TRACKER_SUMMARY] Calculating expected_total: {total_days_count} * {per_day}")
+        expected_total = float(total_days_count) * per_day
+        logger.info(f"[TRACKER_SUMMARY] expected_total: {expected_total} (type: {type(expected_total).__name__})")
+        
+        logger.info(f"[TRACKER_SUMMARY] Calculating pending: {expected_total} - {total_payments}")
+        pending = expected_total - float(total_payments)
+        logger.info(f"[TRACKER_SUMMARY] pending: {pending} (type: {type(pending).__name__})")
+        
+        result = {
+            'total_days': total_days,
+            'total_days_count': total_days_count,
+            'total_payments': total_payments,
+            'balance': balance,
+            'cumulative': cumulative,
+            'pending': pending,
+            'expected_total': expected_total,
+            'highest_day': highest_day,
+            'parameters': parameters
+        }
+        logger.info(f"[TRACKER_SUMMARY] Summary calculation complete")
+        return result
+    except Exception as e:
+        logger.error(f"[TRACKER_SUMMARY] Error in get_tracker_summary for {filename}: {e}", exc_info=True)
+        raise
 

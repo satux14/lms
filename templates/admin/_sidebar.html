@@ -1,0 +1,131 @@
+<!-- Sidebar -->
+<div class="col-md-3 col-lg-2 sidebar">
+    <div class="position-sticky pt-3">
+        <ul class="nav flex-column">
+            <!-- Main Navigation -->
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" href="{{ url_for('admin_dashboard', instance_name=instance_name) }}">
+                    <i class="fas fa-tachometer-alt me-2"></i>{{ _('Dashboard') }}
+                </a>
+            </li>
+            
+            <!-- Loan Management -->
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('Loan Management') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_loans' %}active{% endif %}" href="{{ url_for('admin_loans', instance_name=instance_name) }}">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>{{ _('All Loans') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_create_loan' %}active{% endif %}" href="{{ url_for('admin_create_loan', instance_name=instance_name) }}">
+                    <i class="fas fa-plus me-2"></i>{{ _('Create Loan') }}
+                </a>
+            </li>
+            
+            <!-- Daily Tracker Management -->
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('Daily Trackers') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_daily_trackers' %}active{% endif %}" href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}">
+                    <i class="fas fa-calendar-alt me-2"></i>{{ _('All Trackers') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_create_daily_tracker' %}active{% endif %}" href="{{ url_for('admin_create_daily_tracker', instance_name=instance_name) }}">
+                    <i class="fas fa-plus me-2"></i>{{ _('Create Tracker') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_pending_tracker_entries' %}active{% endif %}" href="{{ url_for('admin_pending_tracker_entries', instance_name=instance_name) }}">
+                    <i class="fas fa-clock me-2"></i>{{ _('Pending Entries') }}
+                </a>
+            </li>
+            
+            <!-- Payment Management -->
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('Payment Management') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_payments' %}active{% endif %}" href="{{ url_for('admin_payments', instance_name=instance_name) }}">
+                    <i class="fas fa-credit-card me-2"></i>{{ _('All Payments') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_add_payment' %}active{% endif %}" href="{{ url_for('admin_add_payment', instance_name=instance_name) }}">
+                    <i class="fas fa-plus-circle me-2"></i>{{ _('Add Payment') }}
+                </a>
+            </li>
+            
+            <!-- User Management -->
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('User Management') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}" href="{{ url_for('admin_users', instance_name=instance_name) }}">
+                    <i class="fas fa-users me-2"></i>{{ _('Users') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_create_user' %}active{% endif %}" href="{{ url_for('admin_create_user', instance_name=instance_name) }}">
+                    <i class="fas fa-user-plus me-2"></i>{{ _('Create User') }}
+                </a>
+            </li>
+            
+            <!-- Cashback Management -->
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('Cashback') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint in ['admin_cashback', 'admin_cashback_redeem', 'admin_add_cashback', 'admin_user_cashback_history'] %}active{% endif %}" href="{{ url_for('admin_cashback', instance_name=instance_name) }}">
+                    <i class="fas fa-coins me-2"></i>{{ _('Cashback Management') }}
+                </a>
+            </li>
+            
+            <!-- System -->
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('System') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_backup' %}active{% endif %}" href="{{ url_for('admin_backup', instance_name=instance_name) }}">
+                    <i class="fas fa-database me-2"></i>{{ _('Backup') }}
+                </a>
+            </li>
+            <li class="nav-item mt-3">
+                <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                    <span>{{ _('Logging & Metrics') }}</span>
+                </h6>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_activity_logs' %}active{% endif %}" href="{{ url_for('admin_activity_logs', instance_name=instance_name) }}">
+                    <i class="fas fa-list-alt me-2"></i>{{ _('Activity Logs') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_metrics' %}active{% endif %}" href="{{ url_for('admin_metrics', instance_name=instance_name) }}">
+                    <i class="fas fa-chart-line me-2"></i>{{ _('Metrics') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.endpoint == 'admin_config' %}active{% endif %}" href="{{ url_for('admin_config', instance_name=instance_name) }}">
+                    <i class="fas fa-cog me-2"></i>{{ _('Configuration') }}
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+

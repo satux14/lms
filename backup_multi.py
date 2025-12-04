@@ -10,7 +10,7 @@ This module provides comprehensive backup functionality for the multi-instance s
 - Cross-instance backup management
 
 Author: Lending Management System
-Version: 2.0.0
+Version: 2.1.0
 """
 
 import os
@@ -100,7 +100,11 @@ class MultiInstanceBackupManager:
                 return None
             
             with self.app.app_context():
-                from app_multi import db_manager, User, Loan, Payment, InterestRate
+                from app_multi import (
+                    db_manager, User, Loan, Payment, InterestRate, DailyTracker,
+                    CashbackTransaction, LoanCashbackConfig, TrackerEntry,
+                    TrackerCashbackConfig, UserPaymentMethod, CashbackRedemption
+                )
                 from flask import g
                 
                 # Set the current instance
@@ -119,6 +123,8 @@ class MultiInstanceBackupManager:
                             'Username': user.username,
                             'Email': user.email or '',
                             'Is Admin': user.is_admin,
+                            'Is Moderator': getattr(user, 'is_moderator', False),
+                            'Language Preference': getattr(user, 'language_preference', ''),
                             'Created At': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
                         })
                     
@@ -189,10 +195,234 @@ class MultiInstanceBackupManager:
                     if interest_rates_data:
                         pd.DataFrame(interest_rates_data).to_excel(writer, sheet_name='Interest Rates', index=False)
                     
+                    # Export Daily Trackers
+                    try:
+                        trackers_data = []
+                        for tracker in db_manager.get_query_for_instance(instance, DailyTracker).all():
+                            customer = db_manager.get_query_for_instance(instance, User).filter_by(id=tracker.user_id).first()
+                            trackers_data.append({
+                                'ID': tracker.id,
+                                'Tracker Name': tracker.tracker_name,
+                                'Customer ID': tracker.user_id,
+                                'Customer Username': customer.username if customer else '',
+                                'Tracker Type': tracker.tracker_type,
+                                'Investment': float(tracker.investment) if tracker.investment else 0,
+                                'Scheme Period': tracker.scheme_period,
+                                'Per Day Payment': float(tracker.per_day_payment) if hasattr(tracker, 'per_day_payment') and tracker.per_day_payment else 0,
+                                'Start Date': tracker.start_date.strftime('%Y-%m-%d') if tracker.start_date else '',
+                                'Filename': tracker.filename or '',
+                                'Is Active': tracker.is_active,
+                                'Created At': tracker.created_at.strftime('%Y-%m-%d %H:%M:%S') if tracker.created_at else '',
+                                'Updated At': tracker.updated_at.strftime('%Y-%m-%d %H:%M:%S') if tracker.updated_at else ''
+                            })
+                        
+                        if trackers_data:
+                            pd.DataFrame(trackers_data).to_excel(writer, sheet_name='Daily Trackers', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export Daily Trackers: {e}")
+                    
+                    # Export Tracker Entries
+                    try:
+                        tracker_entries_data = []
+                        for entry in db_manager.get_query_for_instance(instance, TrackerEntry).all():
+                            submitted_by = db_manager.get_query_for_instance(instance, User).filter_by(id=entry.submitted_by_user_id).first()
+                            verified_by = None
+                            if entry.verified_by_user_id:
+                                verified_by = db_manager.get_query_for_instance(instance, User).filter_by(id=entry.verified_by_user_id).first()
+                            
+                            tracker_entries_data.append({
+                                'ID': entry.id,
+                                'Tracker ID': entry.tracker_id,
+                                'Day': entry.day,
+                                'Status': entry.status,
+                                'Submitted By': submitted_by.username if submitted_by else '',
+                                'Verified By': verified_by.username if verified_by else '',
+                                'Submitted At': entry.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if entry.submitted_at else '',
+                                'Verified At': entry.verified_at.strftime('%Y-%m-%d %H:%M:%S') if entry.verified_at else '',
+                                'Rejection Reason': entry.rejection_reason or ''
+                            })
+                        
+                        if tracker_entries_data:
+                            pd.DataFrame(tracker_entries_data).to_excel(writer, sheet_name='Tracker Entries', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export Tracker Entries: {e}")
+                    
+                    # Export Cashback Transactions
+                    try:
+                        cashback_transactions_data = []
+                        for trans in db_manager.get_query_for_instance(instance, CashbackTransaction).all():
+                            from_user = None
+                            if trans.from_user_id:
+                                from_user = db_manager.get_query_for_instance(instance, User).filter_by(id=trans.from_user_id).first()
+                            to_user = db_manager.get_query_for_instance(instance, User).filter_by(id=trans.to_user_id).first()
+                            created_by = db_manager.get_query_for_instance(instance, User).filter_by(id=trans.created_by_user_id).first()
+                            
+                            cashback_transactions_data.append({
+                                'ID': trans.id,
+                                'From User': from_user.username if from_user else 'System',
+                                'To User': to_user.username if to_user else '',
+                                'Points': float(trans.points),
+                                'Transaction Type': trans.transaction_type,
+                                'Related Loan ID': trans.related_loan_id or '',
+                                'Related Payment ID': trans.related_payment_id or '',
+                                'Related Tracker ID': trans.related_tracker_id or '',
+                                'Related Tracker Entry Day': trans.related_tracker_entry_day or '',
+                                'Notes': trans.notes or '',
+                                'Created By': created_by.username if created_by else '',
+                                'Created At': trans.created_at.strftime('%Y-%m-%d %H:%M:%S') if trans.created_at else ''
+                            })
+                        
+                        if cashback_transactions_data:
+                            pd.DataFrame(cashback_transactions_data).to_excel(writer, sheet_name='Cashback Transactions', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export Cashback Transactions: {e}")
+                    
+                    # Export Loan Cashback Config
+                    try:
+                        loan_cashback_config_data = []
+                        for config in db_manager.get_query_for_instance(instance, LoanCashbackConfig).all():
+                            loan = db_manager.get_query_for_instance(instance, Loan).filter_by(id=config.loan_id).first()
+                            user = db_manager.get_query_for_instance(instance, User).filter_by(id=config.user_id).first()
+                            
+                            loan_cashback_config_data.append({
+                                'ID': config.id,
+                                'Loan ID': config.loan_id,
+                                'Loan Name': loan.loan_name if loan else '',
+                                'User ID': config.user_id,
+                                'Username': user.username if user else '',
+                                'Cashback Type': config.cashback_type,
+                                'Cashback Value': float(config.cashback_value),
+                                'Is Active': config.is_active,
+                                'Created At': config.created_at.strftime('%Y-%m-%d %H:%M:%S') if config.created_at else ''
+                            })
+                        
+                        if loan_cashback_config_data:
+                            pd.DataFrame(loan_cashback_config_data).to_excel(writer, sheet_name='Loan Cashback Config', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export Loan Cashback Config: {e}")
+                    
+                    # Export Tracker Cashback Config
+                    try:
+                        tracker_cashback_config_data = []
+                        for config in db_manager.get_query_for_instance(instance, TrackerCashbackConfig).all():
+                            tracker = db_manager.get_query_for_instance(instance, DailyTracker).filter_by(id=config.tracker_id).first()
+                            user = db_manager.get_query_for_instance(instance, User).filter_by(id=config.user_id).first()
+                            
+                            tracker_cashback_config_data.append({
+                                'ID': config.id,
+                                'Tracker ID': config.tracker_id,
+                                'Tracker Name': tracker.tracker_name if tracker else '',
+                                'User ID': config.user_id,
+                                'Username': user.username if user else '',
+                                'Cashback Type': config.cashback_type,
+                                'Cashback Value': float(config.cashback_value),
+                                'Is Active': config.is_active,
+                                'Created At': config.created_at.strftime('%Y-%m-%d %H:%M:%S') if config.created_at else ''
+                            })
+                        
+                        if tracker_cashback_config_data:
+                            pd.DataFrame(tracker_cashback_config_data).to_excel(writer, sheet_name='Tracker Cashback Config', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export Tracker Cashback Config: {e}")
+                    
+                    # Export User Payment Methods
+                    try:
+                        payment_methods_data = []
+                        for method in db_manager.get_query_for_instance(instance, UserPaymentMethod).all():
+                            user = db_manager.get_query_for_instance(instance, User).filter_by(id=method.user_id).first()
+                            
+                            payment_methods_data.append({
+                                'ID': method.id,
+                                'User ID': method.user_id,
+                                'Username': user.username if user else '',
+                                'Payment Type': method.payment_type,
+                                'Account Name': method.account_name or '',
+                                'Account Number': method.account_number or '',
+                                'IFSC Code': method.ifsc_code or '',
+                                'Bank Name': method.bank_name or '',
+                                'UPI ID': method.upi_id or '',
+                                'GPay ID': method.gpay_id or '',
+                                'Phone Number': method.phone_number or '',
+                                'Address': method.address or '',
+                                'Is Default': method.is_default,
+                                'Created At': method.created_at.strftime('%Y-%m-%d %H:%M:%S') if method.created_at else '',
+                                'Updated At': method.updated_at.strftime('%Y-%m-%d %H:%M:%S') if method.updated_at else ''
+                            })
+                        
+                        if payment_methods_data:
+                            pd.DataFrame(payment_methods_data).to_excel(writer, sheet_name='User Payment Methods', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export User Payment Methods: {e}")
+                    
+                    # Export Cashback Redemptions
+                    try:
+                        redemptions_data = []
+                        for redemption in db_manager.get_query_for_instance(instance, CashbackRedemption).all():
+                            user = db_manager.get_query_for_instance(instance, User).filter_by(id=redemption.user_id).first()
+                            
+                            redemptions_data.append({
+                                'ID': redemption.id,
+                                'User ID': redemption.user_id,
+                                'Username': user.username if user else '',
+                                'Amount': float(redemption.amount),
+                                'Redemption Type': redemption.redemption_type,
+                                'Payment Method ID': redemption.payment_method_id or '',
+                                'Account Name': redemption.account_name or '',
+                                'Account Number': redemption.account_number or '',
+                                'IFSC Code': redemption.ifsc_code or '',
+                                'Bank Name': redemption.bank_name or '',
+                                'UPI ID': redemption.upi_id or '',
+                                'GPay ID': redemption.gpay_id or '',
+                                'Phone Number': redemption.phone_number or '',
+                                'Address': redemption.address or '',
+                                'Status': redemption.status,
+                                'Admin Notes': redemption.admin_notes or '',
+                                'Created At': redemption.created_at.strftime('%Y-%m-%d %H:%M:%S') if redemption.created_at else '',
+                                'Completed At': redemption.completed_at.strftime('%Y-%m-%d %H:%M:%S') if redemption.completed_at else ''
+                            })
+                        
+                        if redemptions_data:
+                            pd.DataFrame(redemptions_data).to_excel(writer, sheet_name='Cashback Redemptions', index=False)
+                    except Exception as e:
+                        logger.warning(f"Failed to export Cashback Redemptions: {e}")
+                    
                     # Create Summary Sheet
                     user_query = db_manager.get_query_for_instance(instance, User)
                     loan_query = db_manager.get_query_for_instance(instance, Loan)
                     payment_query = db_manager.get_query_for_instance(instance, Payment)
+                    
+                    # Get tracker and cashback stats
+                    tracker_count = 0
+                    active_tracker_count = 0
+                    tracker_entry_count = 0
+                    cashback_transaction_count = 0
+                    total_cashback_balance = Decimal('0')
+                    redemption_count = 0
+                    pending_redemption_count = 0
+                    
+                    try:
+                        tracker_query = db_manager.get_query_for_instance(instance, DailyTracker)
+                        tracker_count = tracker_query.count()
+                        active_tracker_count = tracker_query.filter_by(is_active=True).count()
+                        
+                        tracker_entry_query = db_manager.get_query_for_instance(instance, TrackerEntry)
+                        tracker_entry_count = tracker_entry_query.count()
+                        
+                        cashback_query = db_manager.get_query_for_instance(instance, CashbackTransaction)
+                        cashback_transaction_count = cashback_query.count()
+                        
+                        # Calculate total cashback balance (sum of all credits to users, excluding transfers)
+                        # Only count transactions where points are given (not transfers between users)
+                        for trans in cashback_query.all():
+                            # Count only credits (transactions TO users, excluding transfers)
+                            if trans.transaction_type != 'transfer':
+                                total_cashback_balance += trans.points
+                        
+                        redemption_query = db_manager.get_query_for_instance(instance, CashbackRedemption)
+                        redemption_count = redemption_query.count()
+                        pending_redemption_count = redemption_query.filter_by(status='pending').count()
+                    except Exception as e:
+                        logger.warning(f"Failed to get tracker/cashback stats: {e}")
                     
                     summary_data = {
                         'Metric': [
@@ -207,6 +437,13 @@ class MultiInstanceBackupManager:
                             'Total Principal Amount',
                             'Total Remaining Principal',
                             'Total Interest Paid',
+                            'Total Trackers',
+                            'Active Trackers',
+                            'Tracker Entries',
+                            'Cashback Transactions',
+                            'Total Cashback Given',
+                            'Redemption Requests',
+                            'Pending Redemptions',
                             'Backup Date'
                         ],
                         'Value': [
@@ -221,6 +458,13 @@ class MultiInstanceBackupManager:
                             float(sum(loan.principal_amount for loan in loan_query.all())),
                             float(sum(loan.remaining_principal for loan in loan_query.all())),
                             float(sum(payment.interest_amount for payment in payment_query.filter_by(status='verified').all())),
+                            tracker_count,
+                            active_tracker_count,
+                            tracker_entry_count,
+                            cashback_transaction_count,
+                            float(total_cashback_balance),
+                            redemption_count,
+                            pending_redemption_count,
                             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         ]
                     }
@@ -282,7 +526,7 @@ class MultiInstanceBackupManager:
                     'database_file': db_backup.name,
                     'excel_file': excel_backup.name,
                     'tracker_files_count': tracker_files_added,
-                    'version': '2.0.1'
+                    'version': '2.1.0'
                 }
                 
                 zipf.writestr(f"{backup_name}/metadata.json", json.dumps(metadata, indent=2))
