@@ -130,13 +130,15 @@
                                     <th>Email</th>
                                     <th>Role</th>
                                     <th>Loans</th>
+                                    <th class="text-end">Cashback Balance</th>
                                     <th>Created</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for user in users %}
+                                {% for item in users_with_balance %}
+                                {% set user = item.user %}
                                 <tr>
                                     <td><strong>#{{ user.id }}</strong></td>
                                     <td>
@@ -167,6 +169,14 @@
                                         <span class="badge bg-info">
                                             {{ user.loans|length }} loan{{ 's' if user.loans|length != 1 else '' }}
                                         </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('admin_user_cashback_history', instance_name=instance_name, user_id=user.id) }}" 
+                                           class="btn btn-sm {% if item.cashback_balance >= 0 %}btn-success{% else %}btn-danger{% endif %}"
+                                           style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); border: none; color: white;"
+                                           title="View cashback history">
+                                            <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(item.cashback_balance) }}
+                                        </a>
                                     </td>
                                     <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                                     <td>

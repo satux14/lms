@@ -198,16 +198,6 @@
                                     </select>
                                 </div>
 
-                                {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
-                                <!-- Withdrawn Amount -->
-                                <div class="mb-3">
-                                    <label for="withdrawn" class="form-label">
-                                        <i class="fas fa-money-bill-wave me-2"></i>Withdrawn Amount
-                                    </label>
-                                    <input type="number" class="form-control" id="withdrawn" name="withdrawn" 
-                                           step="0.01" min="0" placeholder="Amount withdrawn">
-                                </div>
-                                {% endif %}
 
                                 {% if tracker.tracker_type == '1L' %}
                                 <!-- 1L Enhanced specific fields -->
@@ -243,6 +233,42 @@
                                     </label>
                                     <textarea class="form-control" id="notes" name="notes" rows="3" 
                                               placeholder="Any additional notes or comments"></textarea>
+                                </div>
+
+                                <!-- Cashback Points Section -->
+                                <div class="card mt-4 border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0"><i class="fas fa-coins me-2"></i>Cashback Points (Optional)</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted small mb-3">
+                                            Add cashback points to users for this tracker entry.
+                                        </p>
+                                        <div id="cashbackUsersContainer">
+                                            <div class="cashback-user-entry mb-3 p-3 border rounded">
+                                                <div class="row">
+                                                    <div class="col-md-5 mb-2">
+                                                        <label class="form-label small">Username</label>
+                                                        <input type="text" class="form-control form-control-sm" 
+                                                               name="cashback_username[]" placeholder="Enter username">
+                                                    </div>
+                                                    <div class="col-md-5 mb-2">
+                                                        <label class="form-label small">Points</label>
+                                                        <input type="number" class="form-control form-control-sm" 
+                                                               name="cashback_points[]" step="0.01" min="0.01" placeholder="0.00">
+                                                    </div>
+                                                    <div class="col-md-2 mb-2 d-flex align-items-end">
+                                                        <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user" style="display: none;">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="addCashbackUserBtn">
+                                            <i class="fas fa-plus me-2"></i>Add Another User
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Submit Buttons -->
@@ -344,6 +370,32 @@
 document.getElementById('day').addEventListener('change', function() {
     const day = parseInt(this.value);
     // You could add AJAX call here to fetch existing data for this day
+});
+
+// Cashback user management
+let cashbackUserCount = 1;
+document.getElementById('addCashbackUserBtn').addEventListener('click', function() {
+    cashbackUserCount++;
+    const container = document.getElementById('cashbackUsersContainer');
+    const newEntry = container.firstElementChild.cloneNode(true);
+    
+    // Clear input values
+    newEntry.querySelector('input[name="cashback_username[]"]').value = '';
+    newEntry.querySelector('input[name="cashback_points[]"]').value = '';
+    
+    // Show remove button
+    newEntry.querySelector('.remove-cashback-user').style.display = 'block';
+    
+    container.appendChild(newEntry);
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-cashback-user')) {
+        const container = document.getElementById('cashbackUsersContainer');
+        if (container.children.length > 1) {
+            e.target.closest('.cashback-user-entry').remove();
+        }
+    }
 });
 </script>
 {% endblock %}

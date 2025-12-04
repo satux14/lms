@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Add Cashback - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-plus-circle me-2"></i>Add Unconditional Cashback
+                </h1>
+                <a href="{{ url_for('admin_cashback', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Add Cashback to Users</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_add_cashback', instance_name=instance_name) }}" id="cashbackForm">
+                        <div id="usersContainer">
+                            <!-- First user entry -->
+                            <div class="user-entry mb-3 p-3 border rounded">
+                                <div class="row">
+                                    <div class="col-md-5 mb-2">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-control username-input" 
+                                               name="username[]" placeholder="Enter username" required>
+                                    </div>
+                                    <div class="col-md-5 mb-2">
+                                        <label class="form-label">Points</label>
+                                        <input type="number" class="form-control" 
+                                               name="points[]" step="0.01" min="0.01" required placeholder="0.00">
+                                    </div>
+                                    <div class="col-md-2 mb-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger w-100 remove-user" style="display: none;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary" id="addUserBtn">
+                                <i class="fas fa-plus me-2"></i>Add Another User
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Optional notes about this cashback grant"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin_cashback', instance_name=instance_name) }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Add Cashback
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Reference</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        <strong>Instructions:</strong>
+                    </p>
+                    <ul class="small">
+                        <li>Enter username and points for each user</li>
+                        <li>Click "Add Another User" to add more recipients</li>
+                        <li>All users will receive the cashback points you specify</li>
+                        <li>Points are added unconditionally (not tied to any loan or payment)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let userEntryCount = 1;
+
+document.getElementById('addUserBtn').addEventListener('click', function() {
+    userEntryCount++;
+    const container = document.getElementById('usersContainer');
+    const newEntry = container.firstElementChild.cloneNode(true);
+    
+    // Clear input values
+    newEntry.querySelector('input[name="username[]"]').value = '';
+    newEntry.querySelector('input[name="points[]"]').value = '';
+    
+    // Show remove button
+    newEntry.querySelector('.remove-user').style.display = 'block';
+    
+    container.appendChild(newEntry);
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-user')) {
+        const container = document.getElementById('usersContainer');
+        if (container.children.length > 1) {
+            e.target.closest('.user-entry').remove();
+        }
+    }
+});
+
+// Show remove button for first entry if there are multiple
+document.getElementById('cashbackForm').addEventListener('submit', function(e) {
+    const container = document.getElementById('usersContainer');
+    if (container.children.length > 1) {
+        container.firstElementChild.querySelector('.remove-user').style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
+

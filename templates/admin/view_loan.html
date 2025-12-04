@@ -115,8 +115,11 @@
                     <a href="{{ url_for('admin_edit_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-warning me-2">
                         <i class="fas fa-edit me-1"></i>{{ _("Edit") }} Loan
                     </a>
-                    <a href="{{ url_for('admin_add_payment', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-success">
+                    <a href="{{ url_for('admin_add_payment', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-success me-2">
                         <i class="fas fa-plus me-1"></i>{{ _("Add") }} Payment
+                    </a>
+                    <a href="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-info">
+                        <i class="fas fa-coins me-1"></i>Cashback Config
                     </a>
                 </div>
             </div>
@@ -196,6 +199,14 @@
                                             <td><strong>Days Active:</strong></td>
                                             <td>{{ days_active }} days</td>
                                         </tr>
+                                        <tr>
+                                            <td><strong>Cashback:</strong></td>
+                                            <td>
+                                                <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white; font-size: 1em; padding: 0.5em 1em;">
+                                                    <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(loan_cashback_total) }}
+                                                </span>
+                                            </td>
+                                        </tr>
                                     </table>
                                 </div>
                             </div>
@@ -203,6 +214,70 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Cashback Configuration -->
+            {% if cashback_configs %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-coins me-2"></i>Cashback Configuration
+                            </h5>
+                            <a href="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit me-1"></i>Edit Config
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for config in cashback_configs %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ config.user.username }}</strong>
+                                                {% if config.user.email %}
+                                                    <br><small class="text-muted">{{ config.user.email }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'info' if config.cashback_type == 'percentage' else 'warning' }}">
+                                                    {{ config.cashback_type.title() }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if config.cashback_type == 'percentage' %}
+                                                    {{ "%.2f"|format(config.cashback_value * 100) }}% of interest
+                                                {% else %}
+                                                    ₹{{ "%.2f"|format(config.cashback_value) }} fixed
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if config.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Financial Summary -->
             <div class="row mb-4">
@@ -464,6 +539,7 @@
                                             <th>Method</th>
                                             <th>Transaction ID</th>
                                             <th>Status</th>
+                                            <th>Cashback</th>
                                             <th>Proof</th>
                                             <th>Actions</th>
                                         </tr>
@@ -488,6 +564,16 @@
                                                     <span class="badge bg-warning">Pending</span>
                                                 {% else %}
                                                     <span class="badge bg-danger">Rejected</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set payment_cashback = payment_cashback_map.get(payment.id, 0) %}
+                                                {% if payment_cashback > 0 %}
+                                                    <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                                        <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(payment_cashback) }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
                                             <td>

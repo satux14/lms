@@ -234,6 +234,7 @@
                                     <th>Method</th>
                                     <th>Transaction ID</th>
                                     <th>Status</th>
+                                    <th>Cashback</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -272,6 +273,29 @@
                                             <span class="badge bg-danger">Rejected</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ payment.status.title() }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set payment_cashback = payment_cashback_map.get(payment.id, 0) %}
+                                        {% if payment_cashback > 0 %}
+                                            <div>
+                                                <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                                    <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(payment_cashback) }}
+                                                </span>
+                                                <br>
+                                                <small class="text-muted">
+                                                    {% set recipients = payment_cashback_recipients_map.get(payment.id, []) %}
+                                                    {% if recipients %}
+                                                        {% for rec in recipients %}
+                                                            {{ rec.username }}: ₹{{ "%.2f"|format(rec.points) }}{% if not loop.last %}, {% endif %}
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>

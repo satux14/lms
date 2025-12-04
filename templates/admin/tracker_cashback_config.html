@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Tracker Cashback Config - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-coins me-2"></i>Cashback Configuration: {{ tracker.tracker_name }}
+                </h1>
+                <div>
+                    <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Tracker
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Configure Automatic Cashback</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div id="configContainer">
+                            {% if cashback_configs %}
+                                {% for config in cashback_configs %}
+                                <div class="config-entry mb-3 p-3 border rounded">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Username</label>
+                                            <input type="text" class="form-control" name="username[]" value="{{ config.user.username }}" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Type</label>
+                                            <select class="form-select" name="cashback_type[]" required>
+                                                <option value="percentage" {% if config.cashback_type == 'percentage' %}selected{% endif %}>Percentage</option>
+                                                <option value="fixed" {% if config.cashback_type == 'fixed' %}selected{% endif %}>Fixed Amount</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Value</label>
+                                            <input type="number" step="0.0001" class="form-control" name="cashback_value[]" value="{{ config.cashback_value }}" required>
+                                            <small class="form-text text-muted">
+                                                {% if config.cashback_type == 'percentage' %}
+                                                    (e.g., 0.05 for 5%)
+                                                {% else %}
+                                                    Fixed amount in ₹
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label>
+                                            <div>
+                                                <input type="checkbox" name="delete_config[]" value="{{ config.id }}" class="form-check-input">
+                                                <label class="form-check-label">Delete</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="config-entry mb-3 p-3 border rounded">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Username</label>
+                                            <input type="text" class="form-control" name="username[]" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Type</label>
+                                            <select class="form-select" name="cashback_type[]" required>
+                                                <option value="percentage">Percentage</option>
+                                                <option value="fixed">Fixed Amount</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label">Value</label>
+                                            <input type="number" step="0.0001" class="form-control" name="cashback_value[]" required>
+                                            <small class="form-text text-muted">For percentage: e.g., 0.05 for 5%</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="button" class="btn btn-sm btn-secondary" id="addConfig">
+                            <i class="fas fa-plus me-1"></i>Add Configuration
+                        </button>
+                        
+                        <hr>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('configContainer');
+    const addBtn = document.getElementById('addConfig');
+    
+    addBtn.addEventListener('click', function() {
+        const newEntry = container.querySelector('.config-entry').cloneNode(true);
+        newEntry.querySelector('input[name="username[]"]').value = '';
+        newEntry.querySelector('select[name="cashback_type[]"]').value = 'percentage';
+        newEntry.querySelector('input[name="cashback_value[]"]').value = '';
+        newEntry.querySelector('input[type="checkbox"]').checked = false;
+        container.appendChild(newEntry);
+    });
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Loan Cashback Configuration - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-cog me-2"></i>Cashback Configuration for Loan
+                </h1>
+                <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Loan
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Info -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="mb-3">Loan Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Loan Name:</strong> {{ loan.loan_name }}</p>
+                            <p><strong>Customer:</strong> {{ loan.customer.username }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Principal:</strong> ₹{{ "%.2f"|format(loan.principal_amount) }}</p>
+                            <p><strong>Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Add New Configuration -->
+        <div class="col-md-5 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Add Cashback Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}">
+                        <input type="hidden" name="action" value="add">
+                        
+                        <div class="mb-3">
+                            <label for="user_id" class="form-label">User</label>
+                            <select class="form-select" id="user_id" name="user_id" required>
+                                <option value="">Select a user...</option>
+                                {% for user in all_users %}
+                                <option value="{{ user.id }}">{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Cashback Type</label>
+                            <div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="cashback_type" 
+                                           id="type_percentage" value="percentage" checked onchange="updateValueLabel()">
+                                    <label class="form-check-label" for="type_percentage">
+                                        Percentage of Interest
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="cashback_type" 
+                                           id="type_fixed" value="fixed" onchange="updateValueLabel()">
+                                    <label class="form-check-label" for="type_fixed">
+                                        Fixed Amount
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cashback_value" class="form-label" id="valueLabel">Percentage (e.g., 0.05 for 5%)</label>
+                            <input type="number" class="form-control" id="cashback_value" 
+                                   name="cashback_value" step="0.0001" min="0.0001" required placeholder="0.05">
+                            <small class="form-text text-muted" id="valueHelp">
+                                Enter as decimal (0.05 = 5% of interest paid)
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-plus me-2"></i>Add Configuration
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Existing Configurations -->
+        <div class="col-md-7 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Existing Configurations</h5>
+                </div>
+                <div class="card-body">
+                    {% if configs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Value</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for config in configs %}
+                                <tr>
+                                    <td>{{ config.user.username }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if config.cashback_type == 'percentage' %}info{% else %}warning{% endif %}">
+                                            {{ config.cashback_type.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if config.cashback_type == 'percentage' %}
+                                            {{ "%.2f"|format(config.cashback_value * 100) }}%
+                                        {% else %}
+                                            ₹{{ "%.2f"|format(config.cashback_value) }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if config.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}" 
+                                              class="d-inline">
+                                            <input type="hidden" name="action" value="toggle">
+                                            <input type="hidden" name="config_id" value="{{ config.id }}">
+                                            <button type="submit" class="btn btn-sm btn-{% if config.is_active %}warning{% else %}success{% endif %}">
+                                                {% if config.is_active %}Deactivate{% else %}Activate{% endif %}
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}" 
+                                              class="d-inline" onsubmit="return confirm('Are you sure you want to delete this configuration?');">
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="config_id" value="{{ config.id }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-cog fa-3x mb-3"></i>
+                        <p>No cashback configurations yet. Add one using the form on the left.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateValueLabel() {
+    const percentageRadio = document.getElementById('type_percentage');
+    const fixedRadio = document.getElementById('type_fixed');
+    const valueLabel = document.getElementById('valueLabel');
+    const valueInput = document.getElementById('cashback_value');
+    const valueHelp = document.getElementById('valueHelp');
+    
+    if (percentageRadio.checked) {
+        valueLabel.textContent = 'Percentage (e.g., 0.05 for 5%)';
+        valueInput.step = '0.0001';
+        valueInput.min = '0.0001';
+        valueInput.max = '1';
+        valueInput.placeholder = '0.05';
+        valueHelp.textContent = 'Enter as decimal (0.05 = 5% of interest paid)';
+    } else {
+        valueLabel.textContent = 'Fixed Amount (₹)';
+        valueInput.step = '0.01';
+        valueInput.min = '0.01';
+        valueInput.max = '';
+        valueInput.placeholder = '0.00';
+        valueHelp.textContent = 'Enter fixed cashback amount per payment';
+    }
+}
+</script>
+{% endblock %}
+

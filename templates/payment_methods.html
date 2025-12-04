@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Methods - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-wallet me-2"></i>Payment Methods
+                </h1>
+                <a href="{{ url_for('user_cashback', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Cashback
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Add Payment Method Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>Add New Payment Method
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="add">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="payment_type" class="form-label">Payment Type</label>
+                                <select class="form-select" id="payment_type" name="payment_type" required>
+                                    <option value="">Select payment type</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="gpay">GPay</option>
+                                    <option value="upi">UPI</option>
+                                    <option value="account">Bank Account</option>
+                                    <option value="amazon_gift_card">Amazon Gift Card</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="is_default" name="is_default">
+                                    <label class="form-check-label" for="is_default">
+                                        Set as default payment method
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="account_name" class="form-label">Account Holder Name</label>
+                                <input type="text" class="form-control" id="account_name" name="account_name" 
+                                       placeholder="Enter account holder name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="account_number" class="form-label">Account Number / UPI ID / GPay ID</label>
+                                <input type="text" class="form-control" id="account_number" name="account_number" 
+                                       placeholder="Enter account number, UPI ID, or GPay ID">
+                            </div>
+                        </div>
+
+                        <div class="row" id="bank_fields" style="display: none;">
+                            <div class="col-md-6 mb-3">
+                                <label for="ifsc_code" class="form-label">IFSC Code</label>
+                                <input type="text" class="form-control" id="ifsc_code" name="ifsc_code" 
+                                       placeholder="Enter IFSC code">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="bank_name" class="form-label">Bank Name</label>
+                                <input type="text" class="form-control" id="bank_name" name="bank_name" 
+                                       placeholder="Enter bank name">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3" id="upi_id_field" style="display: none;">
+                                <label for="upi_id" class="form-label">UPI ID</label>
+                                <input type="text" class="form-control" id="upi_id" name="upi_id" 
+                                       placeholder="Enter UPI ID">
+                            </div>
+                            <div class="col-md-6 mb-3" id="gpay_id_field" style="display: none;">
+                                <label for="gpay_id" class="form-label">GPay ID / Phone Number</label>
+                                <input type="text" class="form-control" id="gpay_id" name="gpay_id" 
+                                       placeholder="Enter GPay ID or phone number">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3" id="phone_number_field" style="display: none;">
+                                <label for="phone_number" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                       placeholder="Enter phone number">
+                            </div>
+                            <div class="col-md-12 mb-3" id="address_field" style="display: none;">
+                                <label for="address" class="form-label">Delivery Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="3" 
+                                          placeholder="Enter delivery address for cash"></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Payment Method
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Existing Payment Methods -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Saved Payment Methods
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payment_methods %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Details</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pm in payment_methods %}
+                                <tr {% if pm.is_default %}class="table-info"{% endif %}>
+                                    <td>
+                                        <strong>{{ pm.payment_type.replace('_', ' ').title() }}</strong>
+                                        {% if pm.is_default %}
+                                            <span class="badge bg-primary ms-2">Default</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pm.account_name %}
+                                            <strong>{{ pm.account_name }}</strong><br>
+                                        {% endif %}
+                                        {% if pm.account_number %}
+                                            <small class="text-muted">Account/ID: {{ pm.account_number }}</small><br>
+                                        {% endif %}
+                                        {% if pm.bank_name %}
+                                            <small class="text-muted">Bank: {{ pm.bank_name }}</small><br>
+                                        {% endif %}
+                                        {% if pm.ifsc_code %}
+                                            <small class="text-muted">IFSC: {{ pm.ifsc_code }}</small><br>
+                                        {% endif %}
+                                        {% if pm.upi_id %}
+                                            <small class="text-muted">UPI: {{ pm.upi_id }}</small><br>
+                                        {% endif %}
+                                        {% if pm.gpay_id %}
+                                            <small class="text-muted">GPay: {{ pm.gpay_id }}</small><br>
+                                        {% endif %}
+                                        {% if pm.phone_number %}
+                                            <small class="text-muted">Phone: {{ pm.phone_number }}</small><br>
+                                        {% endif %}
+                                        {% if pm.address %}
+                                            <small class="text-muted">Address: {{ pm.address }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Active</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            {% if not pm.is_default %}
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="action" value="set_default">
+                                                <input type="hidden" name="method_id" value="{{ pm.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Set as default">
+                                                    <i class="fas fa-star"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this payment method?');">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="method_id" value="{{ pm.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-wallet fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No payment methods saved</h5>
+                        <p class="text-muted">Add a payment method above to use it for cashback redemption.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('payment_type').addEventListener('change', function() {
+    const type = this.value;
+    
+    // Show/hide relevant fields based on type
+    document.getElementById('bank_fields').style.display = (type === 'account') ? 'block' : 'none';
+    document.getElementById('upi_id_field').style.display = (type === 'upi') ? 'block' : 'none';
+    document.getElementById('gpay_id_field').style.display = (type === 'gpay') ? 'block' : 'none';
+    document.getElementById('phone_number_field').style.display = (type === 'cash' || type === 'gpay') ? 'block' : 'none';
+    document.getElementById('address_field').style.display = (type === 'cash') ? 'block' : 'none';
+});
+</script>
+{% endblock %}
+

@@ -250,6 +250,15 @@ def get_tracker_data(instance, filename):
         if day_value is None or day_value == '':
             continue
         
+        # Convert day_value to int if it's a string or float
+        if isinstance(day_value, str):
+            try:
+                day_value = int(float(day_value.replace(',', '').strip()))
+            except (ValueError, AttributeError):
+                day_value = day_value  # Keep as string if conversion fails
+        elif isinstance(day_value, float):
+            day_value = int(day_value)
+        
         row_data = {
             'row_num': row_num,
             'day': day_value
@@ -338,8 +347,16 @@ def update_tracker_entry(instance, filename, day, entry_data):
                 if isinstance(value, str):
                     value = datetime.strptime(value, '%Y-%m-%d').date()
             
-            # Convert Decimal to float for Excel
-            if isinstance(value, Decimal):
+            # Convert numeric strings and Decimal to float for Excel
+            if isinstance(value, str):
+                # Try to convert string to number if it's a numeric field
+                if col_name in ['daily_payments', 'cumulative', 'balance', 
+                              'reinvest', 'pocket_money', 'total_invested', 'day']:
+                    try:
+                        value = float(value.replace(',', '').strip())
+                    except (ValueError, AttributeError):
+                        pass  # Keep as string if conversion fails
+            elif isinstance(value, Decimal):
                 value = float(value)
             
             ws[cell] = value
@@ -432,8 +449,16 @@ def update_tracker_entry_by_index(instance, filename, row_index, entry_data):
                 if isinstance(value, str):
                     value = datetime.strptime(value, '%Y-%m-%d').date()
             
-            # Convert Decimal to float for Excel
-            if isinstance(value, Decimal):
+            # Convert numeric strings and Decimal to float for Excel
+            if isinstance(value, str):
+                # Try to convert string to number if it's a numeric field
+                if col_name in ['daily_payments', 'cumulative', 'balance', 
+                              'reinvest', 'pocket_money', 'total_invested', 'day']:
+                    try:
+                        value = float(value.replace(',', '').strip())
+                    except (ValueError, AttributeError):
+                        pass  # Keep as string if conversion fails
+            elif isinstance(value, Decimal):
                 value = float(value)
             
             ws[cell] = value
@@ -484,11 +509,25 @@ def get_tracker_summary(instance, filename):
     parameters = data['parameters']
     rows = data['data']
     
+    # Helper function to safely convert to float
+    def safe_float(value, default=0):
+        """Safely convert value to float, handling strings and None"""
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value.replace(',', '').strip())
+            except (ValueError, AttributeError):
+                return default
+        return default
+    
     # Calculate summary - just read from Excel, don't calculate ourselves
     # Count days with payment entries (including ₹0.00)
     days_with_entries = [r for r in rows if r.get('daily_payments') is not None]
     total_days_count = len(days_with_entries)  # Total days with entries (including ₹0.00)
-    total_days = len([r for r in days_with_entries if r.get('daily_payments') > 0])  # Days with actual non-zero payments
+    total_days = len([r for r in days_with_entries if safe_float(r.get('daily_payments', 0)) > 0])  # Days with actual non-zero payments
     
     # Get the latest row with data
     latest_row = None
@@ -500,8 +539,17 @@ def get_tracker_summary(instance, filename):
                 latest_row = row
             # Track the highest day number with a payment
             day_num = row.get('day', 0)
-            if isinstance(day_num, (int, float)) and day_num > highest_day:
-                highest_day = int(day_num)
+            if isinstance(day_num, (int, float)):
+                day_num = int(day_num)
+            elif isinstance(day_num, str):
+                try:
+                    day_num = int(float(day_num))
+                except (ValueError, TypeError):
+                    day_num = 0
+            else:
+                day_num = 0
+            if day_num > highest_day:
+                highest_day = day_num
     
     # Read values directly from Excel (they have formulas)
     balance = 0
@@ -510,13 +558,13 @@ def get_tracker_summary(instance, filename):
     
     if latest_row:
         if data['tracker_type'] in ['50K', '1L']:
-            balance = float(latest_row.get('balance', 0) or 0)
+            balance = safe_float(latest_row.get('balance', 0))
         # Cumulative from Excel = total of all payments
-        cumulative = float(latest_row.get('cumulative', 0) or 0)
+        cumulative = safe_float(latest_row.get('cumulative', 0))
         total_payments = cumulative  # Cumulative IS the total payments
     
     # Calculate expected and pending
-    per_day = float(parameters.get('per_day_payment', 0) or 0)
+    per_day = safe_float(parameters.get('per_day_payment', 0))
     # Use total_days_count (total days with entries) instead of highest_day
     expected_total = total_days_count * per_day
     pending = expected_total - total_payments

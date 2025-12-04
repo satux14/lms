@@ -111,6 +111,10 @@
                            class="btn btn-sm btn-primary">
                             <i class="fas fa-plus me-1"></i>{{ _("Add") }} Entry
                         </a>
+                        <a href="{{ url_for('admin_tracker_cashback_config', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                           class="btn btn-sm btn-info">
+                            <i class="fas fa-coins me-1"></i>Cashback Config
+                        </a>
                         <a href="{{ url_for('admin_download_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
                            class="btn btn-sm btn-success">
                             <i class="fas fa-download me-1"></i>Download Excel
@@ -209,12 +213,12 @@
                             <p class="mb-1"><strong>Cumulative:</strong></p>
                             <h4>₹{{ "%.2f"|format(summary.cumulative) }}</h4>
                         </div>
-                        {% if tracker.tracker_type in ['50K', '1L'] %}
                         <div class="col-md-2">
-                            <p class="mb-1"><strong>Balance:</strong></p>
-                            <h4>₹{{ "%.2f"|format(summary.balance) }}</h4>
+                            <p class="mb-1"><strong>Cashback:</strong></p>
+                            <h4 style="color: #5f1e67;">
+                                <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(tracker_cashback_total) }}
+                            </h4>
                         </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -290,6 +294,57 @@
                 </div>
             </div>
 
+            <!-- Pending Entries Section -->
+            {% if pending_entries %}
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Pending Entries ({{ pending_entries|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Submitted By</th>
+                                    <th>Submitted At</th>
+                                    <th>Daily Payment</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in pending_entries %}
+                                {% set entry_data = entry.entry_data|from_json %}
+                                {% set daily_payment = entry_data.get('daily_payments', 0) %}
+                                {% if daily_payment is string %}
+                                    {% set daily_payment = (daily_payment|float) if daily_payment else 0 %}
+                                {% elif daily_payment is none %}
+                                    {% set daily_payment = 0 %}
+                                {% endif %}
+                                <tr>
+                                    <td><strong>Day {{ entry.day }}</strong></td>
+                                    <td>{{ entry.submitted_by.username }}</td>
+                                    <td>{{ entry.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>₹{{ "%.2f"|format(daily_payment) }}</td>
+                                    <td><span class="badge bg-warning">Pending</span></td>
+                                    <td>
+                                        <a href="{{ url_for('admin_approve_tracker_entry', instance_name=instance_name, entry_id=entry.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-check me-1"></i>Review
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Data Table -->
             <div class="card">
                 <div class="card-header">
@@ -311,19 +366,16 @@
                                     <th>Payment Mode</th>
                                     {% if tracker.tracker_type in ['50K'] %}
                                     <th>Cumulative</th>
-                                    <th>Balance</th>
-                                    <th>Withdrawn</th>
+                                    <th>Cashback Points</th>
                                     {% elif tracker.tracker_type == '1L' %}
                                     <th>Cumulative</th>
-                                    <th>Balance</th>
-                                    <th>Withdrawn</th>
+                                    <th>Cashback Points</th>
                                     <th>Reinvest</th>
                                     <th>Pocket Money</th>
                                     <th>Total Invested</th>
                                     {% else %}
                                     <th>Cumulative</th>
-                                    <th>Balance</th>
-                                    <th>Withdrawn</th>
+                                    <th>Cashback Points</th>
                                     {% endif %}
                                     <th>Notes</th>
                                     <th>Actions</th>
@@ -353,8 +405,22 @@
                                     <td>{{ row.payment_mode or '' }}</td>
                                     {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
                                     <td>{{ "%.2f"|format(row.cumulative) if row.cumulative is not none else '' }}</td>
-                                    <td>{{ "%.2f"|format(row.balance) if row.balance is not none else '' }}</td>
-                                    <td>{{ "%.2f"|format(row.withdrawn) if row.withdrawn is not none else '' }}</td>
+                                    <td>
+                                        {% set day = row.day %}
+                                        {% if day is string %}
+                                            {% set day = (day|int) if day else 0 %}
+                                        {% elif day is none %}
+                                            {% set day = 0 %}
+                                        {% endif %}
+                                        {% set day_cashback = day_cashback_map.get(day, 0) %}
+                                        {% if day_cashback > 0 %}
+                                            <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                                <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(day_cashback) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">₹0.00</span>
+                                        {% endif %}
+                                    </td>
                                     {% endif %}
                                     {% if tracker.tracker_type == '1L' %}
                                     <td>{{ "%.2f"|format(row.reinvest) if row.reinvest is not none else '' }}</td>

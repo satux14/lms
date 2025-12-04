@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Cashback History - {{ user.username }} - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-coins me-2"></i>Cashback History: {{ user.username }}
+                </h1>
+                <div>
+                    <a href="{{ url_for('admin_cashback', instance_name=instance_name) }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Cashback Management
+                    </a>
+                    <a href="{{ url_for('admin_users', instance_name=instance_name) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-users me-2"></i>Back to Users
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Info and Balance Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="mb-2">User Information</h5>
+                            <p class="mb-1"><strong>Username:</strong> {{ user.username }}</p>
+                            <p class="mb-1"><strong>Email:</strong> {{ user.email or 'No email' }}</p>
+                            <p class="mb-0">
+                                <strong>Role:</strong> 
+                                {% if user.is_admin %}
+                                    <span class="badge bg-danger">Admin</span>
+                                {% elif user.is_moderator %}
+                                    <span class="badge bg-warning">Moderator</span>
+                                {% else %}
+                                    <span class="badge bg-info">User</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <h5 class="mb-2">Current Balance</h5>
+                            <h1 class="display-4 mb-0">₹{{ "%.2f"|format(balance) }}</h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Transaction History</h5>
+                    <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#filterCollapse">
+                        <i class="fas fa-filter me-1"></i>Filters
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Filters -->
+                    <div class="collapse mb-3" id="filterCollapse">
+                        <form method="GET" action="{{ url_for('admin_user_cashback_history', instance_name=instance_name, user_id=user.id) }}">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Date From</label>
+                                    <input type="date" class="form-control form-control-sm" 
+                                           name="date_from" value="{{ date_from or '' }}">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Date To</label>
+                                    <input type="date" class="form-control form-control-sm" 
+                                           name="date_to" value="{{ date_to or '' }}">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Type</label>
+                                    <select class="form-select form-select-sm" name="type">
+                                        <option value="">All Types</option>
+                                        {% for t in all_types %}
+                                        <option value="{{ t }}" {% if transaction_type == t %}selected{% endif %}>
+                                            {{ t.replace('_', ' ').title() }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">From User</label>
+                                    <input type="text" class="form-control form-control-sm" 
+                                           name="from_user" value="{{ request.args.get('from_user', '') }}"
+                                           placeholder="Enter username">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">To User</label>
+                                    <input type="text" class="form-control form-control-sm" 
+                                           name="to_user" value="{{ request.args.get('to_user', '') }}"
+                                           placeholder="Enter username">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-sm btn-primary me-2">Apply Filters</button>
+                                    <a href="{{ url_for('admin_user_cashback_history', instance_name=instance_name, user_id=user.id) }}" 
+                                       class="btn btn-sm btn-secondary">Clear</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Transactions Table -->
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>From/To</th>
+                                    <th>Points</th>
+                                    <th>Related Info</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for txn in transactions %}
+                                <tr>
+                                    <td>{{ txn.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ txn.transaction_type.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if txn.from_user_id == user.id %}
+                                            <span class="text-danger">To: {{ txn.to_user.username }}</span>
+                                        {% else %}
+                                            <span class="text-success">From: {% if txn.from_user %}{{ txn.from_user.username }}{% else %}System{% endif %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.from_user_id == user.id %}
+                                            <span class="text-danger">-₹{{ "%.2f"|format(txn.points) }}</span>
+                                        {% else %}
+                                            <span class="text-success">+₹{{ "%.2f"|format(txn.points) }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.related_loan %}
+                                            <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=txn.related_loan.id) }}">
+                                                Loan: {{ txn.related_loan.loan_name }}
+                                            </a>
+                                        {% elif txn.related_tracker %}
+                                            <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=txn.related_tracker.id) }}">
+                                                Tracker: {{ txn.related_tracker.tracker_name }}
+                                                {% if txn.related_tracker_entry_day %}
+                                                    (Day {{ txn.related_tracker_entry_day }})
+                                                {% endif %}
+                                            </a>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ txn.notes or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <th colspan="3" class="text-end"><strong>Total Transactions:</strong></th>
+                                    <th colspan="3">
+                                        <strong>{{ transactions|length }} transaction{{ 's' if transactions|length != 1 else '' }}</strong>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No transactions found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

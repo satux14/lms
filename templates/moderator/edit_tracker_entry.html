@@ -168,17 +168,6 @@
                                     </select>
                                 </div>
 
-                                {% if tracker.tracker_type in ['50K', '1L', 'No Reinvest'] %}
-                                <!-- Withdrawn Amount -->
-                                <div class="mb-3">
-                                    <label for="withdrawn" class="form-label">
-                                        <i class="fas fa-money-bill-wave me-2"></i>Withdrawn Amount
-                                    </label>
-                                    <input type="number" class="form-control" id="withdrawn" name="withdrawn" 
-                                           step="0.01" min="0" placeholder="Amount withdrawn"
-                                           value="{{ row_data.withdrawn if row_data.withdrawn is not none else '' }}">
-                                </div>
-                                {% endif %}
 
                                 {% if tracker.tracker_type == '1L' %}
                                 <!-- 1L Enhanced specific fields -->

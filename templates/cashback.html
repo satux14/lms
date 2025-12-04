@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Cashback Points - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-coins me-2"></i>Cashback Points
+                </h1>
+                <a href="{{ url_for('customer_dashboard', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="card-body text-center py-4">
+                    <h3 class="mb-2">Your Cashback Balance</h3>
+                    <h1 class="display-4 mb-0">₹{{ "%.2f"|format(balance) }}</h1>
+                    <div class="mt-3">
+                        <a href="{{ url_for('user_cashback_redeem', instance_name=instance_name) }}" 
+                           class="btn btn-light btn-lg">
+                            <i class="fas fa-gift me-2"></i>Redeem Points
+                        </a>
+                        <a href="{{ url_for('user_cashback_redemptions', instance_name=instance_name) }}" 
+                           class="btn btn-outline-light btn-lg ms-2">
+                            <i class="fas fa-history me-2"></i>Redemption History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Transfer Form -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-paper-plane me-2"></i>Transfer Points</h5>
+                </div>
+                <div class="card-body">
+                    <form id="transferForm" method="POST" action="{{ url_for('user_cashback_transfer', instance_name=instance_name) }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Recipient Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required 
+                                   placeholder="Enter username">
+                            <div id="usernameError" class="text-danger small mt-1" style="display: none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="points" class="form-label">Points Amount</label>
+                            <input type="number" class="form-control" id="points" name="points" 
+                                   step="0.01" min="0.01" required placeholder="0.00">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-paper-plane me-2"></i>Transfer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Transaction History</h5>
+                    <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#filterCollapse">
+                        <i class="fas fa-filter me-1"></i>Filters
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Filters -->
+                    <div class="collapse mb-3" id="filterCollapse">
+                        <form method="GET" action="{{ url_for('user_cashback', instance_name=instance_name) }}">
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Date From</label>
+                                    <input type="date" class="form-control form-control-sm" 
+                                           name="date_from" value="{{ date_from or '' }}">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Date To</label>
+                                    <input type="date" class="form-control form-control-sm" 
+                                           name="date_to" value="{{ date_to or '' }}">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label small">Type</label>
+                                    <select class="form-select form-select-sm" name="type">
+                                        <option value="">All Types</option>
+                                        {% for t in all_types %}
+                                        <option value="{{ t }}" {% if transaction_type == t %}selected{% endif %}>
+                                            {{ t.replace('_', ' ').title() }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-sm btn-primary me-2">Apply Filters</button>
+                                    <a href="{{ url_for('user_cashback', instance_name=instance_name) }}" 
+                                       class="btn btn-sm btn-secondary">Clear</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Transactions Table -->
+                    {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>From/To</th>
+                                    <th>Points</th>
+                                    <th>Related Info</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for txn in transactions %}
+                                <tr>
+                                    <td>{{ txn.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ txn.transaction_type.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if txn.from_user_id == current_user.id %}
+                                            <span class="text-danger">To: {{ txn.to_user.username }}</span>
+                                        {% else %}
+                                            <span class="text-success">From: {% if txn.from_user %}{{ txn.from_user.username }}{% else %}System{% endif %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.from_user_id == current_user.id %}
+                                            <span class="text-danger">-₹{{ "%.2f"|format(txn.points) }}</span>
+                                        {% else %}
+                                            <span class="text-success">+₹{{ "%.2f"|format(txn.points) }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.related_loan %}
+                                            Loan: {{ txn.related_loan.loan_name }}
+                                        {% elif txn.related_tracker %}
+                                            Tracker: {{ txn.related_tracker.tracker_name }}
+                                            {% if txn.related_tracker_entry_day %}
+                                                (Day {{ txn.related_tracker_entry_day }})
+                                            {% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No transactions found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('transferForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const username = formData.get('username').trim();
+    const points = formData.get('points');
+    
+    if (!username || !points) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    // Disable submit button
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+    
+    fetch(this.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            username: username,
+            points: points
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Transfer successful!');
+            location.reload();
+        } else {
+            document.getElementById('usernameError').textContent = data.error || 'Transfer failed';
+            document.getElementById('usernameError').style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Transfer';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Transfer';
+    });
+});
+</script>
+{% endblock %}
+
