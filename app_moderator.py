@@ -481,7 +481,20 @@ def register_routes():
                 else:
                     # Use Excel data
                     merged_row = row.copy()
-                    merged_row['is_pending'] = False
+                    # Only mark as not pending if daily_payments is actually filled
+                    daily_payments = merged_row.get('daily_payments')
+                    if daily_payments is not None:
+                        # Check if it's a valid non-zero value
+                        try:
+                            if isinstance(daily_payments, str):
+                                daily_payments_float = float(daily_payments.replace(',', '').strip())
+                            else:
+                                daily_payments_float = float(daily_payments)
+                            merged_row['is_pending'] = False if daily_payments_float > 0 else None
+                        except (ValueError, TypeError):
+                            merged_row['is_pending'] = None
+                    else:
+                        merged_row['is_pending'] = None
                     merged_data.append(merged_row)
             
             # Recalculate summary including pending entries

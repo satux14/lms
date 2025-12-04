@@ -148,6 +148,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    {% if all_redemptions %}
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
@@ -156,12 +157,13 @@
                                     <th>User</th>
                                     <th>Amount</th>
                                     <th>Type</th>
+                                    <th>Status</th>
                                     <th>Payment Details</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for redemption in pending_redemptions %}
+                                {% for redemption in all_redemptions %}
                                 <tr>
                                     <td>{{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td>
@@ -177,6 +179,15 @@
                                         <span class="badge bg-info">
                                             {{ redemption.redemption_type.replace('_', ' ').title() }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        {% if redemption.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif redemption.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif redemption.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if redemption.account_name %}
@@ -206,23 +217,38 @@
                                         {% if not redemption.account_name and not redemption.account_number and not redemption.bank_name and not redemption.upi_id and not redemption.gpay_id and not redemption.phone_number and not redemption.address %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
+                                        {% if redemption.admin_notes %}
+                                            <br><small class="text-info"><strong>Admin Notes:</strong> {{ redemption.admin_notes }}</small>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('admin_process_redemption', instance_name=instance_name, redemption_id=redemption.id) }}" 
-                                           class="btn btn-sm btn-primary">
-                                            <i class="fas fa-check me-1"></i>Process
-                                        </a>
+                                        {% if redemption.status == 'pending' %}
+                                            <a href="{{ url_for('admin_process_redemption', instance_name=instance_name, redemption_id=redemption.id) }}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-check me-1"></i>Process
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('admin_process_redemption', instance_name=instance_name, redemption_id=redemption.id) }}" 
+                                               class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </a>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>No redemption history</strong> - No redemption requests have been made yet.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Users with Balances -->
     <div class="row">
