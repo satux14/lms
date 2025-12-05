@@ -39,6 +39,34 @@
         </div>
     </div>
 
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                <div class="card-body text-center py-3">
+                    <h5 class="mb-2"><i class="fas fa-arrow-down me-2"></i>Total Earned</h5>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(total_earned) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <div class="card-body text-center py-3">
+                    <h5 class="mb-2"><i class="fas fa-paper-plane me-2"></i>Total Transferred</h5>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(total_transferred) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+                <div class="card-body text-center py-3">
+                    <h5 class="mb-2"><i class="fas fa-gift me-2"></i>Total Redeemed</h5>
+                    <h3 class="mb-0">₹{{ "%.2f"|format(total_redeemed) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <!-- Transfer Form -->
         <div class="col-md-4 mb-4">
@@ -130,7 +158,15 @@
                             <tbody>
                                 {% for txn in transactions %}
                                 <tr>
-                                    <td>{{ txn.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if logging_mgr %}
+                                            {% set local_time = logging_mgr.convert_to_local_time(txn.created_at) %}
+                                            {{ local_time.strftime('%Y-%m-%d %H:%M') if local_time else txn.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            <br><small class="text-muted">({{ timezone_str }})</small>
+                                        {% else %}
+                                            {{ txn.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <span class="badge bg-info">
                                             {{ txn.transaction_type.replace('_', ' ').title() }}

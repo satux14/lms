@@ -43,7 +43,15 @@
                             <tbody>
                                 {% for redemption in redemptions %}
                                 <tr>
-                                    <td>{{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if logging_mgr %}
+                                            {% set local_time = logging_mgr.convert_to_local_time(redemption.created_at) %}
+                                            {{ local_time.strftime('%Y-%m-%d %H:%M') if local_time else redemption.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            <br><small class="text-muted">({{ timezone_str }})</small>
+                                        {% else %}
+                                            {{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <strong class="text-danger">₹{{ "%.2f"|format(redemption.amount) }}</strong>
                                     </td>
@@ -105,7 +113,12 @@
                                     </td>
                                     <td>
                                         {% if redemption.processed_at %}
-                                            {{ redemption.processed_at.strftime('%Y-%m-%d %H:%M') }}
+                                            {% if logging_mgr %}
+                                                {% set local_time = logging_mgr.convert_to_local_time(redemption.processed_at) %}
+                                                {{ local_time.strftime('%Y-%m-%d %H:%M') if local_time else redemption.processed_at.strftime('%Y-%m-%d %H:%M') }}
+                                            {% else %}
+                                                {{ redemption.processed_at.strftime('%Y-%m-%d %H:%M') }}
+                                            {% endif %}
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}

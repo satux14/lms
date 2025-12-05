@@ -375,10 +375,17 @@ def register_routes():
             'total_cancelled_amount': sum(r.amount for r in all_redemptions if r.status == 'cancelled')
         }
         
+        # Get timezone for datetime formatting
+        from lms_logging import get_logging_manager
+        logging_mgr = get_logging_manager(instance_name)
+        timezone_str = logging_mgr.get_config('system_timezone', 'Asia/Kolkata')
+        
         return render_template('admin/cashback_redeem.html',
                              pending_redemptions=pending_redemptions,
                              all_redemptions=all_redemptions,
                              redemption_stats=redemption_stats,
+                             logging_mgr=logging_mgr,
+                             timezone_str=timezone_str,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/admin/cashback/redemption/<int:redemption_id>/process', methods=['GET', 'POST'])
@@ -679,6 +686,30 @@ def register_routes():
         # Get user's balance
         balance = get_user_cashback_balance(current_user.id, instance_name)
         
+        # Get all transactions for summary calculations
+        all_transactions = get_cashback_transaction_query().filter(
+            (CashbackTransaction.from_user_id == current_user.id) |
+            (CashbackTransaction.to_user_id == current_user.id)
+        ).all()
+        
+        # Calculate summary statistics
+        total_earned = Decimal('0')
+        total_transferred = Decimal('0')
+        total_redeemed = Decimal('0')
+        
+        for txn in all_transactions:
+            if txn.to_user_id == current_user.id and txn.from_user_id != current_user.id:
+                # Received cashback (earned)
+                if txn.transaction_type != 'redemption' and txn.transaction_type != 'redemption_refund':
+                    total_earned += txn.points
+            elif txn.from_user_id == current_user.id and txn.to_user_id != current_user.id:
+                # Sent cashback (transferred)
+                if txn.transaction_type == 'transfer':
+                    total_transferred += txn.points
+            elif txn.transaction_type == 'redemption' and txn.from_user_id == current_user.id:
+                # Redeemed
+                total_redeemed += txn.points
+        
         # Get transaction history with filters
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
@@ -714,13 +745,23 @@ def register_routes():
         ).distinct().all()
         all_types = [t[0] for t in all_types]
         
+        # Get timezone for datetime formatting
+        from lms_logging import get_logging_manager
+        logging_mgr = get_logging_manager(instance_name)
+        timezone_str = logging_mgr.get_config('system_timezone', 'Asia/Kolkata')
+        
         return render_template('cashback.html',
                              balance=balance,
+                             total_earned=float(total_earned),
+                             total_transferred=float(total_transferred),
+                             total_redeemed=float(total_redeemed),
                              transactions=transactions,
                              date_from=date_from,
                              date_to=date_to,
                              transaction_type=transaction_type,
                              all_types=all_types,
+                             logging_mgr=logging_mgr,
+                             timezone_str=timezone_str,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/cashback/transfer', methods=['POST'])
@@ -1053,8 +1094,15 @@ def register_routes():
             user_id=current_user.id
         ).order_by(CashbackRedemption.created_at.desc()).all()
         
+        # Get timezone for datetime formatting
+        from lms_logging import get_logging_manager
+        logging_mgr = get_logging_manager(instance_name)
+        timezone_str = logging_mgr.get_config('system_timezone', 'Asia/Kolkata')
+        
         return render_template('cashback_redemptions.html',
                              redemptions=redemptions,
+                             logging_mgr=logging_mgr,
+                             timezone_str=timezone_str,
                              instance_name=instance_name)
 
 

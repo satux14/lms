@@ -104,10 +104,21 @@
                                 {% for cb in configured_cashback %}
                                 <div class="cashback-entry mb-2">
                                     <div class="input-group">
+                                        {% if is_admin and all_users %}
+                                        <select class="form-select" name="cashback_username[]" required>
+                                            <option value="">Select user...</option>
+                                            {% for user in all_users %}
+                                            <option value="{{ user.username }}" {% if cb.username == user.username %}selected{% endif %}>
+                                                {{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        {% else %}
                                         <input type="text" class="form-control" name="cashback_username[]" 
-                                               value="{{ cb.username }}" placeholder="Username">
+                                               value="{{ cb.username }}" placeholder="Enter username" required>
+                                        {% endif %}
                                         <input type="number" step="0.01" class="form-control" name="cashback_points[]" 
-                                               value="{{ "%.2f"|format(cb.points) }}" placeholder="Points">
+                                               value="{{ "%.2f"|format(cb.points) }}" placeholder="Points" required>
                                         <button type="button" class="btn btn-danger remove-cashback">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -117,7 +128,19 @@
                             {% else %}
                                 <div class="cashback-entry mb-2">
                                     <div class="input-group">
-                                        <input type="text" class="form-control" name="cashback_username[]" placeholder="Username">
+                                        {% if is_admin and all_users %}
+                                        <select class="form-select" name="cashback_username[]">
+                                            <option value="">Select user...</option>
+                                            {% for user in all_users %}
+                                            <option value="{{ user.username }}">
+                                                {{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        {% else %}
+                                        <input type="text" class="form-control" name="cashback_username[]" placeholder="Enter username">
+                                        <small class="form-text text-muted d-block mt-1">Type the username manually</small>
+                                        {% endif %}
                                         <input type="number" step="0.01" class="form-control" name="cashback_points[]" placeholder="Points">
                                         <button type="button" class="btn btn-danger remove-cashback" style="display: none;">
                                             <i class="fas fa-times"></i>
@@ -206,8 +229,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     addBtn.addEventListener('click', function() {
         const newEntry = container.querySelector('.cashback-entry').cloneNode(true);
-        newEntry.querySelector('input[name="cashback_username[]"]').value = '';
-        newEntry.querySelector('input[name="cashback_points[]"]').value = '';
+        // Clear username field (could be input or select)
+        const usernameField = newEntry.querySelector('input[name="cashback_username[]"], select[name="cashback_username[]"]');
+        if (usernameField) {
+            usernameField.value = '';
+        }
+        // Clear points field
+        const pointsField = newEntry.querySelector('input[name="cashback_points[]"]');
+        if (pointsField) {
+            pointsField.value = '';
+        }
+        // Remove any helper text
+        const helperText = newEntry.querySelector('.form-text');
+        if (helperText) {
+            helperText.remove();
+        }
         const removeBtn = newEntry.querySelector('.remove-cashback');
         if (removeBtn) {
             removeBtn.style.display = 'block';
