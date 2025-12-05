@@ -28,7 +28,10 @@
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Available Balance:</strong> ₹{{ "%.2f"|format(balance) }}
+                        <strong>Available Balance:</strong> <span id="availableBalance">₹{{ "%.2f"|format(balance) }}</span>
+                        <span id="remainingBalance" style="display: none; margin-left: 15px;">
+                            <strong>Remaining After Redemption:</strong> <span id="remainingAmount"></span>
+                        </span>
                     </div>
 
                     <form method="POST" id="redeemForm">
@@ -36,7 +39,8 @@
                             <label for="amount" class="form-label">Amount to Redeem (₹)</label>
                             <input type="number" class="form-control" id="amount" name="amount" 
                                    step="0.01" min="0.01" max="{{ balance }}" required 
-                                   placeholder="Enter amount">
+                                   placeholder="Enter amount"
+                                   oninput="updateRemainingBalance()">
                             <small class="form-text text-muted">Maximum: ₹{{ "%.2f"|format(balance) }}</small>
                         </div>
 
@@ -139,6 +143,32 @@
 </div>
 
 <script>
+const initialBalance = {{ balance }};
+
+function updateRemainingBalance() {
+    const amountInput = document.getElementById('amount');
+    const amount = parseFloat(amountInput.value) || 0;
+    const remainingBalanceDiv = document.getElementById('remainingBalance');
+    const remainingAmountSpan = document.getElementById('remainingAmount');
+    
+    if (amount > 0 && amount <= initialBalance) {
+        const remaining = initialBalance - amount;
+        remainingAmountSpan.textContent = '₹' + remaining.toFixed(2);
+        remainingBalanceDiv.style.display = 'inline';
+        
+        // Update color based on remaining balance
+        if (remaining < 100) {
+            remainingAmountSpan.style.color = '#dc3545'; // Red for low balance
+        } else if (remaining < 500) {
+            remainingAmountSpan.style.color = '#ffc107'; // Yellow for medium balance
+        } else {
+            remainingAmountSpan.style.color = '#28a745'; // Green for good balance
+        }
+    } else {
+        remainingBalanceDiv.style.display = 'none';
+    }
+}
+
 document.getElementById('redemption_type').addEventListener('change', function() {
     const type = this.value;
     const amazonNote = document.getElementById('amazon_note');
