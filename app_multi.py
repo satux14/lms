@@ -4425,11 +4425,18 @@ def admin_approve_tracker_entry(instance_name, entry_id):
             'points': points
         })
     
+    # Only show user list to admins, not moderators
+    all_users = None
+    if current_user.is_admin:
+        all_users = get_user_query().order_by(User.username).all()
+    
     return render_template('admin/approve_tracker_entry.html',
                          entry=entry,
                          tracker=tracker,
                          entry_data=entry_data,
                          configured_cashback=configured_cashback,
+                         all_users=all_users,
+                         is_admin=current_user.is_admin,
                          instance_name=instance_name)
 
 # ============================================================================

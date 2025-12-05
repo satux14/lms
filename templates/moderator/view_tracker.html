@@ -60,13 +60,13 @@
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-clock fa-3x text-warning mb-3"></i>
-                            <h5 class="{% if summary.get('pending_payments_sum', 0) > 0 %}text-warning{% else %}text-success{% endif %}">
-                                ₹{{ "%.2f"|format(summary.get('pending_payments_sum', 0)) }}
+                            <h5 class="{% if summary.get('pending', 0) > 0 %}text-warning{% else %}text-success{% endif %}">
+                                ₹{{ "%.2f"|format(summary.get('pending', 0)) }}
                             </h5>
                             <p class="text-muted mb-0">Pending Amount</p>
                             {% if summary.get('pending_entries_count', 0) > 0 %}
                             <small class="text-muted">
-                                {{ summary.get('pending_entries_count', 0) }} entr{{ 'y' if summary.get('pending_entries_count', 0) == 1 else 'ies' }}
+                                {{ summary.get('pending_entries_count', 0) }} entr{{ 'y' if summary.get('pending_entries_count', 0) == 1 else 'ies' }} pending approval
                             </small>
                             {% endif %}
                         </div>
@@ -135,10 +135,14 @@
                                 {{ summary.get('pending_entries_count', 0) }} entr{{ 'y' if summary.get('pending_entries_count', 0) == 1 else 'ies' }}
                             </small>
                         </div>
+                        {% set cumulative = summary.cumulative|float %}
+                        {% set total_payments = summary.total_payments|float %}
+                        {% if (cumulative - total_payments)|abs > 0.01 %}
                         <div class="col-md-2">
                             <p class="mb-1"><strong>Cumulative:</strong></p>
                             <h4>₹{{ "%.2f"|format(summary.cumulative) }}</h4>
                         </div>
+                        {% endif %}
                         <div class="col-md-2">
                             <p class="mb-1"><strong>Cashback:</strong></p>
                             <h4 style="color: #5f1e67;">
@@ -250,6 +254,10 @@
                                         {% elif row.is_pending == False and row.daily_payments and (row.daily_payments|float > 0) %}
                                             <span class="badge bg-success">
                                                 <i class="fas fa-check me-1"></i>Approved
+                                            </span>
+                                        {% elif row.daily_payments is not none and (row.daily_payments|float == 0) %}
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-check-circle me-1"></i>Auto Approve
                                             </span>
                                         {% else %}
                                             <span class="badge bg-secondary">

@@ -80,7 +80,15 @@
                             <tbody>
                                 {% for redemption in pending_redemptions %}
                                 <tr>
-                                    <td>{{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if logging_mgr %}
+                                            {% set local_time = logging_mgr.convert_to_local_time(redemption.created_at) %}
+                                            {{ local_time.strftime('%Y-%m-%d %H:%M') if local_time else redemption.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            <br><small class="text-muted">({{ timezone_str }})</small>
+                                        {% else %}
+                                            {{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <strong>{{ redemption.user.username }}</strong>
                                         {% if redemption.user.email %}
@@ -173,7 +181,15 @@
                             <tbody>
                                 {% for redemption in all_redemptions %}
                                 <tr>
-                                    <td>{{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if logging_mgr %}
+                                            {% set local_time = logging_mgr.convert_to_local_time(redemption.created_at) %}
+                                            {{ local_time.strftime('%Y-%m-%d %H:%M') if local_time else redemption.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                            <br><small class="text-muted">({{ timezone_str }})</small>
+                                        {% else %}
+                                            {{ redemption.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <strong>{{ redemption.user.username }}</strong>
                                         {% if redemption.user.email %}
