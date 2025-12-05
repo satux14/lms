@@ -3,47 +3,16 @@
 {% block title %}View Daily Tracker - {{ tracker.tracker_name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container mt-4">
     <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 sidebar">
-            <div class="position-sticky pt-3">
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}">
-                            <i class="fas fa-tachometer-alt me-2"></i>{{ _("Dashboard") }}
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('moderator_daily_trackers', instance_name=instance_name) }}">
-                            <i class="fas fa-calendar-alt me-2"></i>{{ _("All Trackers") }}
-                        </a>
-                    </li>
-                    
-                    <!-- Back to Main Dashboard -->
-                    <li class="nav-item mt-3">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                            <span>Account</span>
-                        </h6>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('customer_dashboard', instance_name=instance_name) }}">
-                            <i class="fas fa-home me-2"></i>{{ _("My Dashboard") }}
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- Main content -->
-        <div class="col-md-9 col-lg-10 main-content">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h2">
                     <i class="fas fa-eye me-2"></i>{{ tracker.tracker_name }}
                 </h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
+                <div class="d-flex gap-2">
                     <a href="{{ url_for('moderator_daily_trackers', instance_name=instance_name) }}" 
-                       class="btn btn-sm btn-outline-secondary">
+                       class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-1"></i>{{ _("Back") }}
                     </a>
                 </div>
@@ -51,7 +20,7 @@
 
             <!-- Tracker Info -->
             <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-user fa-3x text-primary mb-3"></i>
@@ -60,7 +29,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-rupee-sign fa-3x text-success mb-3"></i>
@@ -69,7 +38,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-calendar fa-3x text-info mb-3"></i>
@@ -78,12 +47,39 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2 col-sm-6 mb-3">
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-calendar-day fa-3x text-warning mb-3"></i>
                             <h5>{{ tracker.start_date.strftime('%Y-%m-%d') }}</h5>
                             <p class="text-muted mb-0">Start Date</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                            <h5 class="{% if summary.get('pending_payments_sum', 0) > 0 %}text-warning{% else %}text-success{% endif %}">
+                                ₹{{ "%.2f"|format(summary.get('pending_payments_sum', 0)) }}
+                            </h5>
+                            <p class="text-muted mb-0">Pending Amount</p>
+                            {% if summary.get('pending_entries_count', 0) > 0 %}
+                            <small class="text-muted">
+                                {{ summary.get('pending_entries_count', 0) }} entr{{ 'y' if summary.get('pending_entries_count', 0) == 1 else 'ies' }}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-6 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-coins fa-3x mb-3" style="color: #5f1e67;"></i>
+                            <h5 style="color: #5f1e67;">
+                                ₹{{ "%.2f"|format(summary.get('cashback_total', 0)) }}
+                            </h5>
+                            <p class="text-muted mb-0">Cashback</p>
                         </div>
                     </div>
                 </div>
@@ -166,7 +162,7 @@
                         <i class="fas fa-table me-2"></i>Daily Tracker Data
                     </h5>
                     {% if summary.get('pending_entries_count', 0) > 0 %}
-                    <div class="alert alert-warning mt-2 mb-0">
+                    <div class="mt-2 mb-0 text-white">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Note:</strong> {{ summary.pending_entries_count }} entr{{ 'y is' if summary.pending_entries_count == 1 else 'ies are' }} pending approval (shown with yellow background). 
                         Totals include pending entries as if they were already approved.
@@ -208,11 +204,6 @@
                                 <tr {% if row.is_pending %}class="table-warning"{% elif row.daily_payments and row.daily_payments > 0 %}class="table-success"{% endif %}>
                                     <td>
                                         {{ row.day }}
-                                        {% if row.is_pending %}
-                                            <span class="badge bg-warning text-dark ms-1" title="Pending approval">
-                                                <i class="fas fa-clock"></i> Pending
-                                            </span>
-                                        {% endif %}
                                     </td>
                                     <td>
                                         {% if row.date %}
@@ -286,9 +277,6 @@
                                                class="btn btn-sm {% if row.is_pending %}btn-warning{% else %}btn-outline-primary{% endif %}"
                                                title="{% if row.is_pending %}Edit Pending Entry{% else %}Add/Edit Entry{% endif %}">
                                                 <i class="fas fa-edit"></i>
-                                                {% if row.is_pending %}
-                                                <span class="badge bg-dark ms-1">Pending</span>
-                                                {% endif %}
                                             </a>
                                         </div>
                                     </td>

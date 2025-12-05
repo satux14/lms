@@ -80,8 +80,16 @@
                         <h5 class="mb-0">Cashback Points</h5>
                     </div>
                     <div class="card-body">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableCashback" name="enable_cashback" 
+                                   {% if configured_cashback %}checked{% endif %}>
+                            <label class="form-check-label" for="enableCashback">
+                                <strong>Enable Cashback</strong>
+                            </label>
+                        </div>
+
                         {% if configured_cashback %}
-                        <div class="alert alert-info">
+                        <div class="alert alert-info" id="configuredCashbackInfo">
                             <strong>Configured Cashback:</strong>
                             <ul class="mb-0 mt-2">
                                 {% for cb in configured_cashback %}
@@ -91,15 +99,15 @@
                         </div>
                         {% endif %}
 
-                        <div id="cashbackContainer">
+                        <div id="cashbackContainer" {% if not configured_cashback %}style="display: none;"{% endif %}>
                             {% if configured_cashback %}
                                 {% for cb in configured_cashback %}
                                 <div class="cashback-entry mb-2">
                                     <div class="input-group">
                                         <input type="text" class="form-control" name="cashback_username[]" 
-                                               value="{{ cb.username }}" placeholder="Username" required>
+                                               value="{{ cb.username }}" placeholder="Username">
                                         <input type="number" step="0.01" class="form-control" name="cashback_points[]" 
-                                               value="{{ "%.2f"|format(cb.points) }}" placeholder="Points" required>
+                                               value="{{ "%.2f"|format(cb.points) }}" placeholder="Points">
                                         <button type="button" class="btn btn-danger remove-cashback">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -109,8 +117,8 @@
                             {% else %}
                                 <div class="cashback-entry mb-2">
                                     <div class="input-group">
-                                        <input type="text" class="form-control" name="cashback_username[]" placeholder="Username" required>
-                                        <input type="number" step="0.01" class="form-control" name="cashback_points[]" placeholder="Points" required>
+                                        <input type="text" class="form-control" name="cashback_username[]" placeholder="Username">
+                                        <input type="number" step="0.01" class="form-control" name="cashback_points[]" placeholder="Points">
                                         <button type="button" class="btn btn-danger remove-cashback" style="display: none;">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -118,7 +126,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        <button type="button" class="btn btn-sm btn-secondary mt-2" id="addCashback">
+                        <button type="button" class="btn btn-sm btn-secondary mt-2" id="addCashback" {% if not configured_cashback %}style="display: none;"{% endif %}>
                             <i class="fas fa-plus me-1"></i>Add Cashback
                         </button>
                     </div>
@@ -171,6 +179,30 @@
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('cashbackContainer');
     const addBtn = document.getElementById('addCashback');
+    const enableCheckbox = document.getElementById('enableCashback');
+    const configuredInfo = document.getElementById('configuredCashbackInfo');
+    
+    // Toggle cashback section based on checkbox
+    function toggleCashbackSection() {
+        const isEnabled = enableCheckbox.checked;
+        if (container) {
+            container.style.display = isEnabled ? 'block' : 'none';
+        }
+        if (addBtn) {
+            addBtn.style.display = isEnabled ? 'block' : 'none';
+        }
+        // Make fields not required when disabled
+        const inputs = container ? container.querySelectorAll('input') : [];
+        inputs.forEach(input => {
+            input.required = isEnabled;
+        });
+    }
+    
+    // Initial state
+    toggleCashbackSection();
+    
+    // Listen for checkbox changes
+    enableCheckbox.addEventListener('change', toggleCashbackSection);
     
     addBtn.addEventListener('click', function() {
         const newEntry = container.querySelector('.cashback-entry').cloneNode(true);
@@ -194,8 +226,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     container.addEventListener('click', function(e) {
         if (e.target.closest('.remove-cashback')) {
-            if (container.querySelectorAll('.cashback-entry').length > 1) {
+            const allEntries = container.querySelectorAll('.cashback-entry');
+            if (allEntries.length > 1) {
                 e.target.closest('.cashback-entry').remove();
+                // Update remove button visibility after removal
+                const remainingEntries = container.querySelectorAll('.cashback-entry');
+                remainingEntries.forEach((entry, index) => {
+                    const removeBtn = entry.querySelector('.remove-cashback');
+                    if (removeBtn) {
+                        removeBtn.style.display = remainingEntries.length > 1 ? 'block' : 'none';
+                    }
+                });
             }
         }
     });

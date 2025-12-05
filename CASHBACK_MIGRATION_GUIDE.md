@@ -213,3 +213,4 @@ If you encounter any issues:
 3. Ensure application is stopped (to avoid database locks)
 4. Check that you have write permissions to the database directory
 
+

@@ -13,6 +13,7 @@ from flask import request, redirect, url_for, flash, render_template, jsonify, a
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from sqlalchemy import or_
 
 # Import from app_multi - these will be set when register_cashback_routes is called
 app = None
@@ -83,10 +84,48 @@ def register_routes():
                 'balance': balance
             })
         
+        # Get cashback history tab parameter
+        show_history = request.args.get('tab') == 'history'
+        
+        # Get all cashback transactions if history tab is selected
+        cashback_transactions = []
+        if show_history:
+            # Get filter parameters
+            filter_user = request.args.get('filter_user', '').strip()
+            filter_type = request.args.get('filter_type', '').strip()
+            
+            # Build query
+            query = get_cashback_transaction_query()
+            
+            if filter_user:
+                # Filter by username (from_user or to_user)
+                user_ids = [u.id for u in get_user_query().filter(
+                    User.username.contains(filter_user)
+                ).all()]
+                if user_ids:
+                    query = query.filter(
+                        or_(
+                            CashbackTransaction.from_user_id.in_(user_ids),
+                            CashbackTransaction.to_user_id.in_(user_ids)
+                        )
+                    )
+            
+            if filter_type:
+                query = query.filter(CashbackTransaction.transaction_type == filter_type)
+            
+            # Order by most recent first
+            cashback_transactions = query.order_by(
+                CashbackTransaction.created_at.desc()
+            ).limit(500).all()  # Limit to 500 most recent
+        
         return render_template('admin/cashback.html',
                              user_balances=user_balances,
                              total_balance=total_balance,
                              search_username=search_username,
+                             cashback_transactions=cashback_transactions,
+                             show_history=show_history,
+                             filter_user=request.args.get('filter_user', ''),
+                             filter_type=request.args.get('filter_type', ''),
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/admin/cashback/add', methods=['GET', 'POST'])
