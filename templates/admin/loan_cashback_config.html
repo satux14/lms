@@ -51,12 +51,18 @@
                         
                         <div class="mb-3">
                             <label for="user_id" class="form-label">User</label>
+                            {% if is_admin and all_users %}
                             <select class="form-select" id="user_id" name="user_id" required>
                                 <option value="">Select a user...</option>
                                 {% for user in all_users %}
                                 <option value="{{ user.id }}">{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
                                 {% endfor %}
                             </select>
+                            {% else %}
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   placeholder="Enter username" required>
+                            <small class="form-text text-muted">Type the username manually</small>
+                            {% endif %}
                         </div>
 
                         <div class="mb-3">

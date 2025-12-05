@@ -31,8 +31,18 @@
                                 <div class="row">
                                     <div class="col-md-5 mb-2">
                                         <label class="form-label">Username</label>
+                                        {% if is_admin and all_users %}
+                                        <select class="form-select username-select" name="username[]" required>
+                                            <option value="">Select a user...</option>
+                                            {% for user in all_users %}
+                                            <option value="{{ user.username }}">{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
+                                            {% endfor %}
+                                        </select>
+                                        {% else %}
                                         <input type="text" class="form-control username-input" 
                                                name="username[]" placeholder="Enter username" required>
+                                        <small class="form-text text-muted">Type the username manually</small>
+                                        {% endif %}
                                     </div>
                                     <div class="col-md-5 mb-2">
                                         <label class="form-label">Points</label>
@@ -102,9 +112,15 @@ document.getElementById('addUserBtn').addEventListener('click', function() {
     const container = document.getElementById('usersContainer');
     const newEntry = container.firstElementChild.cloneNode(true);
     
-    // Clear input values
-    newEntry.querySelector('input[name="username[]"]').value = '';
-    newEntry.querySelector('input[name="points[]"]').value = '';
+    // Clear input/select values
+    const usernameField = newEntry.querySelector('input[name="username[]"], select[name="username[]"]');
+    if (usernameField) {
+        usernameField.value = '';
+    }
+    const pointsField = newEntry.querySelector('input[name="points[]"]');
+    if (pointsField) {
+        pointsField.value = '';
+    }
     
     // Show remove button
     newEntry.querySelector('.remove-user').style.display = 'block';
