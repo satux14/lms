@@ -801,6 +801,9 @@ def process_loan_cashback(loan, payment, instance_name, created_by_user_id):
             is_active=True
         ).all()
         
+        cashback_details = []
+        total_cashback = Decimal('0')
+        
         for config in configs:
             if config.cashback_type == 'percentage':
                 # Calculate points as percentage of interest amount
@@ -825,8 +828,40 @@ def process_loan_cashback(loan, payment, instance_name, created_by_user_id):
                     created_by_user_id=created_by_user_id
                 )
                 session.add(transaction)
+                total_cashback += points
+                cashback_details.append({
+                    'user': config.user.username,
+                    'points': float(points),
+                    'type': config.cashback_type
+                })
         
         session.commit()
+        
+        # Log cashback activity if any cashback was given
+        if total_cashback > 0:
+            try:
+                from lms_logging import get_logging_manager
+                logging_mgr = get_logging_manager(instance_name)
+                # Get username from created_by_user_id
+                created_by_user = session.query(User).filter_by(id=created_by_user_id).first()
+                username = created_by_user.username if created_by_user else 'system'
+                
+                logging_mgr.log_activity(
+                    action='cashback_loan_auto',
+                    username=username,
+                    user_id=created_by_user_id,
+                    resource_type='loan',
+                    resource_id=loan.id,
+                    details={
+                        'loan_name': loan.loan_name,
+                        'payment_id': payment.id,
+                        'total_cashback': float(total_cashback),
+                        'cashback_details': cashback_details
+                    }
+                )
+            except Exception as log_error:
+                print(f"[ERROR] Failed to log loan cashback: {log_error}")
+        
     except Exception as e:
         print(f"Error processing loan cashback: {e}")
         session.rollback()
@@ -2737,6 +2772,9 @@ def admin_edit_payment(instance_name, payment_id):
             points_list = request.form.getlist('cashback_points[]')
             
             has_manual_cashback = False
+            manual_cashback_details = []
+            total_manual_cashback = Decimal('0')
+            
             for username, points_str in zip(usernames, points_list):
                 username = username.strip()
                 if not username:
@@ -2764,12 +2802,38 @@ def admin_edit_payment(instance_name, payment_id):
                         created_by_user_id=current_user.id
                     )
                     session.add(transaction)
+                    total_manual_cashback += points
+                    manual_cashback_details.append({
+                        'user': username,
+                        'points': float(points)
+                    })
             
             # Only process automatic cashback if admin didn't provide manual cashback
             if not has_manual_cashback:
                 process_loan_cashback(loan, payment, instance_name, current_user.id)
             else:
                 session.commit()
+                
+                # Log manual cashback activity
+                if total_manual_cashback > 0:
+                    try:
+                        from lms_logging import get_logging_manager
+                        logging_mgr = get_logging_manager(instance_name)
+                        logging_mgr.log_activity(
+                            action='cashback_loan_manual',
+                            username=current_user.username,
+                            user_id=current_user.id,
+                            resource_type='loan',
+                            resource_id=loan.id,
+                            details={
+                                'loan_name': loan.loan_name,
+                                'payment_id': payment.id,
+                                'total_cashback': float(total_manual_cashback),
+                                'cashback_details': manual_cashback_details
+                            }
+                        )
+                    except Exception as log_error:
+                        print(f"[ERROR] Failed to log manual loan cashback: {log_error}")
             
         elif payment.status == 'pending' and old_status == 'verified':
             # Payment is being unverified - add back to balance
@@ -3707,17 +3771,48 @@ def admin_add_tracker_entry(instance_name, tracker_id):
             metrics_mgr = get_metrics_manager(instance_name)
             
             daily_payment = entry_data.get('daily_payments', 0)
+            
+            # Get cashback info for this entry
+            cashback_info = None
+            try:
+                day_cashback = get_tracker_day_cashback(tracker_id, day, instance_name)
+                if day_cashback > 0:
+                    # Get cashback transactions for this day
+                    session = db_manager.get_session_for_instance(instance_name)
+                    cashback_txns = session.query(CashbackTransaction).filter_by(
+                        related_tracker_id=tracker_id,
+                        related_tracker_entry_day=day,
+                        transaction_type='tracker_entry'
+                    ).all()
+                    cashback_info = {
+                        'total': float(day_cashback),
+                        'transactions': [
+                            {
+                                'user': txn.to_user.username if txn.to_user else 'unknown',
+                                'points': float(txn.points)
+                            }
+                            for txn in cashback_txns
+                        ]
+                    }
+            except Exception as e:
+                print(f"[ERROR] Failed to get cashback info for logging: {e}")
+            
+            log_details = {
+                'tracker_name': tracker.tracker_name,
+                'day': day,
+                'daily_payment': str(daily_payment),
+                'customer': tracker.user.username if tracker.user else None,
+                'row_index': row_index
+            }
+            if cashback_info:
+                log_details['cashback'] = cashback_info
+            
             logging_mgr.log_admin_action(
                 action='admin_tracker_entry_update',
                 resource_type='tracker',
                 resource_id=tracker_id,
                 username=current_user.username,
-                details={
-                    'tracker_name': tracker.tracker_name,
-                    'day': day,
-                    'daily_payment': str(daily_payment),
-                    'customer': tracker.user.username if tracker.user else None
-                }
+                details=log_details
             )
             metrics_mgr.record_tracker_entry(
                 tracker_id=tracker_id,
@@ -3859,18 +3954,48 @@ def admin_edit_tracker_entry(instance_name, tracker_id, row_index):
             metrics_mgr = get_metrics_manager(instance_name)
             
             daily_payment = entry_data.get('daily_payments', 0)
+            day = row_data.get('day', row_index)
+            
+            # Get cashback info for this entry
+            cashback_info = None
+            try:
+                day_cashback = get_tracker_day_cashback(tracker_id, day, instance_name)
+                if day_cashback > 0:
+                    # Get cashback transactions for this day
+                    cashback_txns = session.query(CashbackTransaction).filter_by(
+                        related_tracker_id=tracker_id,
+                        related_tracker_entry_day=day,
+                        transaction_type='tracker_entry'
+                    ).all()
+                    cashback_info = {
+                        'total': float(day_cashback),
+                        'transactions': [
+                            {
+                                'user': txn.to_user.username if txn.to_user else 'unknown',
+                                'points': float(txn.points)
+                            }
+                            for txn in cashback_txns
+                        ]
+                    }
+            except Exception as e:
+                print(f"[ERROR] Failed to get cashback info for logging: {e}")
+            
+            log_details = {
+                'tracker_name': tracker.tracker_name,
+                'day': day,
+                'daily_payment': str(daily_payment),
+                'customer': tracker.user.username if tracker.user else None,
+                'row_index': row_index
+            }
+            if cashback_info:
+                log_details['cashback'] = cashback_info
+            
             logging_mgr.log_admin_action(
                 action='admin_tracker_entry_update',
                 resource_type='tracker',
                 resource_id=tracker_id,
                 username=current_user.username,
-                details={
-                    'tracker_name': tracker.tracker_name,
-                    'day': row_data.get('day', row_index),
-                    'daily_payment': str(daily_payment),
-                    'customer': tracker.user.username if tracker.user else None,
-                    'row_index': row_index
-                }
+                details=log_details
             )
             metrics_mgr.record_tracker_entry(
                 tracker_id=tracker_id,
@@ -4044,102 +4169,143 @@ def admin_approve_tracker_entry(instance_name, entry_id):
                 
                 commit_current_instance()
                 
-                # Process cashback if configured or provided
-                session = db_manager.get_session_for_instance(instance_name)
+                # Check if cashback is enabled
+                enable_cashback = request.form.get('enable_cashback') == 'on'
                 
-                # Get tracker cashback configs
-                cashback_configs = get_tracker_cashback_config_query().filter_by(
-                    tracker_id=tracker.id,
-                    is_active=True
-                ).all()
-                
-                daily_payment = entry_data.get('daily_payments', Decimal('0'))
-                # Convert string to Decimal, handling various formats
-                if isinstance(daily_payment, str):
-                    try:
-                        cleaned = daily_payment.replace('₹', '').replace(',', '').replace(' ', '').strip()
-                        daily_payment = Decimal(cleaned) if cleaned else Decimal('0')
-                    except (ValueError, InvalidOperation):
-                        daily_payment = Decimal('0')
-                elif daily_payment is None:
-                    daily_payment = Decimal('0')
-                elif isinstance(daily_payment, (int, float)):
-                    daily_payment = Decimal(str(daily_payment))
-                else:
-                    try:
-                        daily_payment = Decimal(str(daily_payment))
-                    except (ValueError, InvalidOperation):
-                        daily_payment = Decimal('0')
-                
-                # Process manual cashback from form
-                usernames = request.form.getlist('cashback_username[]')
-                points_list = request.form.getlist('cashback_points[]')
-                
-                # Check if manual cashback is provided
-                has_manual_cashback = False
-                manual_cashback_users = set()
-                for username, points_str in zip(usernames, points_list):
-                    username = username.strip()
-                    if username and points_str:
+                # Process cashback only if enabled
+                if enable_cashback:
+                    session = db_manager.get_session_for_instance(instance_name)
+                    
+                    # Get tracker cashback configs
+                    cashback_configs = get_tracker_cashback_config_query().filter_by(
+                        tracker_id=tracker.id,
+                        is_active=True
+                    ).all()
+                    
+                    daily_payment = entry_data.get('daily_payments', Decimal('0'))
+                    # Convert string to Decimal, handling various formats
+                    if isinstance(daily_payment, str):
                         try:
-                            points = Decimal(str(points_str))
-                            if points > 0:
-                                has_manual_cashback = True
-                                manual_cashback_users.add(username.lower())
+                            cleaned = daily_payment.replace('₹', '').replace(',', '').replace(' ', '').strip()
+                            daily_payment = Decimal(cleaned) if cleaned else Decimal('0')
                         except (ValueError, InvalidOperation):
-                            pass
-                
-                # Only process automatic cashback if no manual cashback is provided
-                # This prevents double-adding when admin uses pre-filled values
-                if not has_manual_cashback:
-                    # Process automatic cashback from configs
-                    for config in cashback_configs:
-                        if config.cashback_type == 'percentage':
-                            points = daily_payment * config.cashback_value
-                        else:  # fixed
-                            points = config.cashback_value
-                        
-                        if points > 0:
-                            transaction = CashbackTransaction(
-                                from_user_id=None,
-                                to_user_id=config.user_id,
-                                points=points,
-                                transaction_type='tracker_entry',
-                                related_tracker_id=tracker.id,
-                                related_tracker_entry_day=entry.day,
-                                notes=f"Auto cashback from tracker '{tracker.tracker_name}' entry (Day {entry.day})",
-                                created_by_user_id=current_user.id
-                            )
-                            session.add(transaction)
-                # Process manual cashback from form (if provided, this overrides automatic)
-                if has_manual_cashback:
+                            daily_payment = Decimal('0')
+                    elif daily_payment is None:
+                        daily_payment = Decimal('0')
+                    elif isinstance(daily_payment, (int, float)):
+                        daily_payment = Decimal(str(daily_payment))
+                    else:
+                        try:
+                            daily_payment = Decimal(str(daily_payment))
+                        except (ValueError, InvalidOperation):
+                            daily_payment = Decimal('0')
+                    
+                    # Process manual cashback from form
+                    usernames = request.form.getlist('cashback_username[]')
+                    points_list = request.form.getlist('cashback_points[]')
+                    
+                    # Check if manual cashback is provided
+                    has_manual_cashback = False
+                    manual_cashback_users = set()
                     for username, points_str in zip(usernames, points_list):
                         username = username.strip()
-                        if not username:
-                            continue
-                        
-                        try:
-                            points = Decimal(str(points_str))
-                            if points <= 0:
+                        if username and points_str:
+                            try:
+                                points = Decimal(str(points_str))
+                                if points > 0:
+                                    has_manual_cashback = True
+                                    manual_cashback_users.add(username.lower())
+                            except (ValueError, InvalidOperation):
+                                pass
+                    
+                    cashback_details = []
+                    total_cashback = Decimal('0')
+                    
+                    # Only process automatic cashback if no manual cashback is provided
+                    # This prevents double-adding when admin uses pre-filled values
+                    if not has_manual_cashback:
+                        # Process automatic cashback from configs
+                        for config in cashback_configs:
+                            if config.cashback_type == 'percentage':
+                                points = daily_payment * config.cashback_value
+                            else:  # fixed
+                                points = config.cashback_value
+                            
+                            if points > 0:
+                                transaction = CashbackTransaction(
+                                    from_user_id=None,
+                                    to_user_id=config.user_id,
+                                    points=points,
+                                    transaction_type='tracker_entry',
+                                    related_tracker_id=tracker.id,
+                                    related_tracker_entry_day=entry.day,
+                                    notes=f"Auto cashback from tracker '{tracker.tracker_name}' entry (Day {entry.day})",
+                                    created_by_user_id=current_user.id
+                                )
+                                session.add(transaction)
+                                total_cashback += points
+                                cashback_details.append({
+                                    'user': config.user.username,
+                                    'points': float(points),
+                                    'type': 'auto'
+                                })
+                    # Process manual cashback from form (if provided, this overrides automatic)
+                    if has_manual_cashback:
+                        for username, points_str in zip(usernames, points_list):
+                            username = username.strip()
+                            if not username:
                                 continue
-                        except (ValueError, InvalidOperation):
-                            continue
-                        
-                        recipient = validate_username_exists(username, instance_name)
-                        if recipient:
-                            transaction = CashbackTransaction(
-                                from_user_id=None,
-                                to_user_id=recipient.id,
-                                points=points,
-                                transaction_type='tracker_entry',
-                                related_tracker_id=tracker.id,
-                                related_tracker_entry_day=entry.day,
-                                notes=f"Cashback from tracker '{tracker.tracker_name}' entry (Day {entry.day})",
-                                created_by_user_id=current_user.id
+                            
+                            try:
+                                points = Decimal(str(points_str))
+                                if points <= 0:
+                                    continue
+                            except (ValueError, InvalidOperation):
+                                continue
+                            
+                            recipient = validate_username_exists(username, instance_name)
+                            if recipient:
+                                transaction = CashbackTransaction(
+                                    from_user_id=None,
+                                    to_user_id=recipient.id,
+                                    points=points,
+                                    transaction_type='tracker_entry',
+                                    related_tracker_id=tracker.id,
+                                    related_tracker_entry_day=entry.day,
+                                    notes=f"Cashback from tracker '{tracker.tracker_name}' entry (Day {entry.day})",
+                                    created_by_user_id=current_user.id
+                                )
+                                session.add(transaction)
+                                total_cashback += points
+                                cashback_details.append({
+                                    'user': username,
+                                    'points': float(points),
+                                    'type': 'manual'
+                                })
+                    
+                    session.commit()
+                    
+                    # Log cashback activity if any cashback was given
+                    if total_cashback > 0:
+                        try:
+                            from lms_logging import get_logging_manager
+                            logging_mgr = get_logging_manager(instance_name)
+                            logging_mgr.log_activity(
+                                action='cashback_tracker_entry',
+                                username=current_user.username,
+                                user_id=current_user.id,
+                                resource_type='tracker',
+                                resource_id=tracker.id,
+                                details={
+                                    'tracker_name': tracker.tracker_name,
+                                    'day': entry.day,
+                                    'daily_payment': float(daily_payment),
+                                    'total_cashback': float(total_cashback),
+                                    'cashback_details': cashback_details
+                                }
                             )
-                            session.add(transaction)
-                
-                session.commit()
+                        except Exception as log_error:
+                            print(f"[ERROR] Failed to log tracker cashback: {log_error}")
                 
                 flash(f'Entry for Day {entry.day} approved successfully', 'success')
                 return redirect(url_for('admin_pending_tracker_entries', instance_name=instance_name))

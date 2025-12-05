@@ -63,7 +63,7 @@
                                             <span class="badge bg-danger">
                                                 <i class="fas fa-crown me-1"></i>Admin
                                             </span>
-                                        {% elif user.is_moderator %}
+                                        {% elif user.is_moderator or user.assigned_loans.filter_by(is_active=True).all()|length > 0 or user.assigned_trackers.filter_by(is_active=True).all()|length > 0 %}
                                             <span class="badge bg-warning text-dark">
                                                 <i class="fas fa-user-shield me-1"></i>Moderator
                                             </span>

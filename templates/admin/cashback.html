@@ -27,8 +27,13 @@
         <div class="col-12">
             <ul class="nav nav-tabs">
                 <li class="nav-item">
-                    <a class="nav-link active" href="{{ url_for('admin_cashback', instance_name=instance_name) }}">
+                    <a class="nav-link {% if not show_history %}active{% endif %}" href="{{ url_for('admin_cashback', instance_name=instance_name) }}">
                         <i class="fas fa-coins me-1"></i>Cashback Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if show_history %}active{% endif %}" href="{{ url_for('admin_cashback', instance_name=instance_name, tab='history') }}">
+                        <i class="fas fa-history me-1"></i>Cashback History
                     </a>
                 </li>
                 <li class="nav-item">
@@ -40,6 +45,130 @@
         </div>
     </div>
 
+    {% if show_history %}
+    <!-- Cashback History Tab -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <form method="GET" action="{{ url_for('admin_cashback', instance_name=instance_name, tab='history') }}">
+                <input type="hidden" name="tab" value="history">
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <input type="text" class="form-control" name="filter_user" 
+                               placeholder="Filter by username..." value="{{ request.args.get('filter_user', '') }}">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <select class="form-select" name="filter_type">
+                            <option value="">All Types</option>
+                            <option value="transfer" {% if request.args.get('filter_type') == 'transfer' %}selected{% endif %}>Transfer</option>
+                            <option value="loan_interest_auto" {% if request.args.get('filter_type') == 'loan_interest_auto' %}selected{% endif %}>Loan Interest (Auto)</option>
+                            <option value="loan_interest_manual" {% if request.args.get('filter_type') == 'loan_interest_manual' %}selected{% endif %}>Loan Interest (Manual)</option>
+                            <option value="tracker_entry" {% if request.args.get('filter_type') == 'tracker_entry' %}selected{% endif %}>Tracker Entry</option>
+                            <option value="unconditional" {% if request.args.get('filter_type') == 'unconditional' %}selected{% endif %}>Unconditional</option>
+                            <option value="system" {% if request.args.get('filter_type') == 'system' %}selected{% endif %}>System</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <button class="btn btn-primary w-100" type="submit">
+                            <i class="fas fa-search me-1"></i>Filter
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>All Cashback Transactions</h5>
+                </div>
+                <div class="card-body">
+                    {% if cashback_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>From User</th>
+                                    <th>To User</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Type</th>
+                                    <th>Related To</th>
+                                    <th>Notes</th>
+                                    <th>Created By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for txn in cashback_transactions %}
+                                <tr>
+                                    <td>{{ txn.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if txn.from_user %}
+                                            {{ txn.from_user.username }}
+                                        {% else %}
+                                            <span class="text-muted">System</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><strong>{{ txn.to_user.username }}</strong></td>
+                                    <td class="text-end">
+                                        <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                            ₹{{ "%.2f"|format(txn.points) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ txn.transaction_type.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if txn.related_loan %}
+                                            <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=txn.related_loan.id) }}">
+                                                Loan: {{ txn.related_loan.loan_name }}
+                                            </a>
+                                        {% elif txn.related_tracker %}
+                                            <a href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=txn.related_tracker.id) }}">
+                                                Tracker: {{ txn.related_tracker.tracker_name }}
+                                                {% if txn.related_tracker_entry_day %}
+                                                    (Day {{ txn.related_tracker_entry_day }})
+                                                {% endif %}
+                                            </a>
+                                        {% elif txn.related_payment %}
+                                            Payment #{{ txn.related_payment.id }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.notes %}
+                                            <small class="text-muted">{{ txn.notes[:50] }}{% if txn.notes|length > 50 %}...{% endif %}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.created_by %}
+                                            {{ txn.created_by.username }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-history fa-3x mb-3"></i>
+                        <p>No cashback transactions found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
     <!-- Search Filter -->
     <div class="row mb-3">
         <div class="col-md-6">
@@ -123,6 +252,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 
