@@ -195,6 +195,20 @@
                     </div>
                 </div>
 
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="stats-card" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%);">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h3>₹{{ "%.2f"|format(loan_cashback_total) }}</h3>
+                                <p>{{ _('Loan Cashback') }}</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-coins fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div class="row mb-4">
@@ -244,8 +258,8 @@
                     <div class="stats-card" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%);">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h3>₹{{ "%.2f"|format(loan_cashback_total + tracker_cashback_total) }}</h3>
-                                <p>{{ _('Total Cashback') }}</p>
+                                <h3>₹{{ "%.2f"|format(tracker_cashback_total) }}</h3>
+                                <p>{{ _('Tracker Cashback') }}</p>
                             </div>
                             <div class="align-self-center">
                                 <i class="fas fa-coins fa-2x"></i>
