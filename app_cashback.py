@@ -397,6 +397,24 @@ def register_routes():
             admin_notes = request.form.get('admin_notes', '')
             
             if action == 'complete':
+                # Check if redemption was already processed
+                if redemption.status != 'pending':
+                    flash('Redemption request has already been processed', 'error')
+                    return redirect(url_for('admin_cashback_redeem', instance_name=instance_name))
+                
+                # Verify the original redemption transaction exists
+                if not redemption.redemption_transaction_id:
+                    flash('Original redemption transaction not found. Cannot complete.', 'error')
+                    return redirect(url_for('admin_cashback_redeem', instance_name=instance_name))
+                
+                original_transaction = get_cashback_transaction_query().filter_by(
+                    id=redemption.redemption_transaction_id
+                ).first()
+                
+                if not original_transaction:
+                    flash('Original redemption transaction not found. Cannot complete.', 'error')
+                    return redirect(url_for('admin_cashback_redeem', instance_name=instance_name))
+                
                 redemption.status = 'completed'
                 redemption.processed_by_user_id = current_user.id
                 redemption.processed_at = datetime.utcnow()
@@ -422,23 +440,41 @@ def register_routes():
                 
                 flash('Redemption request completed successfully', 'success')
             elif action == 'cancel':
+                # Check if redemption was already processed
+                if redemption.status != 'pending':
+                    flash('Redemption request has already been processed', 'error')
+                    return redirect(url_for('admin_cashback_redeem', instance_name=instance_name))
+                
+                # Verify the original redemption transaction exists
+                original_transaction = None
+                if redemption.redemption_transaction_id:
+                    original_transaction = get_cashback_transaction_query().filter_by(
+                        id=redemption.redemption_transaction_id
+                    ).first()
+                
+                if not original_transaction:
+                    flash('Original redemption transaction not found. Cannot refund.', 'error')
+                    return redirect(url_for('admin_cashback_redeem', instance_name=instance_name))
+                
                 redemption.status = 'cancelled'
                 redemption.processed_by_user_id = current_user.id
                 redemption.processed_at = datetime.utcnow()
                 redemption.admin_notes = admin_notes
                 
                 # Refund points by creating a reverse transaction
+                # Use from_user_id=None, to_user_id=user_id to properly add to balance
+                # Balance = received - sent, so increasing 'received' increases balance
                 session = db_manager.get_session_for_instance(instance_name)
                 refund_transaction = CashbackTransaction(
-                    from_user_id=None,
+                    from_user_id=None,  # System grant
                     to_user_id=redemption.user_id,
-                    points=redemption.amount,  # Positive for refund
+                    points=redemption.amount,  # Positive amount - increases 'received', which increases balance
                     transaction_type='redemption_refund',
                     notes=f"Refund for cancelled redemption request #{redemption.id}",
                     created_by_user_id=current_user.id
                 )
                 session.add(refund_transaction)
-                commit_current_instance()
+                session.commit()  # Commit both redemption status and refund transaction together
                 
                 # Log redemption cancellation
                 try:
@@ -837,7 +873,30 @@ def register_routes():
                     phone_number = payment_method.phone_number or phone_number
                     address = payment_method.address or address
             
-            # Create redemption request
+            # Create cashback transaction to deduct points FIRST (before creating redemption)
+            # Use from_user_id=user_id, to_user_id=system_user_id with POSITIVE points to properly deduct from balance
+            # Balance = received - sent, so increasing 'sent' decreases balance
+            # We need a system user for to_user_id (NOT NULL constraint)
+            session = db_manager.get_session_for_instance(instance_name)
+            
+            # Get or use first admin as system user for redemption transactions
+            system_user = get_user_query().filter_by(is_admin=True).first()
+            if not system_user:
+                flash('System error: No admin user found for processing redemption', 'error')
+                return redirect(url_for('user_cashback_redeem', instance_name=instance_name))
+            
+            redemption_transaction = CashbackTransaction(
+                from_user_id=current_user.id,
+                to_user_id=system_user.id,  # System user for redemption deduction
+                points=amount,  # Positive amount - increases 'sent', which decreases balance
+                transaction_type='redemption',
+                notes=f"Redemption request: {redemption_type}",
+                created_by_user_id=current_user.id
+            )
+            session.add(redemption_transaction)
+            session.flush()  # Get the ID to link to redemption
+            
+            # Create redemption request and link to transaction
             redemption = CashbackRedemption(
                 user_id=current_user.id,
                 amount=amount,
@@ -851,25 +910,11 @@ def register_routes():
                 gpay_id=gpay_id,
                 phone_number=phone_number,
                 address=address,
-                status='pending'
+                status='pending',
+                redemption_transaction_id=redemption_transaction.id
             )
-            add_to_current_instance(redemption)
-            
-            # Create cashback transaction to deduct points
-            session = db_manager.get_session_for_instance(instance_name)
-            redemption_transaction = CashbackTransaction(
-                from_user_id=current_user.id,
-                to_user_id=current_user.id,  # Self-deduction for redemption
-                points=-amount,  # Negative for deduction
-                transaction_type='redemption',
-                notes=f"Redemption request: {redemption_type}",
-                created_by_user_id=current_user.id
-            )
-            session.add(redemption_transaction)
-            session.flush()  # Get the ID
-            
-            redemption.redemption_transaction_id = redemption_transaction.id
-            commit_current_instance()
+            session.add(redemption)
+            session.commit()  # Commit both transaction and redemption together
             
             # Log redemption request
             try:
