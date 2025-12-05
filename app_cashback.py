@@ -230,9 +230,14 @@ def register_routes():
                 return redirect(url_for('admin_add_cashback', instance_name=instance_name))
         
         # GET request - show form
-        all_users = get_user_query().order_by(User.username).all()
+        # Only show user list to admins, not moderators
+        all_users = None
+        if current_user.is_admin:
+            all_users = get_user_query().order_by(User.username).all()
+        
         return render_template('admin/add_cashback.html',
                              all_users=all_users,
+                             is_admin=current_user.is_admin,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/admin/loan/<int:loan_id>/cashback-config', methods=['GET', 'POST'])
@@ -242,7 +247,7 @@ def register_routes():
         if instance_name not in VALID_INSTANCES:
             return redirect('/')
         
-        if not current_user.is_admin:
+        if not current_user.is_admin and not current_user.is_moderator:
             flash('Access denied')
             return redirect(url_for('customer_dashboard', instance_name=instance_name))
         
@@ -253,9 +258,19 @@ def register_routes():
             
             if action == 'add':
                 # Add new cashback config
+                # For admins: user_id from dropdown, for moderators: username from text input
                 user_id = request.form.get('user_id')
+                username = request.form.get('username', '').strip()
                 cashback_type = request.form.get('cashback_type')
                 cashback_value = request.form.get('cashback_value')
+                
+                # Resolve user_id from username if moderator
+                if not user_id and username:
+                    user = validate_username_exists(username, instance_name)
+                    if not user:
+                        flash(f'User "{username}" not found', 'error')
+                        return redirect(url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan_id))
+                    user_id = user.id
                 
                 if not user_id or not cashback_type or not cashback_value:
                     flash('All fields are required', 'error')
@@ -319,12 +334,16 @@ def register_routes():
         
         # GET request - show configs
         configs = get_loan_cashback_config_query().filter_by(loan_id=loan.id).all()
-        all_users = get_user_query().order_by(User.username).all()
+        # Only show user list to admins, not moderators
+        all_users = None
+        if current_user.is_admin:
+            all_users = get_user_query().order_by(User.username).all()
         
         return render_template('admin/loan_cashback_config.html',
                              loan=loan,
                              configs=configs,
                              all_users=all_users,
+                             is_admin=current_user.is_admin,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/admin/cashback/redeem')
@@ -572,7 +591,7 @@ def register_routes():
         if instance_name not in VALID_INSTANCES:
             return redirect('/')
         
-        if not current_user.is_admin:
+        if not current_user.is_admin and not current_user.is_moderator:
             flash('Access denied', 'error')
             return redirect(url_for('customer_dashboard', instance_name=instance_name))
         
