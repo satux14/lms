@@ -356,24 +356,10 @@ def register_routes():
             'total_cancelled_amount': sum(r.amount for r in all_redemptions if r.status == 'cancelled')
         }
         
-        # Get all users with balances for the balances section
-        users = get_user_query().order_by(User.username).all()
-        user_balances = []
-        total_balance = Decimal('0')
-        for user in users:
-            balance = get_user_cashback_balance(user.id, instance_name)
-            total_balance += balance
-            user_balances.append({
-                'user': user,
-                'balance': balance
-            })
-        
         return render_template('admin/cashback_redeem.html',
                              pending_redemptions=pending_redemptions,
                              all_redemptions=all_redemptions,
                              redemption_stats=redemption_stats,
-                             user_balances=user_balances,
-                             total_balance=total_balance,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/admin/cashback/redemption/<int:redemption_id>/process', methods=['GET', 'POST'])
