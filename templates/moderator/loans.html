@@ -139,8 +139,8 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-warning">
-                                                    ₹{{ "%.2f"|format(loan_data.interest_pending) }}
+                                                <span class="{% if loan_data.interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">
+                                                    <strong>₹{{ "%.2f"|format(loan_data.interest_pending) }}</strong>
                                                 </span>
                                             </td>
                                             <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
@@ -159,6 +159,21 @@
                                         </tr>
                                         {% endfor %}
                                     </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <th colspan="3" class="text-end"><strong>Totals:</strong></th>
+                                            <th></th>
+                                            <th>
+                                                <strong class="text-success">₹{{ "%.2f"|format(loans|sum(attribute='interest_paid')) }}</strong>
+                                            </th>
+                                            <th>
+                                                {% set total_interest_pending = loans|sum(attribute='interest_pending') %}
+                                                <strong class="{% if total_interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ "%.2f"|format(total_interest_pending) }}</strong>
+                                            </th>
+                                            <th></th>
+                                            <th></th>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                             {% else %}

@@ -834,7 +834,8 @@ def register_routes():
         for txn in all_transactions:
             if txn.to_user_id == current_user.id and txn.from_user_id != current_user.id:
                 # Received cashback (earned)
-                if txn.transaction_type != 'redemption' and txn.transaction_type != 'redemption_refund':
+                # Exclude redemption, redemption_refund, and deduction transactions
+                if txn.transaction_type not in ['redemption', 'redemption_refund', 'deduction']:
                     total_earned += txn.points
             elif txn.from_user_id == current_user.id and txn.to_user_id != current_user.id:
                 # Sent cashback (transferred)
