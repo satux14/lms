@@ -81,10 +81,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="notes" class="form-label">Reason for Removal (Required)</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3" 
-                                      placeholder="Please provide a reason for removing these cashback points..." required></textarea>
-                            <small class="form-text text-muted">This will be recorded in the transaction history</small>
+                            <label for="user_notes" class="form-label">Reason for User (Required)</label>
+                            <textarea class="form-control" id="user_notes" name="user_notes" rows="2" 
+                                      placeholder="Reason visible to the user (e.g., 'Correction for incorrect grant', 'Refund adjustment')" required></textarea>
+                            <small class="form-text text-muted">This will be visible to the user in their cashback history</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Admin Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                      placeholder="Internal admin notes (not visible to users)"></textarea>
+                            <small class="form-text text-muted">For internal use only</small>
                         </div>
 
                         <div class="d-flex justify-content-between">

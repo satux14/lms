@@ -146,9 +146,12 @@
                                         {% endif %}
                                     </td>
                                     <td>
+                                        {% if txn.user_notes %}
+                                            <strong>User:</strong> {{ txn.user_notes[:50] }}{% if txn.user_notes|length > 50 %}...{% endif %}<br>
+                                        {% endif %}
                                         {% if txn.notes %}
-                                            <small class="text-muted">{{ txn.notes[:50] }}{% if txn.notes|length > 50 %}...{% endif %}</small>
-                                        {% else %}
+                                            <small class="text-muted"><strong>Admin:</strong> {{ txn.notes[:50] }}{% if txn.notes|length > 50 %}...{% endif %}</small>
+                                        {% elif not txn.user_notes %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
