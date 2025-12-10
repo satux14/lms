@@ -240,6 +240,136 @@ def register_routes():
                              is_admin=current_user.is_admin,
                              instance_name=instance_name)
 
+    @app.route('/<instance_name>/admin/cashback/remove', methods=['GET', 'POST'])
+    @login_required
+    def admin_remove_cashback(instance_name):
+        """Admin remove cashback points from users"""
+        if instance_name not in VALID_INSTANCES:
+            return redirect('/')
+        
+        if not current_user.is_admin:
+            flash('Access denied', 'error')
+            return redirect(url_for('customer_dashboard', instance_name=instance_name))
+        
+        if request.method == 'POST':
+            # Get all user entries from form
+            usernames = request.form.getlist('username[]')
+            points_list = request.form.getlist('points[]')
+            notes = request.form.get('notes', '').strip()
+            
+            if not usernames or not any(usernames):
+                flash('At least one user is required', 'error')
+                return redirect(url_for('admin_remove_cashback', instance_name=instance_name))
+            
+            session = db_manager.get_session_for_instance(instance_name)
+            success_count = 0
+            errors = []
+            
+            # Get system user for deduction transactions
+            system_user = get_user_query().filter_by(is_admin=True).first()
+            if not system_user:
+                flash('System user not found. Cannot remove cashback.', 'error')
+                return redirect(url_for('admin_remove_cashback', instance_name=instance_name))
+            
+            try:
+                for username, points_str in zip(usernames, points_list):
+                    username = username.strip()
+                    if not username:
+                        continue
+                    
+                    try:
+                        points = Decimal(str(points_str))
+                        if points <= 0:
+                            errors.append(f"Invalid points for {username} (must be positive)")
+                            continue
+                    except (ValueError, InvalidOperation):
+                        errors.append(f"Invalid points format for {username}")
+                        continue
+                    
+                    # Validate username
+                    recipient = validate_username_exists(username, instance_name)
+                    if not recipient:
+                        errors.append(f"Username '{username}' not found")
+                        continue
+                    
+                    # Check if user has sufficient balance
+                    current_balance = get_user_cashback_balance(recipient.id, instance_name)
+                    if current_balance < points:
+                        errors.append(f"User '{username}' has insufficient balance (₹{current_balance:.2f} available, ₹{points:.2f} requested)")
+                        continue
+                    
+                    # Create deduction transaction
+                    # Use from_user_id=user_id, to_user_id=system_user_id with POSITIVE points to properly deduct from balance
+                    transaction = CashbackTransaction(
+                        from_user_id=recipient.id,  # User losing points
+                        to_user_id=system_user.id,  # System user receiving points
+                        points=points,  # Positive amount (deduction happens because balance = received - sent)
+                        transaction_type='deduction',  # Admin deduction
+                        notes=notes or f"Cashback points removed by admin",
+                        created_by_user_id=current_user.id
+                    )
+                    session.add(transaction)
+                    success_count += 1
+                
+                session.commit()
+                
+                # Log admin action
+                try:
+                    from lms_logging import get_logging_manager
+                    from lms_metrics import get_metrics_manager
+                    logging_mgr = get_logging_manager(instance_name)
+                    metrics_mgr = get_metrics_manager(instance_name)
+                    
+                    # Get list of usernames and amounts for logging
+                    user_details = []
+                    for username, points_str in zip(usernames, points_list):
+                        username = username.strip()
+                        if username:
+                            try:
+                                points = Decimal(str(points_str))
+                                if points > 0:
+                                    user_details.append({'username': username, 'points': float(points)})
+                            except (ValueError, InvalidOperation):
+                                pass
+                    
+                    logging_mgr.log_admin_action('cashback_remove', 'cashback', None,
+                                                username=current_user.username,
+                                                details={
+                                                    'users_count': success_count,
+                                                    'users': user_details,
+                                                    'notes': notes
+                                                })
+                    metrics_mgr.record_admin_action('cashback_remove', current_user.username)
+                except Exception as log_error:
+                    print(f"[ERROR] Failed to log admin action: {log_error}")
+                
+                if success_count > 0:
+                    flash(f'Successfully removed cashback from {success_count} user(s)', 'success')
+                if errors:
+                    flash('Some errors occurred: ' + ', '.join(errors), 'error')
+                
+                return redirect(url_for('admin_cashback', instance_name=instance_name))
+            except Exception as e:
+                session.rollback()
+                flash(f'Error removing cashback: {str(e)}', 'error')
+                return redirect(url_for('admin_remove_cashback', instance_name=instance_name))
+        
+        # GET request - show form
+        # Only show user list to admins, not moderators
+        all_users = None
+        user_balances_map = {}
+        if current_user.is_admin:
+            all_users = get_user_query().order_by(User.username).all()
+            # Pre-calculate balances for display in dropdown
+            for user in all_users:
+                user_balances_map[user.id] = get_user_cashback_balance(user.id, instance_name)
+        
+        return render_template('admin/remove_cashback.html',
+                             all_users=all_users,
+                             user_balances_map=user_balances_map,
+                             is_admin=current_user.is_admin,
+                             instance_name=instance_name)
+
     @app.route('/<instance_name>/admin/loan/<int:loan_id>/cashback-config', methods=['GET', 'POST'])
     @login_required
     def admin_loan_cashback_config(instance_name, loan_id):

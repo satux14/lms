@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Remove Cashback - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        {% include 'admin/_sidebar.html' %}
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-minus-circle me-2 text-danger"></i>Remove Cashback Points
+                </h1>
+                <a href="{{ url_for('admin_cashback', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+            </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Remove Cashback from Users
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Warning:</strong> This will permanently deduct cashback points from users. 
+                        Make sure you have verified the reason for removal.
+                    </div>
+
+                    <form method="POST" action="{{ url_for('admin_remove_cashback', instance_name=instance_name) }}" id="removeCashbackForm">
+                        <div id="usersContainer">
+                            <!-- First user entry -->
+                            <div class="user-entry mb-3 p-3 border rounded">
+                                <div class="row">
+                                    <div class="col-md-5 mb-2">
+                                        <label class="form-label">Username</label>
+                                        {% if is_admin and all_users %}
+                                        <select class="form-select username-select" name="username[]" required>
+                                            <option value="">Select a user...</option>
+                                            {% for user in all_users %}
+                                            {% set balance = user_balances_map.get(user.id, 0) %}
+                                            <option value="{{ user.username }}" data-balance="{{ balance }}">
+                                                {{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}
+                                                {% if balance > 0 %}
+                                                - Balance: ₹{{ "%.2f"|format(balance) }}
+                                                {% endif %}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        {% else %}
+                                        <input type="text" class="form-control username-input" 
+                                               name="username[]" placeholder="Enter username" required>
+                                        <small class="form-text text-muted">Type the username manually</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-5 mb-2">
+                                        <label class="form-label">Points to Remove</label>
+                                        <input type="number" class="form-control points-input" 
+                                               name="points[]" step="0.01" min="0.01" required placeholder="0.00">
+                                        <small class="form-text text-muted balance-info" style="display: none;"></small>
+                                    </div>
+                                    <div class="col-md-2 mb-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger w-100 remove-user" style="display: none;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary" id="addUserBtn">
+                                <i class="fas fa-plus me-2"></i>Add Another User
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Reason for Removal (Required)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Please provide a reason for removing these cashback points..." required></textarea>
+                            <small class="form-text text-muted">This will be recorded in the transaction history</small>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin_cashback', instance_name=instance_name) }}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-minus-circle me-2"></i>Remove Cashback
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Reference</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        <strong>Instructions:</strong>
+                    </p>
+                    <ul class="small">
+                        <li>Enter username and points to remove for each user</li>
+                        <li>Click "Add Another User" to remove from multiple users</li>
+                        <li>Points will be permanently deducted from user balances</li>
+                        <li>System will verify user has sufficient balance</li>
+                        <li>All removals are logged in transaction history</li>
+                    </ul>
+                    <div class="alert alert-info mt-3">
+                        <small>
+                            <strong>Note:</strong> This action cannot be undone. 
+                            Make sure the reason is documented in the notes field.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let userEntryCount = 1;
+
+document.getElementById('addUserBtn').addEventListener('click', function() {
+    userEntryCount++;
+    const container = document.getElementById('usersContainer');
+    const newEntry = container.firstElementChild.cloneNode(true);
+    
+    // Clear input/select values
+    const usernameField = newEntry.querySelector('input[name="username[]"], select[name="username[]"]');
+    if (usernameField) {
+        usernameField.value = '';
+    }
+    const pointsField = newEntry.querySelector('input[name="points[]"]');
+    if (pointsField) {
+        pointsField.value = '';
+    }
+    const balanceInfo = newEntry.querySelector('.balance-info');
+    if (balanceInfo) {
+        balanceInfo.style.display = 'none';
+        balanceInfo.textContent = '';
+    }
+    
+    // Show remove button
+    newEntry.querySelector('.remove-user').style.display = 'block';
+    
+    container.appendChild(newEntry);
+    
+    // Re-attach event listeners for the new entry
+    attachBalanceCheckListener(newEntry);
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-user')) {
+        const container = document.getElementById('usersContainer');
+        if (container.children.length > 1) {
+            e.target.closest('.user-entry').remove();
+        }
+    }
+});
+
+// Function to attach balance check listener
+function attachBalanceCheckListener(entry) {
+    const usernameSelect = entry.querySelector('select.username-select');
+    const pointsInput = entry.querySelector('.points-input');
+    const balanceInfo = entry.querySelector('.balance-info');
+    
+    if (usernameSelect && pointsInput && balanceInfo) {
+        usernameSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const balance = parseFloat(selectedOption.getAttribute('data-balance')) || 0;
+            
+            if (balance > 0) {
+                balanceInfo.textContent = `Available balance: ₹${balance.toFixed(2)}`;
+                balanceInfo.style.display = 'block';
+                balanceInfo.className = 'form-text text-muted balance-info';
+            } else {
+                balanceInfo.textContent = 'No balance available';
+                balanceInfo.style.display = 'block';
+                balanceInfo.className = 'form-text text-danger balance-info';
+            }
+        });
+        
+        pointsInput.addEventListener('input', function() {
+            const points = parseFloat(this.value) || 0;
+            const selectedOption = usernameSelect.options[usernameSelect.selectedIndex];
+            const balance = parseFloat(selectedOption.getAttribute('data-balance')) || 0;
+            
+            if (points > balance) {
+                balanceInfo.textContent = `Warning: Removing ₹${points.toFixed(2)} exceeds balance of ₹${balance.toFixed(2)}`;
+                balanceInfo.className = 'form-text text-danger balance-info';
+                balanceInfo.style.display = 'block';
+            } else if (points > 0 && balance > 0) {
+                balanceInfo.textContent = `Will leave balance: ₹${(balance - points).toFixed(2)}`;
+                balanceInfo.className = 'form-text text-success balance-info';
+                balanceInfo.style.display = 'block';
+            }
+        });
+    }
+}
+
+// Attach listeners to initial entry
+document.addEventListener('DOMContentLoaded', function() {
+    const initialEntry = document.querySelector('.user-entry');
+    if (initialEntry) {
+        attachBalanceCheckListener(initialEntry);
+    }
+});
+
+// Show remove button for first entry if there are multiple
+document.getElementById('removeCashbackForm').addEventListener('submit', function(e) {
+    const container = document.getElementById('usersContainer');
+    if (container.children.length > 1) {
+        container.firstElementChild.querySelector('.remove-user').style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
+

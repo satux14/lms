@@ -18,6 +18,9 @@
                         <a href="{{ url_for('admin_add_cashback', instance_name=instance_name) }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>Add Cashback
                         </a>
+                        <a href="{{ url_for('admin_remove_cashback', instance_name=instance_name) }}" class="btn btn-danger">
+                            <i class="fas fa-minus me-2"></i>Remove Cashback
+                        </a>
                     </div>
                 </div>
             </div>
@@ -64,6 +67,9 @@
                             <option value="loan_interest_manual" {% if request.args.get('filter_type') == 'loan_interest_manual' %}selected{% endif %}>Loan Interest (Manual)</option>
                             <option value="tracker_entry" {% if request.args.get('filter_type') == 'tracker_entry' %}selected{% endif %}>Tracker Entry</option>
                             <option value="unconditional" {% if request.args.get('filter_type') == 'unconditional' %}selected{% endif %}>Unconditional</option>
+                            <option value="deduction" {% if request.args.get('filter_type') == 'deduction' %}selected{% endif %}>Deduction</option>
+                            <option value="redemption" {% if request.args.get('filter_type') == 'redemption' %}selected{% endif %}>Redemption</option>
+                            <option value="redemption_refund" {% if request.args.get('filter_type') == 'redemption_refund' %}selected{% endif %}>Redemption Refund</option>
                             <option value="system" {% if request.args.get('filter_type') == 'system' %}selected{% endif %}>System</option>
                         </select>
                     </div>

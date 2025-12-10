@@ -96,7 +96,7 @@
                         </h6>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint in ['admin_cashback', 'admin_cashback_redeem', 'admin_add_cashback', 'admin_user_cashback_history'] %}active{% endif %}" href="{{ url_for('admin_cashback', instance_name=instance_name) }}">
+                        <a class="nav-link {% if request.endpoint in ['admin_cashback', 'admin_cashback_redeem', 'admin_add_cashback', 'admin_remove_cashback', 'admin_user_cashback_history'] %}active{% endif %}" href="{{ url_for('admin_cashback', instance_name=instance_name) }}">
                             <i class="fas fa-coins me-2"></i>{{ _('Cashback Management') }}
                         </a>
                     </li>
