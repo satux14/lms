@@ -39,20 +39,20 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <div class="card-body text-center">
-                    <i class="fas fa-chart-line fa-3x mb-3"></i>
-                    <h3>₹{{ "%.2f"|format(loan_data|sum(attribute='daily_interest')) }}</h3>
-                    <p class="mb-0">{{ _('Daily Interest') }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
             <div class="card text-white" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
                 <div class="card-body text-center">
                     <i class="fas fa-calendar-alt fa-3x mb-3"></i>
                     <h3>₹{{ "%.2f"|format(loan_data|sum(attribute='monthly_interest')) }}</h3>
                     <p class="mb-0">{{ _('Monthly Interest') }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-3x mb-3"></i>
+                    <h3>₹{{ "%.2f"|format(loan_data|sum(attribute='interest_pending')) }}</h3>
+                    <p class="mb-0">{{ _('Interest Pending') }}</p>
                 </div>
             </div>
         </div>
@@ -73,12 +73,8 @@
                         <tr>
                             <th>{{ _('Loan Name') }}</th>
                             <th>{{ _('Principal') }}</th>
-                            <th>{{ _('Remaining Balance') }}</th>
-                            <th>{{ _('Monthly Interest') }}</th>
-                            <th>{{ _('Daily Interest') }}</th>
-                            <th>{{ _('Interest to Pay') }}</th>
-                            <th>{{ _('Loan Type') }}</th>
-                            <th>{{ _('Payment Frequency') }}</th>
+                            <th>{{ _('Monthly Interest') }} (Rate%)</th>
+                            <th>{{ _('Interest Pending') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -91,39 +87,11 @@
                                 <strong class="text-primary">₹{{ "%.2f"|format(data.loan.principal_amount) }}</strong>
                             </td>
                             <td>
-                                <strong class="text-warning">₹{{ "%.2f"|format(data.loan.remaining_principal) }}</strong>
+                                ₹{{ "%.2f"|format(data.monthly_interest) }} ({{ "%.2f"|format(data.loan.interest_rate * 100) }}%)
                             </td>
                             <td>
-                                <span class="badge bg-info">₹{{ "%.2f"|format(data.monthly_interest) }}</span>
-                            </td>
-                            <td>
-                                {% if data.loan.payment_frequency == 'daily' %}
-                                <span class="badge bg-success">₹{{ "%.2f"|format(data.daily_interest) }}</span>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if data.loan.payment_frequency == 'daily' %}
-                                <span class="{% if data.accumulated_interest_daily > 0 %}text-danger{% else %}text-success{% endif %}">
-                                    <strong>₹{{ "%.2f"|format(data.accumulated_interest_daily) }}</strong>
-                                    <br><small class="text-muted">{{ _('Daily') }}</small>
-                                </span>
-                                {% else %}
-                                <span class="{% if data.accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %}">
-                                    <strong>₹{{ "%.2f"|format(data.accumulated_interest_monthly) }}</strong>
-                                    <br><small class="text-muted">{{ _('Monthly') }}</small>
-                                </span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ 'primary' if data.loan.loan_type == 'regular' else 'info' }}">
-                                    {% if data.loan.loan_type == 'regular' %}{{ _('Regular Loan') }}{% else %}{{ _('Interest-Only Loan') }}{% endif %}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ 'success' if data.loan.payment_frequency == 'daily' else 'warning' }}">
-                                    {% if data.loan.payment_frequency == 'daily' %}{{ _('Daily') }}{% else %}{{ _('Monthly') }}{% endif %}
+                                <span class="{% if data.interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">
+                                    <strong>₹{{ "%.2f"|format(data.interest_pending) }}</strong>
                                 </span>
                             </td>
                         </tr>
@@ -133,22 +101,8 @@
                         <tr>
                             <th class="text-end">{{ _('Totals') }}:</th>
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='loan.principal_amount')) }}</th>
-                            <th>₹{{ "%.2f"|format(loan_data|sum(attribute='loan.remaining_principal')) }}</th>
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='monthly_interest')) }}</th>
-                            <th>
-                                {% set daily_loans = loan_data|selectattr('loan.payment_frequency', 'equalto', 'daily')|list %}
-                                {% if daily_loans %}
-                                ₹{{ "%.2f"|format(daily_loans|sum(attribute='daily_interest')) }}
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </th>
-                            <th>
-                                {% set total_daily_interest = loan_data|selectattr('loan.payment_frequency', 'equalto', 'daily')|sum(attribute='accumulated_interest_daily') %}
-                                {% set total_monthly_interest = loan_data|selectattr('loan.payment_frequency', 'equalto', 'monthly')|sum(attribute='accumulated_interest_monthly') %}
-                                ₹{{ "%.2f"|format(total_daily_interest + total_monthly_interest) }}
-                            </th>
-                            <th colspan="2"></th>
+                            <th>₹{{ "%.2f"|format(loan_data|sum(attribute='interest_pending')) }}</th>
                         </tr>
                     </tfoot>
                 </table>

@@ -581,10 +581,10 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group" role="group">
-                                                    <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
-                                                       class="btn btn-sm btn-outline-warning" title="Edit Payment">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
+                                                <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
+                                                   class="btn btn-sm btn-outline-warning" title="Edit Payment">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
                                                     {% if split_loans and payment.status == 'verified' and not payment.split_loan_id %}
                                                     <a href="{{ url_for('admin_assign_payment_to_split', instance_name=instance_name, payment_id=payment.id) }}" 
                                                        class="btn btn-sm btn-outline-info" title="Assign to Split Loan">

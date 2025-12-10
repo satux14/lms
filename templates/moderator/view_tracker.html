@@ -18,143 +18,124 @@
                 </div>
             </div>
 
-            <!-- Tracker Info -->
+            <!-- Tracker Information -->
             <div class="row mb-4">
-                <div class="col-md-2 col-sm-6 mb-3">
+                <div class="col-12">
                     <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-user fa-3x text-primary mb-3"></i>
-                            <h5>{{ tracker.user.username }}</h5>
-                            <p class="text-muted mb-0">User</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-rupee-sign fa-3x text-success mb-3"></i>
-                            <h5>₹{{ "%.2f"|format(tracker.investment) }}</h5>
-                            <p class="text-muted mb-0">Investment</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-calendar fa-3x text-info mb-3"></i>
-                            <h5>{{ tracker.scheme_period }} days</h5>
-                            <p class="text-muted mb-0">Scheme Period</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-calendar-day fa-3x text-warning mb-3"></i>
-                            <h5>{{ tracker.start_date.strftime('%Y-%m-%d') }}</h5>
-                            <p class="text-muted mb-0">Start Date</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-clock fa-3x text-warning mb-3"></i>
-                            <h5 class="{% if summary.get('pending', 0) > 0 %}text-warning{% else %}text-success{% endif %}">
-                                ₹{{ "%.2f"|format(summary.get('pending', 0)) }}
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Tracker Information
                             </h5>
-                            <p class="text-muted mb-0">Pending Amount</p>
-                            {% if summary.get('pending_entries_count', 0) > 0 %}
-                            <small class="text-muted">
-                                {{ summary.get('pending_entries_count', 0) }} entr{{ 'y' if summary.get('pending_entries_count', 0) == 1 else 'ies' }} pending approval
-                            </small>
-                            {% endif %}
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-2 col-sm-6 mb-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <i class="fas fa-coins fa-3x mb-3" style="color: #5f1e67;"></i>
-                            <h5 style="color: #5f1e67;">
-                                ₹{{ "%.2f"|format(summary.get('cashback_total', 0)) }}
-                            </h5>
-                            <p class="text-muted mb-0">Cashback</p>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Tracker ID:</strong></td>
+                                            <td>#{{ tracker.id }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Tracker Name:</strong></td>
+                                            <td>{{ tracker.tracker_name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Customer:</strong></td>
+                                            <td>{{ tracker.user.username }} ({{ tracker.user.email or 'No email' }})</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Tracker Type:</strong></td>
+                                            <td>
+                                                {% if tracker.tracker_type == '50K' %}
+                                                <span class="badge bg-success">50K Reinvest</span>
+                                                {% elif tracker.tracker_type == '1L' %}
+                                                <span class="badge bg-primary">1L Enhanced</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark">No Reinvest</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-borderless">
+                                        <tr>
+                                            <td><strong>Per Day Payment:</strong></td>
+                                            <td class="text-primary">₹{{ "%.2f"|format(tracker.per_day_payment) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Scheme Period:</strong></td>
+                                            <td>{{ tracker.scheme_period }} days</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Days:</strong></td>
+                                            <td>{{ summary.total_days_count }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Days with Payments:</strong></td>
+                                            <td>{{ summary.total_days }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Total Payments:</strong></td>
+                                            <td class="text-success">₹{{ "%.2f"|format(summary.total_payments) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cashback:</strong></td>
+                                            <td style="color: #5f1e67;">
+                                                <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(summary.get('cashback_total', 0)) }}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Summary -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-line me-2"></i>Summary
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <!-- Parameters Section -->
-                    <div class="row mb-4 pb-3 border-bottom">
-                        <div class="col-md-4">
-                            <p class="mb-1"><strong>Tracker Type:</strong></p>
-                            <p>{{ tracker_data.parameters.tracker_type }}</p>
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>Summary
+                            </h5>
                         </div>
-                        <div class="col-md-4">
-                            <p class="mb-1"><strong>Per Day Payment:</strong></p>
-                            <p>₹{{ tracker_data.parameters.per_day_payment }}</p>
-                        </div>
-                        <div class="col-md-4">
-                            <p class="mb-1"><strong>Scheme Period:</strong></p>
-                            <p>{{ tracker_data.parameters.scheme_period }}</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Summary Statistics -->
-                    <div class="row">
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Total Days:</strong></p>
-                            <h4>{{ summary.total_days_count }}</h4>
-                        </div>
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Days with Payments:</strong></p>
-                            <h4>{{ summary.total_days }}</h4>
-                        </div>
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Total Payments:</strong></p>
-                            <h4>₹{{ "%.2f"|format(summary.total_payments) }}</h4>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <h6 class="text-muted">Per Day Payment</h6>
+                                    <h4 class="text-primary">₹{{ "%.2f"|format(tracker.per_day_payment) }}</h4>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6 class="text-muted">Pending Amount</h6>
+                                    <h4 class="{% if summary.get('pending', 0) > 0 %}text-warning{% else %}text-success{% endif %}">₹{{ "%.2f"|format(summary.get('pending', 0)) }}</h4>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6 class="text-muted">Total Payments</h6>
+                                    <h4 class="text-success">₹{{ "%.2f"|format(summary.total_payments) }}</h4>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6 class="text-muted">Cashback</h6>
+                                    <h4 style="color: #5f1e67;">
+                                        <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(summary.get('cashback_total', 0)) }}
+                                    </h4>
+                                </div>
+                            </div>
                             {% if summary.get('pending_entries_count', 0) > 0 %}
-                            <small class="text-warning">
-                                <i class="fas fa-info-circle"></i> Includes {{ summary.pending_entries_count }} pending
-                            </small>
+                            <hr>
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-clock me-1"></i>Pending Entries
+                                </h6>
+                                <p class="mb-1">
+                                    <strong>Pending Entries:</strong> {{ summary.get('pending_entries_count', 0) }}<br>
+                                    <strong>Pending Amount:</strong> ₹{{ "%.2f"|format(summary.get('pending_payments_sum', 0)) }}
+                                </p>
+                            </div>
                             {% endif %}
                         </div>
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Pending Approval:</strong></p>
-                            <h4 class="text-warning">₹{{ "%.2f"|format(summary.get('pending_payments_sum', 0)) }}</h4>
-                            <small class="text-muted">
-                                {{ summary.get('pending_entries_count', 0) }} entr{{ 'y' if summary.get('pending_entries_count', 0) == 1 else 'ies' }}
-                            </small>
-                        </div>
-                        {% set cumulative = summary.cumulative|float %}
-                        {% set total_payments = summary.total_payments|float %}
-                        {% if (cumulative - total_payments)|abs > 0.01 %}
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Cumulative:</strong></p>
-                            <h4>₹{{ "%.2f"|format(summary.cumulative) }}</h4>
-                        </div>
-                        {% endif %}
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Cashback:</strong></p>
-                            <h4 style="color: #5f1e67;">
-                                <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(summary.get('cashback_total', 0)) }}
-                            </h4>
-                        </div>
-                        {% if tracker.tracker_type in ['50K', '1L'] %}
-                        <div class="col-md-2">
-                            <p class="mb-1"><strong>Balance:</strong></p>
-                            <h4>₹{{ "%.2f"|format(summary.balance) }}</h4>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
