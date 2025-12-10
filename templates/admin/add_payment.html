@@ -78,6 +78,23 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="principal_only" name="principal_only">
+                                        <label class="form-check-label" for="principal_only">
+                                            <strong><i class="fas fa-money-bill-wave me-1"></i>Principal Only Payment</strong>
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        Check this if this payment should only reduce principal (e.g., before closing loan). 
+                                        Interest will be set to ₹0.00 and the entire amount will go toward principal.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Auto-calculated amounts (hidden fields) -->
                         <input type="hidden" id="interest_amount" name="interest_amount" value="0">
                         <input type="hidden" id="principal_amount" name="principal_amount" value="0">
@@ -152,13 +169,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const principalInput = document.getElementById('principal_amount');
     const loanSelect = document.getElementById('loan_id');
     const previewDiv = document.getElementById('paymentPreview');
+    const principalOnlyCheckbox = document.getElementById('principal_only');
     
     // Calculate interest and principal when amount changes
     function calculatePaymentBreakdown() {
         const totalAmount = parseFloat(amountInput.value) || 0;
         const loanId = loanSelect.value;
+        const isPrincipalOnly = principalOnlyCheckbox.checked;
         
-        if (totalAmount > 0 && loanId) {
+        // Handle principal-only payment
+        if (isPrincipalOnly && totalAmount > 0) {
+            // Principal-only payment: all goes to principal
+            interestInput.value = '0.00';
+            principalInput.value = totalAmount.toFixed(2);
+            
+            // Show preview
+            document.getElementById('previewTotal').textContent = `₹${totalAmount.toFixed(2)}`;
+            document.getElementById('previewInterest').textContent = `₹0.00`;
+            document.getElementById('previewPrincipal').textContent = `₹${totalAmount.toFixed(2)}`;
+            previewDiv.style.display = 'block';
+            return;
+        }
+        
+        // Regular calculation (only if not principal-only)
+        if (totalAmount > 0 && loanId && !isPrincipalOnly) {
             // Fetch loan details from server
             fetch(`/api/loan/${loanId}/details`)
                 .then(response => response.json())
@@ -194,18 +228,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Event listeners
     amountInput.addEventListener('input', calculatePaymentBreakdown);
     loanSelect.addEventListener('change', function() {
         updateLoanTypeInfo();
         calculatePaymentBreakdown();
     });
     
+    // Handle principal-only checkbox change
+    principalOnlyCheckbox.addEventListener('change', function() {
+        calculatePaymentBreakdown();
+        updateLoanTypeInfo();
+    });
+    
     function updateLoanTypeInfo() {
         const selectedOption = loanSelect.options[loanSelect.selectedIndex];
         const loanType = selectedOption.getAttribute('data-loan-type');
         const helpText = document.getElementById('amount-help');
+        const isPrincipalOnly = principalOnlyCheckbox.checked;
         
-        if (loanType === 'interest_only') {
+        if (isPrincipalOnly) {
+            helpText.innerHTML = '<strong>Principal Only:</strong> This payment will only reduce the principal amount. Interest will be ₹0.00.';
+            helpText.className = 'form-text text-warning';
+        } else if (loanType === 'interest_only') {
             helpText.innerHTML = '<strong>Interest-Only Loan:</strong> Customer can only pay interest. Principal amount remains fixed.';
             helpText.className = 'form-text text-info';
         } else {
@@ -222,6 +267,7 @@ function clearForm() {
     document.getElementById('transaction_id').value = '';
     document.getElementById('loan_id').value = '';
     document.getElementById('payment_method').value = '';
+    document.getElementById('principal_only').checked = false;
     document.getElementById('paymentPreview').style.display = 'none';
 }
 </script>

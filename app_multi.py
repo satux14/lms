@@ -2181,13 +2181,14 @@ def admin_add_payment(instance_name, loan_id=None):
         payment_method = request.form['payment_method']
         transaction_id = request.form.get('transaction_id', '')
         payment_date_str = request.form.get('payment_date')
+        principal_only = request.form.get('principal_only') == 'on'  # Checkbox value
         
         # Parse payment date
         if payment_date_str:
             try:
                 payment_date = datetime.strptime(payment_date_str, '%Y-%m-%dT%H:%M')
             except ValueError:
-                flash('Invalid date format')
+                flash('Invalid date format', 'error')
                 return render_template('admin/add_payment.html', 
                                      loans=get_loan_query().all(),
                                      selected_loan_id=loan_id,
@@ -2197,10 +2198,35 @@ def admin_add_payment(instance_name, loan_id=None):
         
         loan = get_loan_query().get(loan_id)
         if not loan:
-            flash('Loan not found')
+            flash('Loan not found', 'error')
             return redirect(url_for('admin_payments', instance_name=instance_name))
         
-        # Process payment using the process_payment function
+        # Handle principal-only payment
+        if principal_only:
+            # Principal-only payment: all goes to principal, no interest
+            interest_amount = Decimal('0')
+            principal_amount = amount
+            
+            # Create payment directly (bypass process_payment)
+            payment = Payment(
+                loan_id=loan.id,
+                amount=amount,
+                payment_date=payment_date,
+                payment_type='principal',  # Payment type for principal-only
+                interest_amount=interest_amount,
+                principal_amount=principal_amount,
+                transaction_id=transaction_id,
+                payment_method=payment_method,
+                status='pending'
+            )
+            
+            add_to_current_instance(payment)
+            commit_current_instance()
+            
+            flash(f'Principal-only payment of ₹{amount:,.2f} added successfully. It will be verified by admin.', 'success')
+            return redirect(url_for('admin_payments', instance_name=instance_name))
+        
+        # Regular payment processing (existing logic)
         try:
             payment = process_payment(
                 loan=loan,
@@ -2211,10 +2237,10 @@ def admin_add_payment(instance_name, loan_id=None):
                 proof_filename=None
             )
         except ValueError as e:
-            flash(str(e))
+            flash(str(e), 'error')
             return redirect(url_for('admin_add_payment', instance_name=instance_name, loan_id=loan_id))
         
-        flash('Payment added successfully. It will be verified by admin.')
+        flash('Payment added successfully. It will be verified by admin.', 'success')
         return redirect(url_for('admin_payments', instance_name=instance_name))
     
     loans = get_loan_query().all()

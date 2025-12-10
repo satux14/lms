@@ -88,6 +88,15 @@
                                             <td><strong>Original Principal:</strong></td>
                                             <td class="text-primary">₹{{ "%.2f"|format(loan.principal_amount) }}</td>
                                         </tr>
+                                        {% if split_loans and total_split_principal > 0 %}
+                                        <tr>
+                                            <td><strong>Principal After Split:</strong></td>
+                                            <td class="text-info">
+                                                ₹{{ "%.2f"|format(principal_after_split) }}
+                                                <small class="text-muted d-block">(₹{{ "%.2f"|format(loan.principal_amount) }} - ₹{{ "%.2f"|format(total_split_principal) }})</small>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
                                         <tr>
                                             <td><strong>Remaining Balance:</strong></td>
                                             <td class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</td>
