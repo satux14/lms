@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Payment to Split Loan{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        {% include 'admin/_sidebar.html' %}
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-code-branch me-2"></i>Assign Payment to Split Loan
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Loan
+                    </a>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Payment Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Payment Date:</strong> {{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</p>
+                                    <p><strong>Amount:</strong> ₹{{ "%.2f"|format(payment.amount) }}</p>
+                                    <p><strong>Principal:</strong> ₹{{ "%.2f"|format(payment.principal_amount) }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Interest:</strong> ₹{{ "%.2f"|format(payment.interest_amount) }}</p>
+                                    <p><strong>Status:</strong> 
+                                        <span class="badge bg-{{ 'success' if payment.status == 'verified' else 'warning' }}">
+                                            {{ payment.status.title() }}
+                                        </span>
+                                    </p>
+                                    <p><strong>Loan:</strong> {{ loan.loan_name }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assignment Form -->
+            {% if split_loans %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Select Split Loan</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <div class="mb-3">
+                                    <label for="split_loan_id" class="form-label">
+                                        <i class="fas fa-code-branch me-1"></i>Split Loan
+                                    </label>
+                                    <select class="form-select" id="split_loan_id" name="split_loan_id" required>
+                                        <option value="">Select a split loan...</option>
+                                        {% for split_loan in split_loans %}
+                                        <option value="{{ split_loan.id }}">
+                                            {{ split_loan.loan_name }} (ID: {{ split_loan.id }}) - 
+                                            Remaining: ₹{{ "%.2f"|format(split_loan.remaining_principal) }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">
+                                        Select which split loan this payment should be assigned to.
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> This will assign the payment to the selected split loan. 
+                                    The original principal amount (₹{{ "%.2f"|format(payment.principal_amount) }}) will be saved for reference.
+                                    {% if payment.status == 'verified' %}
+                                    The split loan's remaining principal will be reduced by ₹{{ "%.2f"|format(payment.principal_amount) }}.
+                                    {% endif %}
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}" 
+                                       class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-check me-1"></i>Assign Payment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>No Split Loans Available:</strong> This loan doesn't have any split loans yet. 
+                        Please create a split loan first before assigning payments.
+                    </div>
+                    <a href="{{ url_for('admin_split_loan', instance_name=instance_name, loan_id=loan.id) }}" 
+                       class="btn btn-warning">
+                        <i class="fas fa-code-branch me-1"></i>Create Split Loan
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

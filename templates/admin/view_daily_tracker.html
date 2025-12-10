@@ -131,6 +131,70 @@
                 </div>
             </div>
 
+            <!-- Cashback Configuration -->
+            {% if cashback_configs %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-coins me-2"></i>Cashback Configuration
+                            </h5>
+                            <a href="{{ url_for('admin_tracker_cashback_config', instance_name=instance_name, tracker_id=tracker.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit me-1"></i>Edit Config
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for config in cashback_configs %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ config.user.username }}</strong>
+                                                {% if config.user.email %}
+                                                    <br><small class="text-muted">{{ config.user.email }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'info' if config.cashback_type == 'percentage' else 'warning' }}">
+                                                    {{ config.cashback_type.title() }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if config.cashback_type == 'percentage' %}
+                                                    {{ "%.2f"|format(config.cashback_value * 100) }}% of payment
+                                                {% else %}
+                                                    ₹{{ "%.2f"|format(config.cashback_value) }} fixed
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if config.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Assigned Moderators -->
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">

@@ -115,9 +115,9 @@
                         <div class="col-md-3">
                             <label for="status_filter" class="form-label">{{ _('Status') }}</label>
                             <select class="form-select" id="status_filter" name="status">
-                                <option value="">{{ _('All Statuses') }}</option>
-                                <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>{{ _('Active') }}</option>
-                                <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>{{ _('Closed') }}</option>
+                                <option value="active" {% if request.args.get('status') == 'active' or not request.args.get('status') %}selected{% endif %}>{{ _('Active Only') }}</option>
+                                <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>{{ _('Closed Only') }}</option>
+                                <option value="all" {% if request.args.get('status') == 'all' %}selected{% endif %}>{{ _('All Loans') }}</option>
                                 <option value="paid_off" {% if request.args.get('status') == 'paid_off' %}selected{% endif %}>Paid Off</option>
                             </select>
                         </div>

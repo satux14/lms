@@ -90,7 +90,7 @@
                                                    step="0.01" 
                                                    min="0" 
                                                    max="100" 
-                                                   value="21.00"
+                                                   value="24.00"
                                                    required>
                                             <span class="input-group-text">%</span>
                                         </div>
@@ -106,7 +106,7 @@
                                         <select class="form-select" id="payment_frequency" name="payment_frequency" required>
                                             <option value="">Select frequency...</option>
                                             <option value="daily">Daily</option>
-                                            <option value="monthly">Monthly</option>
+                                            <option value="monthly" selected>Monthly</option>
                                         </select>
                                         <div class="form-text">How often the customer will make payments</div>
                                     </div>
@@ -118,7 +118,7 @@
                                         <select class="form-select" id="loan_type" name="loan_type" required>
                                             <option value="">Select loan type...</option>
                                             <option value="regular">Regular Loan</option>
-                                            <option value="interest_only">Interest-Only Loan</option>
+                                            <option value="interest_only" selected>Interest-Only Loan</option>
                                         </select>
                                         <div class="form-text">
                                             <strong>Regular:</strong> Customer can pay both principal and interest<br>
@@ -135,7 +135,8 @@
                                         <input type="date" 
                                                class="form-control" 
                                                id="loan_created_date" 
-                                               name="loan_created_date">
+                                               name="loan_created_date"
+                                               value="{{ current_date }}">
                                         <div class="form-text">
                                             Leave empty to use current date, or select when the loan was actually created
                                         </div>
@@ -147,7 +148,8 @@
                                         <input type="time" 
                                                class="form-control" 
                                                id="loan_created_time" 
-                                               name="loan_created_time">
+                                               name="loan_created_time"
+                                               value="{{ current_time }}">
                                         <div class="form-text">
                                             Optional: Specify exact time of loan creation
                                         </div>
