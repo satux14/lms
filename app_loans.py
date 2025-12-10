@@ -1210,12 +1210,16 @@ def register_routes():
             verified_principal = sum(payment.principal_amount for payment in verified_payments)
             verified_interest = sum(payment.interest_amount for payment in verified_payments)
             
+            # Calculate interest pending based on payment frequency
+            interest_pending = accumulated_interest_monthly if loan.payment_frequency == 'monthly' else accumulated_interest_daily
+            
             loan_data.append({
                 'loan': loan,
                 'daily_interest': daily_interest,
                 'monthly_interest': monthly_interest,
                 'accumulated_interest_daily': accumulated_interest_daily,
                 'accumulated_interest_monthly': accumulated_interest_monthly,
+                'interest_pending': interest_pending,
                 'interest_data': interest_data,
                 'pending_principal': pending_principal,
                 'pending_interest': pending_interest,
@@ -1299,6 +1303,38 @@ def register_routes():
         # Reverse to show newest first
         payments_with_previous.reverse()
         
+        # Calculate cashback for logged-in customer only
+        from app_multi import CashbackTransaction, db_manager
+        from decimal import Decimal
+        
+        session = db_manager.get_session_for_instance(instance_name)
+        
+        # Calculate cashback per payment for this customer
+        payment_cashback_map = {}
+        has_any_cashback = False
+        for payment_data in payments_with_previous:
+            payment = payment_data['payment']
+            payment_cashback = session.query(
+                db.func.sum(CashbackTransaction.points)
+            ).filter_by(
+                related_payment_id=payment.id,
+                to_user_id=current_user.id
+            ).scalar() or Decimal('0')
+            payment_cashback_float = float(payment_cashback)
+            payment_cashback_map[payment.id] = payment_cashback_float
+            if payment_cashback_float > 0:
+                has_any_cashback = True
+        
+        # Calculate total cashback for this loan for this customer
+        loan_cashback_total = session.query(
+            db.func.sum(CashbackTransaction.points)
+        ).filter_by(
+            related_loan_id=loan_id,
+            to_user_id=current_user.id
+        ).filter(
+            CashbackTransaction.transaction_type.in_(['loan_interest_auto', 'loan_interest_manual'])
+        ).scalar() or Decimal('0')
+        
         return render_template('customer/loan_detail.html', 
                              loan=loan,
                              daily_interest=daily_interest,
@@ -1314,6 +1350,9 @@ def register_routes():
                              payments=payments_with_previous,
                              days_active=days_active,
                              current_date=date.today(),
+                             loan_cashback_total=float(loan_cashback_total),
+                             payment_cashback_map=payment_cashback_map,
+                             has_any_cashback=has_any_cashback,
                              instance_name=instance_name)
 
 

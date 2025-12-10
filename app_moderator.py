@@ -164,8 +164,9 @@ def register_routes():
             return redirect('/')
         
         status_filter = request.args.get('status', 'active')
-        sort_by = request.args.get('sort_by', 'created_at')
-        sort_order = request.args.get('sort_order', 'desc')
+        # Support both 'sort'/'order' and 'sort_by'/'sort_order' for compatibility
+        sort_by = request.args.get('sort_by') or request.args.get('sort', 'created_at')
+        sort_order = request.args.get('sort_order') or request.args.get('order', 'desc')
         
         # Get only loans assigned to this moderator
         query = current_user.assigned_loans
@@ -177,35 +178,57 @@ def register_routes():
         elif status_filter == 'paid_off':
             query = query.filter(Loan.remaining_principal <= 0, Loan.is_active == True)
         
-        # Apply sorting
+        # Apply sorting (for database-level sorting)
         if sort_by == 'created_at':
             query = query.order_by(Loan.created_at.desc() if sort_order == 'desc' else Loan.created_at.asc())
         elif sort_by == 'principal_amount':
             query = query.order_by(Loan.principal_amount.desc() if sort_order == 'desc' else Loan.principal_amount.asc())
         elif sort_by == 'remaining_principal':
             query = query.order_by(Loan.remaining_principal.desc() if sort_order == 'desc' else Loan.remaining_principal.asc())
+        # Note: 'pending' sorting will be done in Python after calculating pending_total
         
         loans = query.all()
         
-        # Calculate interest paid and accumulated interest for each loan
+        # Calculate interest paid, accumulated interest, and pending amounts for each loan
         loans_with_interest = []
         for loan in loans:
-            interest_paid = get_payment_query().with_entities(db.func.sum(Payment.interest_amount)).filter_by(
-                loan_id=loan.id,
-                status='verified'
-            ).scalar() or 0
+            # Get all payments for this loan
+            loan_payments = get_payment_query().filter_by(loan_id=loan.id).all()
+            
+            interest_paid = sum(payment.interest_amount for payment in loan_payments if payment.status == 'verified')
             
             # Calculate accumulated interest
             interest_data = calculate_accumulated_interest(loan)
             accumulated_interest_daily = interest_data['daily']
             accumulated_interest_monthly = interest_data['monthly']
             
+            # Calculate pending amounts (from pending payments)
+            pending_payments = [p for p in loan_payments if p.status == 'pending']
+            pending_principal = sum(payment.principal_amount for payment in pending_payments)
+            pending_interest = sum(payment.interest_amount for payment in pending_payments)
+            pending_total = pending_principal + pending_interest
+            
+            # Calculate interest pending (accumulated interest based on payment frequency)
+            if loan.payment_frequency == 'monthly':
+                interest_pending = accumulated_interest_monthly
+            else:
+                interest_pending = accumulated_interest_daily
+            
             loans_with_interest.append({
                 'loan': loan,
                 'interest_paid': Decimal(str(interest_paid)),
                 'accumulated_interest_daily': accumulated_interest_daily,
-                'accumulated_interest_monthly': accumulated_interest_monthly
+                'accumulated_interest_monthly': accumulated_interest_monthly,
+                'interest_pending': interest_pending,
+                'pending_total': Decimal(str(pending_total)),
+                'pending_principal': Decimal(str(pending_principal)),
+                'pending_interest': Decimal(str(pending_interest))
             })
+        
+        # Sort by pending amount if requested (Python-level sorting)
+        # Also handle 'sort' parameter for compatibility
+        if sort_by == 'pending' or request.args.get('sort') == 'pending':
+            loans_with_interest.sort(key=lambda x: x['pending_total'], reverse=(sort_order == 'desc'))
         
         return render_template('moderator/loans.html',
                              loans=loans_with_interest,
@@ -257,6 +280,33 @@ def register_routes():
         # Calculate days active
         days_active = (date.today() - loan.created_at.date()).days
         
+        # Calculate cashback for logged-in moderator only
+        from app_multi import CashbackTransaction, db_manager
+        from decimal import Decimal
+        
+        session = db_manager.get_session_for_instance(instance_name)
+        
+        # Calculate cashback per payment for this moderator
+        payment_cashback_map = {}
+        for payment in payments:
+            payment_cashback = session.query(
+                db.func.sum(CashbackTransaction.points)
+            ).filter_by(
+                related_payment_id=payment.id,
+                to_user_id=current_user.id
+            ).scalar() or Decimal('0')
+            payment_cashback_map[payment.id] = float(payment_cashback)
+        
+        # Calculate total cashback for this loan for this moderator
+        loan_cashback_total = session.query(
+            db.func.sum(CashbackTransaction.points)
+        ).filter_by(
+            related_loan_id=loan_id,
+            to_user_id=current_user.id
+        ).filter(
+            CashbackTransaction.transaction_type.in_(['loan_interest_auto', 'loan_interest_manual'])
+        ).scalar() or Decimal('0')
+        
         return render_template('moderator/view_loan.html',
                              loan=loan,
                              payments=payments,
@@ -272,6 +322,8 @@ def register_routes():
                              pending_interest=pending_interest,
                              pending_total=pending_total,
                              days_active=days_active,
+                             loan_cashback_total=float(loan_cashback_total),
+                             payment_cashback_map=payment_cashback_map,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/moderator/loan/<int:loan_id>/add-payment', methods=['GET', 'POST'])
@@ -372,11 +424,35 @@ def register_routes():
         for tracker in trackers:
             try:
                 summary = get_tracker_summary(instance_name, tracker.filename)
-                pending = summary.get('pending', 0)
-                total_payments = summary.get('total_payments', 0)
+                if summary is None:
+                    raise ValueError(f"Summary is None for tracker {tracker.id}")
+                
+                pending = summary.get('pending', 0) or 0
+                total_payments = summary.get('total_payments', 0) or 0
                 
                 total_pending_sum += pending
                 total_payments_sum += total_payments
+                
+                # Calculate days paid based on: (Total payment / per day payment) / Total Days
+                # Formula: days_paid = total_payments / per_day_payment, displayed as days_paid / total_days_count
+                total_days_count = summary.get('total_days_count', 0) or 0
+                days_paid = 0
+                days_paid_error = None
+                try:
+                    # Convert to float to ensure proper division
+                    total_payments_float = float(total_payments) if total_payments else 0.0
+                    per_day_payment_float = float(tracker.per_day_payment) if tracker.per_day_payment else 0.0
+                    
+                    if per_day_payment_float > 0:
+                        days_paid = total_payments_float / per_day_payment_float
+                        # Round to 2 decimal places but keep as float for display flexibility
+                        days_paid = round(days_paid, 2)
+                    else:
+                        days_paid = 0
+                except (TypeError, ValueError, ZeroDivisionError) as calc_error:
+                    # If calculation fails, set days_paid to 0 but don't fail the whole row
+                    days_paid_error = str(calc_error)
+                    days_paid = 0
                 
                 tracker_summaries.append({
                     'tracker': tracker,
@@ -385,11 +461,15 @@ def register_routes():
                     'pending': pending,
                     'balance': summary.get('balance', 0),
                     'cumulative': summary.get('cumulative', 0),
-                    'days_with_payments': summary.get('total_days', 0),
-                    'total_days_count': summary.get('total_days_count', 0)
+                    'days_paid': days_paid,
+                    'total_days_count': total_days_count,
+                    'days_paid_error': days_paid_error
                 })
             except Exception as e:
+                import traceback
                 print(f"Error processing tracker {tracker.id}: {e}")
+                print(traceback.format_exc())
+                # Still add to totals even if there's an error, but mark the row
                 tracker_summaries.append({
                     'tracker': tracker,
                     'last_paid_date': None,
@@ -397,7 +477,7 @@ def register_routes():
                     'pending': 0,
                     'balance': 0,
                     'cumulative': 0,
-                    'days_with_payments': 0,
+                    'days_paid': 0,
                     'total_days_count': 0,
                     'error': str(e)
                 })

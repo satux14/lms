@@ -15,7 +15,7 @@
                         <i class="fas fa-plus-circle me-1"></i>{{ _("Add Payment") }}
                     </a>
                     <a href="{{ url_for('moderator_loans', instance_name=instance_name) }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i>{{ _("Back") }} to All Loans
+                        <i class="fas fa-arrow-left me-1"></i>{{ _("Back") }} to Assigned Loans
                     </a>
                 </div>
             </div>
@@ -103,73 +103,34 @@
                 </div>
             </div>
 
-            <!-- Financial Summary -->
+            <!-- Summary -->
             <div class="row mb-4">
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <div class="card">
                         <div class="card-header">
                             <h5 class="mb-0">
-                                <i class="fas fa-calculator me-2"></i>Interest Calculator
+                                <i class="fas fa-chart-pie me-2"></i>Summary
                             </h5>
                         </div>
                         <div class="card-body">
-                            {% if loan.interest_rate == 0 %}
-                            <div class="alert alert-success text-center">
-                                <i class="fas fa-gift fa-2x mb-2"></i>
-                                <h4 class="text-success mb-0">Interest-Free Loan!</h4>
-                                <p class="mb-0">No interest will be charged on this loan</p>
-                            </div>
-                            {% else %}
                             <div class="row text-center">
-                                <div class="col-4">
-                                    <h6 class="text-muted">Daily Interest</h6>
-                                    <h4 class="text-success">₹{{ "%.2f"|format(daily_interest) }}</h4>
-                                </div>
-                                <div class="col-4">
+                                <div class="col-md-3">
                                     <h6 class="text-muted">Monthly Interest</h6>
                                     <h4 class="text-warning">₹{{ "%.2f"|format(monthly_interest) }}</h4>
                                 </div>
-                                <div class="col-4">
-                                    <h6 class="text-muted">
-                                        Accumulated Interest
-                                        <i class="fas fa-info-circle text-info ms-1" 
-                                           data-bs-toggle="modal" 
-                                           data-bs-target="#interestCalculationModal" 
-                                           style="cursor: pointer;" 
-                                           title="Click to see detailed calculation"></i>
-                                    </h6>
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <small class="text-muted">Daily</small>
-                                            <h5 class="{% if accumulated_interest_daily > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(accumulated_interest_daily) }}</h5>
-                                        </div>
-                                        <div class="col-6">
-                                            <small class="text-muted">Monthly</small>
-                                            <h5 class="{% if accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %} mb-1">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h5>
-                                        </div>
-                                    </div>
+                                <div class="col-md-3">
+                                    <h6 class="text-muted">Interest Pending Monthly</h6>
+                                    <h4 class="{% if accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h4>
                                 </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">
-                                <i class="fas fa-chart-pie me-2"></i>Financial Summary
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <h6 class="text-muted">Amount Paid</h6>
-                                    <h4 class="text-success">₹{{ "%.2f"|format(verified_principal + verified_interest) }}</h4>
-                                </div>
-                                <div class="col-6">
+                                <div class="col-md-3">
                                     <h6 class="text-muted">Total Interest Paid</h6>
                                     <h4 class="text-info">₹{{ "%.2f"|format(verified_interest) }}</h4>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6 class="text-muted">Cashback</h6>
+                                    <h4 style="color: #5f1e67;">
+                                        <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(loan_cashback_total) }}
+                                    </h4>
                                 </div>
                             </div>
                             {% if pending_total > 0 %}
@@ -288,6 +249,7 @@
                                             <th>Method</th>
                                             <th>Transaction ID</th>
                                             <th>Status</th>
+                                            <th>Cashback</th>
                                             <th>Proof</th>
                                             <th>Actions</th>
                                         </tr>
@@ -312,6 +274,16 @@
                                                     <span class="badge bg-warning">Pending</span>
                                                 {% else %}
                                                     <span class="badge bg-danger">Rejected</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set payment_cashback = payment_cashback_map.get(payment.id, 0) %}
+                                                {% if payment_cashback > 0 %}
+                                                    <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                                        <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(payment_cashback) }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
                                             <td>

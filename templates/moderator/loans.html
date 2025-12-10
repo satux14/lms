@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}All Loans - Lending Management System{% endblock %}
+{% block title %}Assigned Loans - Lending Management System{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2 mb-0">
-            <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("All Loans") }}
+            <i class="fas fa-file-invoice-dollar me-2"></i>{{ _("Assigned Loans") }}
         </h1>
         <a href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}" 
            class="btn btn-outline-secondary">
@@ -38,9 +38,9 @@
                     <div class="card text-center">
                         <div class="card-body">
                             <h5 class="card-title text-warning">
-                                ₹{{ "%.2f"|format(loans|sum(attribute='loan.remaining_principal')) }}
+                                ₹{{ "%.2f"|format(loans|sum(attribute='interest_pending')) }}
                             </h5>
-                            <p class="card-text">Outstanding Balance</p>
+                            <p class="card-text">Interest Pending</p>
                         </div>
                     </div>
                 </div>
@@ -104,37 +104,18 @@
                                                     {% endif %}
                                                 </a>
                                             </th>
-                                            <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='remaining', order=('asc' if request.args.get('sort') == 'remaining' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Remaining
-                                                    {% if request.args.get('sort') == 'remaining' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
                                             <th>Interest</th>
                                             <th>Interest Paid</th>
-                                            <th>
-                                                <a href="{{ url_for('moderator_loans', instance_name=instance_name, sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Created
-                                                    {% if request.args.get('sort') == 'created' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
+                                            <th>Interest Pending</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for loan_data in loans %}
                                         {% set loan = loan_data.loan %}
-                                        <tr>
+                                        <tr class="clickable-row" 
+                                            data-href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}"
+                                            style="cursor: pointer;">
                                             <td>
                                                 <strong>{{ loan.loan_name }}</strong>
                                             </td>
@@ -149,11 +130,6 @@
                                                 <strong>₹{{ "%.2f"|format(loan.principal_amount) }}</strong>
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ 'success' if loan.remaining_principal < loan.principal_amount else 'primary' }}">
-                                                    ₹{{ "%.2f"|format(loan.remaining_principal) }}
-                                                </span>
-                                            </td>
-                                            <td>
                                                 {% if loan.payment_frequency == 'monthly' %}
                                                     ₹{{ "%.2f"|format(loan_data.accumulated_interest_monthly) }}
                                                 {% else %}
@@ -165,8 +141,12 @@
                                                     ₹{{ "%.2f"|format(loan_data.interest_paid) }}
                                                 </span>
                                             </td>
-                                            <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
                                             <td>
+                                                <span class="badge bg-warning">
+                                                    ₹{{ "%.2f"|format(loan_data.interest_pending) }}
+                                                </span>
+                                            </td>
+                                            <td onclick="event.stopPropagation();">
                                                 <a href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}" 
                                                    class="btn btn-sm btn-outline-primary me-1"
                                                    title="View Details">
@@ -233,6 +213,31 @@
 
 {% block scripts %}
 <script>
+// Make table rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    const clickableRows = document.querySelectorAll('.clickable-row');
+    clickableRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on a button or link
+            if (e.target.closest('a, button')) {
+                return;
+            }
+            const href = this.dataset.href;
+            if (href) {
+                window.location.href = href;
+            }
+        });
+        
+        // Add hover effect
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f0f8ff';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+
 function viewLoanDetails(loanId) {
     // Redirect to the moderator loan details page
     window.location.href = `/{{ instance_name }}/moderator/loan/${loanId}`;

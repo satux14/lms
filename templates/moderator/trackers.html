@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2 mb-0">
-            <i class="fas fa-calendar-alt me-2"></i>Daily Trackers
+            <i class="fas fa-calendar-alt me-2"></i>Assigned Daily Trackers
         </h1>
         <a href="{{ url_for('moderator_dashboard', instance_name=instance_name) }}" 
            class="btn btn-outline-secondary">
@@ -20,7 +20,7 @@
             <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title text-primary">{{ total_trackers }}</h5>
-                    <p class="card-text">Assigned Trackers</p>
+                    <p class="card-text">Trackers</p>
                 </div>
             </div>
         </div>
@@ -28,7 +28,7 @@
             <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title text-success">₹{{ "%.2f"|format(total_payments_sum) }}</h5>
-                    <p class="card-text">Assigned Payments</p>
+                    <p class="card-text">Payments</p>
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
             <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title text-warning">₹{{ "%.2f"|format(total_pending_sum) }}</h5>
-                    <p class="card-text">Assigned Pending</p>
+                    <p class="card-text">Pending</p>
                 </div>
             </div>
         </div>
@@ -55,61 +55,55 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
                                     <th>User</th>
                                     <th>Tracker Name</th>
-                                    <th>Type</th>
                                     <th>Investment</th>
-                                    <th>Scheme Period</th>
                                     <th>Per Day Payment</th>
                                     <th>Days Paid/Total Days</th>
                                     <th>Total Payments</th>
                                     <th>Pending</th>
                                     <th>Start Date</th>
-                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in tracker_summaries %}
                                 {% set tracker = item.tracker %}
-                                <tr {% if item.get('error') %}class="table-warning"{% endif %}>
-                                    <td>{{ tracker.id }}</td>
+                                <tr class="clickable-row" 
+                                    data-href="{{ url_for('moderator_view_tracker', instance_name=instance_name, tracker_id=tracker.id) }}"
+                                    style="cursor: pointer;"
+                                    {% if item.get('error') %}class="table-warning"{% endif %}>
                                     <td>
                                         <span class="badge bg-info">{{ tracker.user.username }}</span>
                                     </td>
                                     <td>{{ tracker.tracker_name }}</td>
-                                    <td>
-                                        {% if tracker.tracker_type == '50K' %}
-                                        <span class="badge bg-success">50K Reinvest</span>
-                                        {% elif tracker.tracker_type == '1L' %}
-                                        <span class="badge bg-primary">1L Enhanced</span>
-                                        {% else %}
-                                        <span class="badge bg-warning text-dark">No Reinvest</span>
-                                        {% endif %}
-                                    </td>
                                     <td>₹{{ "%.2f"|format(tracker.investment) }}</td>
-                                    <td>{{ tracker.scheme_period }} days</td>
                                     <td>
                                         <span class="badge bg-primary">₹{{ "%.2f"|format(tracker.per_day_payment) }}</span>
                                     </td>
                                     <td>
                                         {% if item.get('error') %}
                                         <span class="text-danger">Error</span>
+                                        {% elif item.get('days_paid_error') %}
+                                        <span class="text-danger">Error</span>
                                         {% else %}
-                                        <span class="badge bg-info">{{ item.days_with_payments }}/{{ item.total_days_count }}</span>
+                                        {% if item.days_paid == item.days_paid|int %}
+                                            {{ item.days_paid|int }}/{{ item.total_days_count }}
+                                        {% else %}
+                                            {{ "%.2f"|format(item.days_paid) }}/{{ item.total_days_count }}
+                                        {% endif %}
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if item.get('error') %}
-                                        <span class="text-danger">-</span>
+                                        <span class="text-muted">-</span>
                                         {% else %}
                                         <strong class="text-success">₹{{ "%.2f"|format(item.total_payments) }}</strong>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if item.get('error') %}
-                                        <span class="text-danger">-</span>
+                                        <span class="text-muted">-</span>
                                         {% elif item.pending > 0 %}
                                         <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(item.pending) }}</span>
                                         {% elif item.pending < 0 %}
@@ -119,14 +113,7 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ tracker.start_date.strftime('%Y-%m-%d') }}</td>
-                                    <td>
-                                        {% if tracker.is_closed_by_user %}
-                                        <span class="badge bg-secondary">Closed by User</span>
-                                        {% else %}
-                                        <span class="badge bg-success">Active</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
+                                    <td onclick="event.stopPropagation();">
                                         <a href="{{ url_for('moderator_view_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" 
                                            class="btn btn-sm btn-info" title="View">
                                             <i class="fas fa-eye"></i> View
@@ -136,6 +123,22 @@
                                 </tr>
                                 {% endfor %}
                             </tbody>
+                            <tfoot>
+                                <tr class="table-secondary fw-bold">
+                                    <td colspan="5" class="text-end">Total:</td>
+                                    <td class="text-success">₹{{ "%.2f"|format(total_payments_sum) }}</td>
+                                    <td>
+                                        {% if total_pending_sum > 0 %}
+                                        <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(total_pending_sum) }}</span>
+                                        {% elif total_pending_sum < 0 %}
+                                        <span class="badge bg-success">-₹{{ "%.2f"|format(total_pending_sum|abs) }}</span>
+                                        {% else %}
+                                        <span class="badge bg-success">₹0.00</span>
+                                        {% endif %}
+                                    </td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                     {% else %}
@@ -147,5 +150,36 @@
                 </div>
             </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Make table rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    const clickableRows = document.querySelectorAll('.clickable-row');
+    clickableRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on a button or link
+            if (e.target.closest('a, button')) {
+                return;
+            }
+            const href = this.dataset.href;
+            if (href) {
+                window.location.href = href;
+            }
+        });
+        
+        // Add hover effect
+        row.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('table-warning')) {
+                this.style.backgroundColor = '#f0f8ff';
+            }
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+</script>
 {% endblock %}
 
