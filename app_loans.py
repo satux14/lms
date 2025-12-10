@@ -635,9 +635,15 @@ def register_routes():
             elif custom_created_time:
                 try:
                     # If only time is provided, use current date with specified time
-                    time_obj = datetime.strptime(custom_created_time, '%H:%M').time()
-                    created_at = datetime.utcnow().replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
-                except ValueError:
+                    # Parse time string manually to avoid datetime.strptime() issue with time-only format
+                    time_parts = custom_created_time.split(':')
+                    if len(time_parts) == 2:
+                        hour = int(time_parts[0])
+                        minute = int(time_parts[1])
+                        created_at = datetime.utcnow().replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    else:
+                        raise ValueError("Invalid time format")
+                except (ValueError, IndexError):
                     flash('Invalid time format. Using current date/time.', 'warning')
                     created_at = datetime.utcnow()
             else:
@@ -661,7 +667,6 @@ def register_routes():
             return redirect(url_for('admin_loans', instance_name=instance_name))
         
         customers = get_user_query().filter_by(is_admin=False).all()
-        from datetime import date, datetime
         return render_template('admin/create_loan.html', 
                              customers=customers,
                              current_date=date.today().strftime('%Y-%m-%d'),
@@ -711,9 +716,15 @@ def register_routes():
             elif custom_created_time:
                 # If only time is provided, update the time part of existing date
                 try:
-                    time_obj = datetime.strptime(custom_created_time, '%H:%M').time()
-                    loan.created_at = loan.created_at.replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
-                except ValueError:
+                    # Parse time string manually to avoid datetime.strptime() issue with time-only format
+                    time_parts = custom_created_time.split(':')
+                    if len(time_parts) == 2:
+                        hour = int(time_parts[0])
+                        minute = int(time_parts[1])
+                        loan.created_at = loan.created_at.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    else:
+                        raise ValueError("Invalid time format")
+                except (ValueError, IndexError):
                     flash('Invalid time format. Time not updated.', 'warning')
             
             commit_current_instance()
@@ -813,6 +824,7 @@ def register_routes():
         # Get split loans for this loan
         splits = get_loan_split_query().filter_by(original_loan_id=loan_id).all()
         split_loans = []
+        total_split_principal = Decimal('0')
         for split in splits:
             split_loan = get_loan_query().filter_by(id=split.split_loan_id).first()
             if split_loan:
@@ -820,6 +832,10 @@ def register_routes():
                     'split': split,
                     'loan': split_loan
                 })
+                total_split_principal += split.split_principal_amount
+        
+        # Calculate principal after split
+        principal_after_split = loan.principal_amount - total_split_principal
         
         # Get split loan info for payments
         payment_split_loan_map = {}
@@ -851,6 +867,8 @@ def register_routes():
                              cashback_configs=cashback_configs,
                              split_loans=split_loans,
                              payment_split_loan_map=payment_split_loan_map,
+                             principal_after_split=principal_after_split,
+                             total_split_principal=total_split_principal,
                              instance_name=instance_name)
 
 

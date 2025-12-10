@@ -202,6 +202,17 @@
             .main-content {
                 padding: 15px;
             }
+            
+            /* Mobile cashback button styling */
+            .navbar .d-lg-none.nav-link {
+                white-space: nowrap;
+                font-size: 0.85rem;
+                padding: 6px 10px !important;
+            }
+            
+            .navbar .d-lg-none.nav-link i {
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
@@ -211,6 +222,16 @@
     <a class="navbar-brand" href="{{ url_for('index') }}">
         <i class="fas fa-university me-2"></i>{{ _('The SRS Consulting') }}
     </a>
+            
+            {% if current_user.is_authenticated %}
+                <!-- Cashback Link - Always Visible on Mobile -->
+                <a href="{{ url_for('user_cashback', instance_name=current_instance) }}" 
+                   class="nav-link text-white d-flex align-items-center d-lg-none me-2" 
+                   style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); border-radius: 20px; padding: 8px 12px; text-decoration: none; font-size: 0.9rem;">
+                    <i class="fas fa-coins me-1"></i>
+                    <span><strong>₹{{ "%.2f"|format(cashback_balance) }}</strong></span>
+                </a>
+            {% endif %}
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -224,8 +245,8 @@
                     </li>
                     
                     {% if current_user.is_authenticated %}
-                        <!-- Cashback Balance Display -->
-                        <li class="nav-item me-3 d-flex align-items-center">
+                        <!-- Cashback Balance Display - Hidden on Mobile (shown above) -->
+                        <li class="nav-item me-3 d-flex align-items-center d-none d-lg-flex">
                             <a href="{{ url_for('user_cashback', instance_name=current_instance) }}" 
                                class="nav-link text-white d-flex align-items-center" 
                                style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); border-radius: 20px; padding: 8px 16px; text-decoration: none;">
