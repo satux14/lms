@@ -1580,6 +1580,13 @@ def admin_dashboard(instance_name):
         tracker_cashback_total += tracker_cashback
     tracker_cashback_total_float = float(tracker_cashback_total) if tracker_cashback_total else 0.0
     
+    # Get pending payments count
+    pending_payments_count = get_payment_query().filter_by(status='pending').count()
+    
+    # Get pending tracker entries count
+    from app_trackers import TrackerEntry, get_tracker_entry_query
+    pending_tracker_entries_count = get_tracker_entry_query().filter_by(status='pending').count()
+    
     return render_template('admin/dashboard.html', 
                          total_loans=total_loans,
                          total_principal=total_principal,
@@ -1591,6 +1598,8 @@ def admin_dashboard(instance_name):
                          loan_cashback_total=loan_cashback_total_float,
                          tracker_cashback_total=tracker_cashback_total_float,
                          tracker_summary_errors=tracker_summary_errors,
+                         pending_payments_count=pending_payments_count,
+                         pending_tracker_entries_count=pending_tracker_entries_count,
                          instance_name=instance_name)
 
 # Admin Activity Logs route
@@ -2161,6 +2170,36 @@ def admin_payments(instance_name):
                          payment_method=payment_method,
                          sort_by=sort_by,
                          sort_order=sort_order,
+                         instance_name=instance_name)
+
+@app.route('/<instance_name>/admin/payments/pending')
+@login_required
+def admin_pending_payments(instance_name):
+    """Admin view all pending payments for approval"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    # Get the current instance session
+    instance = get_current_instance_from_g()
+    session = db_manager.get_session_for_instance(instance)
+    
+    # Get all pending payments
+    pending_payments = session.query(Payment, Loan, User).join(
+        Loan, Payment.loan_id == Loan.id
+    ).join(
+        User, Loan.customer_id == User.id
+    ).filter(
+        Payment.status == 'pending'
+    ).order_by(
+        Payment.payment_date.desc()
+    ).all()
+    
+    return render_template('admin/pending_payments.html',
+                         pending_payments=pending_payments,
                          instance_name=instance_name)
 
 # Admin Add Payment route

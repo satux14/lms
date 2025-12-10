@@ -51,7 +51,10 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin_pending_tracker_entries', instance_name=instance_name) }}">
-                            <i class="fas fa-clock me-2"></i>{{ _('Pending Entries') }}
+                            <i class="fas fa-clock me-2"></i>{{ _('Pending Approvals') }}
+                            {% if pending_tracker_entries_count > 0 %}
+                                <span class="badge bg-warning ms-2">{{ pending_tracker_entries_count }}</span>
+                            {% endif %}
                         </a>
                     </li>
                     
@@ -69,6 +72,14 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin_add_payment', instance_name=instance_name) }}">
                             <i class="fas fa-plus-circle me-2"></i>{{ _('Add Payment') }}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_pending_payments', instance_name=instance_name) }}">
+                            <i class="fas fa-clock me-2"></i>{{ _('Pending Approvals') }}
+                            {% if pending_payments_count > 0 %}
+                                <span class="badge bg-warning ms-2">{{ pending_payments_count }}</span>
+                            {% endif %}
                         </a>
                     </li>
                     
