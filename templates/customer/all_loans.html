@@ -75,6 +75,7 @@
                             <th>{{ _('Principal') }}</th>
                             <th>{{ _('Monthly Interest') }} (Rate%)</th>
                             <th>{{ _('Interest Pending') }}</th>
+                            <th>{{ _('Creation Date') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -94,6 +95,7 @@
                                     <strong>₹{{ "%.2f"|format(data.interest_pending) }}</strong>
                                 </span>
                             </td>
+                            <td>{{ data.loan.created_at.strftime('%Y-%m-%d') }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -103,6 +105,7 @@
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='loan.principal_amount')) }}</th>
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='monthly_interest')) }}</th>
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='interest_pending')) }}</th>
+                            <th></th>
                         </tr>
                     </tfoot>
                 </table>
