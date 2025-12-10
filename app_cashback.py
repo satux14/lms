@@ -143,7 +143,8 @@ def register_routes():
             # Get all user entries from form
             usernames = request.form.getlist('username[]')
             points_list = request.form.getlist('points[]')
-            notes = request.form.get('notes', '').strip()
+            user_notes = request.form.get('user_notes', '').strip()  # User-visible reason
+            notes = request.form.get('notes', '').strip()  # Admin/internal notes
             
             if not usernames or not any(usernames):
                 flash('At least one user is required', 'error')
@@ -180,7 +181,8 @@ def register_routes():
                         to_user_id=recipient.id,
                         points=points,
                         transaction_type='unconditional',
-                        notes=notes or f"Unconditional cashback granted by admin",
+                        user_notes=user_notes or None,  # User-visible reason
+                        notes=notes or f"Unconditional cashback granted by admin",  # Admin notes
                         created_by_user_id=current_user.id
                     )
                     session.add(transaction)
@@ -255,7 +257,8 @@ def register_routes():
             # Get all user entries from form
             usernames = request.form.getlist('username[]')
             points_list = request.form.getlist('points[]')
-            notes = request.form.get('notes', '').strip()
+            user_notes = request.form.get('user_notes', '').strip()  # User-visible reason
+            notes = request.form.get('notes', '').strip()  # Admin/internal notes
             
             if not usernames or not any(usernames):
                 flash('At least one user is required', 'error')
@@ -305,7 +308,8 @@ def register_routes():
                         to_user_id=system_user.id,  # System user receiving points
                         points=points,  # Positive amount (deduction happens because balance = received - sent)
                         transaction_type='deduction',  # Admin deduction
-                        notes=notes or f"Cashback points removed by admin",
+                        user_notes=user_notes or None,  # User-visible reason
+                        notes=notes or f"Cashback points removed by admin",  # Admin notes
                         created_by_user_id=current_user.id
                     )
                     session.add(transaction)
@@ -905,9 +909,11 @@ def register_routes():
             data = request.get_json()
             recipient_username = data.get('username', '').strip()
             points = data.get('points', '0')
+            user_notes = data.get('user_notes', '').strip()
         else:
             recipient_username = request.form.get('username', '').strip()
             points = request.form.get('points', '0')
+            user_notes = request.form.get('user_notes', '').strip()
         
         if not recipient_username:
             if request.is_json:
@@ -958,7 +964,8 @@ def register_routes():
                 to_user_id=recipient.id,
                 points=points,
                 transaction_type='transfer',
-                notes=f"Transfer from {current_user.username} to {recipient.username}",
+                user_notes=user_notes or None,  # User-provided reason
+                notes=f"Transfer from {current_user.username} to {recipient.username}",  # System note
                 created_by_user_id=current_user.id
             )
             session.add(transaction)

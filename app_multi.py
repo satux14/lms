@@ -235,7 +235,8 @@ class CashbackTransaction(db.Model):
     related_payment_id = db.Column(db.Integer, db.ForeignKey('payment.id'), nullable=True)
     related_tracker_id = db.Column(db.Integer, db.ForeignKey('daily_tracker.id'), nullable=True)
     related_tracker_entry_day = db.Column(db.Integer, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)  # Admin/internal notes
+    user_notes = db.Column(db.Text, nullable=True)  # User-visible notes/reason
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     

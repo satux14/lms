@@ -87,6 +87,12 @@
                             <input type="number" class="form-control" id="points" name="points" 
                                    step="0.01" min="0.01" required placeholder="0.00">
                         </div>
+                        <div class="mb-3">
+                            <label for="user_notes" class="form-label">Reason (Optional)</label>
+                            <textarea class="form-control" id="user_notes" name="user_notes" rows="2" 
+                                      placeholder="Reason for this transfer (e.g., 'Payment for services', 'Gift')"></textarea>
+                            <small class="form-text text-muted">This will be visible to both you and the recipient</small>
+                        </div>
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-paper-plane me-2"></i>Transfer
                         </button>
@@ -153,6 +159,7 @@
                                     <th>From/To</th>
                                     <th>Points</th>
                                     <th>Related Info</th>
+                                    <th>Notes</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -196,6 +203,13 @@
                                             {% endif %}
                                         {% else %}
                                             -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if txn.user_notes %}
+                                            <small class="text-muted">{{ txn.user_notes }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>

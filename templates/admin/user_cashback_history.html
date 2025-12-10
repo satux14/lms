@@ -169,7 +169,16 @@
                                             -
                                         {% endif %}
                                     </td>
-                                    <td>{{ txn.notes or '-' }}</td>
+                                    <td>
+                                        {% if txn.user_notes %}
+                                            <strong>User:</strong> {{ txn.user_notes }}<br>
+                                        {% endif %}
+                                        {% if txn.notes %}
+                                            <small class="text-muted"><strong>Admin:</strong> {{ txn.notes }}</small>
+                                        {% elif not txn.user_notes %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
