@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Pending Tracker Entries - {{ _('The SRS Consulting') }}{% endblock %}
+{% block title %}Pending Approvals - {{ _('The SRS Consulting') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -11,7 +11,7 @@
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h1 class="h2">
-                    <i class="fas fa-clock me-2"></i>Pending Tracker Entries
+                    <i class="fas fa-clock me-2"></i>Pending Approvals
                 </h1>
                 <a href="{{ url_for('admin_daily_trackers', instance_name=instance_name) }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Trackers
@@ -22,7 +22,7 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-list me-2"></i>{{ pending_entries|length }} Pending Entr{{ 'y' if pending_entries|length == 1 else 'ies' }}
+                        <i class="fas fa-list me-2"></i>{{ pending_entries|length }} Pending Approval{{ '' if pending_entries|length == 1 else 's' }}
                     </h5>
                 </div>
                 <div class="card-body">
@@ -76,7 +76,7 @@
             <div class="card">
                 <div class="card-body text-center py-5">
                     <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                    <h5>No Pending Entries</h5>
+                    <h5>No Pending Approvals</h5>
                     <p class="text-muted">All tracker entries have been processed.</p>
                 </div>
             </div>

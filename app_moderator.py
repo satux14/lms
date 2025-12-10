@@ -444,7 +444,8 @@ def register_routes():
             logger.info(f"[MODERATOR_VIEW_TRACKER] Summary loaded: {summary}")
             
             # Get pending entries for this tracker
-            from app_multi import TrackerEntry, get_tracker_entry_query, get_tracker_day_cashback, get_tracker_cashback_total
+            from app_multi import TrackerEntry, get_tracker_entry_query
+            from app_trackers import get_tracker_day_cashback, get_tracker_cashback_total
             pending_entries = get_tracker_entry_query().filter_by(
                 tracker_id=tracker_id,
                 status='pending'

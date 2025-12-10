@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Approvals - {{ _('The SRS Consulting') }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        {% include 'admin/_sidebar.html' %}
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-clock me-2"></i>Pending Approvals
+                </h1>
+                <a href="{{ url_for('admin_payments', instance_name=instance_name) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Payments
+                </a>
+            </div>
+
+            {% if pending_payments %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>{{ pending_payments|length }} Pending Approval{{ '' if pending_payments|length == 1 else 's' }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Loan</th>
+                                    <th>Customer</th>
+                                    <th>Payment Date</th>
+                                    <th>Amount</th>
+                                    <th>Interest</th>
+                                    <th>Principal</th>
+                                    <th>Payment Method</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment, loan, user in pending_payments %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}">
+                                            {{ loan.loan_name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <strong>{{ user.username }}</strong>
+                                        {% if user.email %}
+                                            <br><small class="text-muted">{{ user.email }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ payment.payment_date.strftime('%Y-%m-%d') }}</td>
+                                    <td><strong>₹{{ "%.2f"|format(payment.amount) }}</strong></td>
+                                    <td>₹{{ "%.2f"|format(payment.interest_amount) }}</td>
+                                    <td>₹{{ "%.2f"|format(payment.principal_amount) }}</td>
+                                    <td>
+                                        {% if payment.payment_method %}
+                                            <span class="badge bg-info">{{ payment.payment_method }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-check me-1"></i>Review
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5>No Pending Approvals</h5>
+                    <p class="text-muted">All payments have been processed.</p>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}
+
