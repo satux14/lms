@@ -107,6 +107,7 @@
                                             <th>Interest</th>
                                             <th>Interest Paid</th>
                                             <th>Interest Pending</th>
+                                            <th>Creation Date</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -120,11 +121,7 @@
                                                 <strong>{{ loan.loan_name }}</strong>
                                             </td>
                                             <td>
-                                                <div>
-                                                    <strong>{{ loan.customer.username }}</strong>
-                                                    <br>
-                                                    <small class="text-muted">{{ loan.customer.email or 'No email' }}</small>
-                                                </div>
+                                                <strong>{{ loan.customer.username }}</strong>
                                             </td>
                                             <td>
                                                 <strong>₹{{ "%.2f"|format(loan.principal_amount) }}</strong>
@@ -146,6 +143,7 @@
                                                     ₹{{ "%.2f"|format(loan_data.interest_pending) }}
                                                 </span>
                                             </td>
+                                            <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
                                             <td onclick="event.stopPropagation();">
                                                 <a href="{{ url_for('moderator_view_loan', instance_name=instance_name, loan_id=loan.id) }}" 
                                                    class="btn btn-sm btn-outline-primary me-1"
