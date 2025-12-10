@@ -29,6 +29,11 @@
                     <a href="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-info">
                         <i class="fas fa-coins me-1"></i>Cashback Config
                     </a>
+                    {% if loan.status != 'closed' and loan.remaining_principal > 0 %}
+                    <a href="{{ url_for('admin_split_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-warning">
+                        <i class="fas fa-code-branch me-1"></i>Split Loan
+                    </a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -349,6 +354,64 @@
             </div>
             {% endif %}
 
+            <!-- Split Loans -->
+            {% if split_loans %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-code-branch me-2"></i>Split Loans
+                            </h5>
+                            <span class="badge bg-warning">{{ split_loans|length }} split(s)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Split Loan</th>
+                                            <th>Principal Amount</th>
+                                            <th>Remaining</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in split_loans %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ item.loan.loan_name }}</strong>
+                                                <br><small class="text-muted">ID: {{ item.loan.id }}</small>
+                                            </td>
+                                            <td>₹{{ "%.2f"|format(item.split.split_principal_amount) }}</td>
+                                            <td>₹{{ "%.2f"|format(item.loan.remaining_principal) }}</td>
+                                            <td>
+                                                {% if item.loan.status == 'closed' %}
+                                                    <span class="badge bg-secondary">Closed</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ item.split.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=item.loan.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Assigned Moderators -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -477,9 +540,22 @@
                                             <td>
                                                 {% set payment_cashback = payment_cashback_map.get(payment.id, 0) %}
                                                 {% if payment_cashback > 0 %}
-                                                    <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
-                                                        <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(payment_cashback) }}
-                                                    </span>
+                                                    <div>
+                                                        <span class="badge" style="background: linear-gradient(135deg, #5f1e67 0%, #f5576c 100%); color: white;">
+                                                            <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(payment_cashback) }}
+                                                        </span>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            {% set recipients = payment_cashback_recipients_map.get(payment.id, []) %}
+                                                            {% if recipients %}
+                                                                {% for rec in recipients %}
+                                                                    {{ rec.username }}: ₹{{ "%.2f"|format(rec.points) }}{% if not loop.last %}, {% endif %}
+                                                                {% endfor %}
+                                                            {% else %}
+                                                                -
+                                                            {% endif %}
+                                                        </small>
+                                                    </div>
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
@@ -495,10 +571,29 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
-                                                   class="btn btn-sm btn-outline-warning" title="Edit Payment">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
+                                                <div class="btn-group" role="group">
+                                                    <a href="{{ url_for('admin_edit_payment', instance_name=instance_name, payment_id=payment.id) }}" 
+                                                       class="btn btn-sm btn-outline-warning" title="Edit Payment">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    {% if split_loans and payment.status == 'verified' and not payment.split_loan_id %}
+                                                    <a href="{{ url_for('admin_assign_payment_to_split', instance_name=instance_name, payment_id=payment.id) }}" 
+                                                       class="btn btn-sm btn-outline-info" title="Assign to Split Loan">
+                                                        <i class="fas fa-code-branch"></i>
+                                                    </a>
+                                                    {% endif %}
+                                                </div>
+                                                {% if payment.split_loan_id %}
+                                                <br><small class="text-info">
+                                                    <i class="fas fa-code-branch"></i> 
+                                                    {% set split_loan = payment_split_loan_map.get(payment.id) %}
+                                                    {% if split_loan %}
+                                                        Assigned to: {{ split_loan.loan_name }} (ID: {{ split_loan.id }})
+                                                    {% else %}
+                                                        Assigned to split loan
+                                                    {% endif %}
+                                                </small>
+                                                {% endif %}
                                             </td>
                                         </tr>
                                         {% endfor %}

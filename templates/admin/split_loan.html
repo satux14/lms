@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Split Loan - {{ loan.loan_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        {% include 'admin/_sidebar.html' %}
+
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="fas fa-code-branch me-2"></i>Split Loan: {{ loan.loan_name }}
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Loan
+                    </a>
+                </div>
+            </div>
+
+            <!-- Loan Information -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Loan Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Loan Name:</strong> {{ loan.loan_name }}</p>
+                                    <p><strong>Customer:</strong> {{ loan.customer.username }}</p>
+                                    <p><strong>Original Principal:</strong> ₹{{ "%.2f"|format(loan.principal_amount) }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Remaining Principal:</strong> ₹{{ "%.2f"|format(loan.remaining_principal) }}</p>
+                                    <p><strong>Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}%</p>
+                                    <p><strong>Loan Type:</strong> {{ loan.loan_type.replace('_', ' ').title() }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Split Form -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Create Split Loan</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                <div class="mb-3">
+                                    <label for="split_principal" class="form-label">
+                                        <i class="fas fa-rupee-sign me-1"></i>Split Principal Amount
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" 
+                                               class="form-control" 
+                                               id="split_principal" 
+                                               name="split_principal" 
+                                               step="0.01" 
+                                               min="0.01" 
+                                               max="{{ loan.remaining_principal }}"
+                                               required>
+                                    </div>
+                                    <div class="form-text">
+                                        Maximum: ₹{{ "%.2f"|format(loan.remaining_principal) }} (remaining principal)
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="split_loan_name" class="form-label">
+                                        <i class="fas fa-tag me-1"></i>Split Loan Name (Optional)
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="split_loan_name" 
+                                           name="split_loan_name" 
+                                           placeholder="{{ loan.loan_name }} - Split"
+                                           value="{{ loan.loan_name }} - Split">
+                                    <div class="form-text">
+                                        Leave empty to use default: "{{ loan.loan_name }} - Split"
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="split_interest_rate" class="form-label">
+                                        <i class="fas fa-percentage me-1"></i>Annual Interest Rate (%)
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               class="form-control" 
+                                               id="split_interest_rate" 
+                                               name="split_interest_rate" 
+                                               step="0.01" 
+                                               min="0" 
+                                               max="100"
+                                               value="{{ "%.2f"|format(loan.interest_rate * 100) }}"
+                                               required>
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-text">
+                                        Current rate: {{ "%.2f"|format(loan.interest_rate * 100) }}% (you can change this for the split loan)
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> This will create a new loan with the specified principal amount. 
+                                    The original loan's remaining principal will be reduced by this amount. 
+                                    You can later assign payments to the split loan.
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}" 
+                                       class="btn btn-outline-secondary me-md-2">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-code-branch me-1"></i>Split Loan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing Splits -->
+            {% if splits %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Existing Split Loans</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Split Loan ID</th>
+                                            <th>Principal Amount</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for split in splits %}
+                                        <tr>
+                                            <td>{{ split.split_loan_id }}</td>
+                                            <td>₹{{ "%.2f"|format(split.split_principal_amount) }}</td>
+                                            <td>{{ split.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            <td>
+                                                <a href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=split.split_loan_id) }}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

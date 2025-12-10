@@ -157,7 +157,7 @@ class Loan(db.Model):
     
     # Relationships
     customer = db.relationship('User', backref='loans')
-    payments = db.relationship('Payment', backref='loan', lazy=True, order_by='Payment.payment_date.desc()')
+    payments = db.relationship('Payment', primaryjoin='Loan.id == Payment.loan_id', backref='loan', lazy=True, order_by='Payment.payment_date.desc()')
     assigned_moderators = db.relationship('User', secondary=moderator_loans, 
                                          backref=db.backref('assigned_loans', lazy='dynamic'))
 
@@ -178,6 +178,23 @@ class Payment(db.Model):
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
     razorpay_signature = db.Column(db.String(255), nullable=True)
     payment_initiated_at = db.Column(db.DateTime, nullable=True)
+    # Loan splitting fields
+    split_loan_id = db.Column(db.Integer, db.ForeignKey('loan.id'), nullable=True)  # For split loan assignment
+    original_principal_amount = db.Column(db.Numeric(15, 2), nullable=True)  # Principal amount at time of payment
+
+class LoanSplit(db.Model):
+    """Model to track loan splits - when a loan is split into multiple parts"""
+    id = db.Column(db.Integer, primary_key=True)
+    original_loan_id = db.Column(db.Integer, db.ForeignKey('loan.id'), nullable=False)
+    split_loan_id = db.Column(db.Integer, db.ForeignKey('loan.id'), nullable=False)
+    split_principal_amount = db.Column(db.Numeric(15, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Relationships
+    original_loan = db.relationship('Loan', foreign_keys=[original_loan_id], backref='splits_from')
+    split_loan = db.relationship('Loan', foreign_keys=[split_loan_id], backref='split_from')
+    creator = db.relationship('User', backref='loan_splits_created')
 
 class PendingInterest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -531,6 +548,71 @@ def init_app():
     global process_payment
     process_payment = payment_process_payment
     
+    # Register tracker routes
+    from app_trackers import register_tracker_routes
+    register_tracker_routes(
+        flask_app=app,
+        flask_db=db,
+        valid_instances=VALID_INSTANCES,
+        default_instance=DEFAULT_INSTANCE,
+        tracker_model=DailyTracker,
+        tracker_entry_model=TrackerEntry,
+        tracker_cashback_config_model=TrackerCashbackConfig,
+        user_model=User,
+        cashback_transaction_model=CashbackTransaction,
+        tracker_query_func=get_daily_tracker_query,
+        tracker_entry_query_func=get_tracker_entry_query,
+        tracker_cashback_config_query_func=get_tracker_cashback_config_query,
+        user_query_func=get_user_query,
+        cashback_transaction_query_func=get_cashback_transaction_query,
+        add_instance_func=add_to_current_instance,
+        commit_instance_func=commit_current_instance,
+        get_current_instance_func=get_current_instance_from_g,
+        db_manager_instance=db_manager,
+        validate_username_exists_helper=validate_username_exists,
+        get_user_cashback_balance_helper=get_user_cashback_balance,
+        create_tracker_file_func=create_tracker_file,
+        get_tracker_data_func=get_tracker_data,
+        update_tracker_entry_func=update_tracker_entry,
+        get_tracker_summary_func=get_tracker_summary,
+        tracker_types=TRACKER_TYPES,
+        get_tracker_directory_func=get_tracker_directory
+    )
+    
+    # Register loan routes
+    from app_loans import register_loan_routes
+    register_loan_routes(
+        flask_app=app,
+        flask_db=db,
+        valid_instances=VALID_INSTANCES,
+        default_instance=DEFAULT_INSTANCE,
+        loan_model=Loan,
+        payment_model=Payment,
+        loan_split_model=LoanSplit,
+        loan_cashback_config_model=LoanCashbackConfig,
+        user_model=User,
+        cashback_transaction_model=CashbackTransaction,
+        loan_query_func=get_loan_query,
+        loan_split_query_func=get_loan_split_query,
+        loan_cashback_config_query_func=get_loan_cashback_config_query,
+        payment_query_func=get_payment_query,
+        user_query_func=get_user_query,
+        cashback_transaction_query_func=get_cashback_transaction_query,
+        add_instance_func=add_to_current_instance,
+        commit_instance_func=commit_current_instance,
+        get_current_instance_func=get_current_instance_from_g,
+        db_manager_instance=db_manager,
+        validate_username_exists_helper=validate_username_exists,
+        get_payment_cashback_total_helper=get_payment_cashback_total,
+        calculate_daily_interest_func=calculate_daily_interest,
+        calculate_monthly_interest_func=calculate_monthly_interest,
+        calculate_accumulated_interest_func=calculate_accumulated_interest,
+        calculate_interest_for_period_func=calculate_interest_for_period,
+        days_per_year=DAYS_PER_YEAR,
+        get_logging_manager_func=get_logging_manager,
+        get_metrics_manager_func=get_metrics_manager
+    )
+    
     # Register moderator routes
     from app_moderator import register_moderator_routes
     register_moderator_routes(
@@ -586,11 +668,11 @@ def init_app():
         get_current_instance_func=get_current_instance_from_g,
         db_manager_instance=db_manager,
         get_user_cashback_balance_helper=get_user_cashback_balance,
-        get_loan_cashback_total_helper=get_loan_cashback_total,
-        get_tracker_cashback_total_helper=get_tracker_cashback_total,
-        get_tracker_day_cashback_helper=get_tracker_day_cashback,
+        get_loan_cashback_total_helper=lambda loan_id, instance: __import__('app_loans', fromlist=['get_loan_cashback_total']).get_loan_cashback_total(loan_id, instance),
+        get_tracker_cashback_total_helper=lambda tracker_id, instance: __import__('app_trackers', fromlist=['get_tracker_cashback_total']).get_tracker_cashback_total(tracker_id, instance),
+        get_tracker_day_cashback_helper=lambda tracker_id, day, instance: __import__('app_trackers', fromlist=['get_tracker_day_cashback']).get_tracker_day_cashback(tracker_id, day, instance),
         get_payment_cashback_total_helper=get_payment_cashback_total,
-        process_loan_cashback_helper=process_loan_cashback,
+        process_loan_cashback_helper=lambda loan, payment, instance, user_id: __import__('app_loans', fromlist=['process_loan_cashback']).process_loan_cashback(loan, payment, instance, user_id),
         validate_username_exists_helper=validate_username_exists
     )
     
@@ -663,6 +745,11 @@ def get_cashback_transaction_query():
     """Get CashbackTransaction query for current instance"""
     instance = get_current_instance_from_g()
     return db_manager.get_query_for_instance(instance, CashbackTransaction)
+
+def get_loan_split_query():
+    """Get LoanSplit query for current instance"""
+    instance = get_current_instance_from_g()
+    return db_manager.get_query_for_instance(instance, LoanSplit)
 
 def get_loan_cashback_config_query():
     """Get LoanCashbackConfig query for current instance"""
@@ -743,128 +830,9 @@ def validate_username_exists(username, instance_name):
         print(f"Error validating username: {e}")
         return None
 
-def get_tracker_cashback_total(tracker_id, instance_name):
-    """Calculate total cashback points given for a tracker"""
-    try:
-        session = db_manager.get_session_for_instance(instance_name)
-        total = session.query(
-            db.func.sum(CashbackTransaction.points)
-        ).filter_by(
-            related_tracker_id=tracker_id,
-            transaction_type='tracker_entry'
-        ).scalar() or Decimal('0')
-        return total
-    except Exception as e:
-        print(f"Error calculating tracker cashback total: {e}")
-        return Decimal('0')
+# Tracker helper functions moved to app_trackers.py
 
-def get_tracker_day_cashback(tracker_id, day, instance_name):
-    """Calculate cashback points given for a specific tracker day"""
-    try:
-        session = db_manager.get_session_for_instance(instance_name)
-        total = session.query(
-            db.func.sum(CashbackTransaction.points)
-        ).filter_by(
-            related_tracker_id=tracker_id,
-            related_tracker_entry_day=day,
-            transaction_type='tracker_entry'
-        ).scalar() or Decimal('0')
-        return total
-    except Exception as e:
-        print(f"Error calculating tracker day cashback: {e}")
-        return Decimal('0')
-
-def get_loan_cashback_total(loan_id, instance_name):
-    """Calculate total cashback points given for a loan"""
-    try:
-        session = db_manager.get_session_for_instance(instance_name)
-        total = session.query(
-            db.func.sum(CashbackTransaction.points)
-        ).filter(
-            CashbackTransaction.related_loan_id == loan_id
-        ).filter(
-            CashbackTransaction.transaction_type.in_(['loan_interest_auto', 'loan_interest_manual'])
-        ).scalar() or Decimal('0')
-        return total
-    except Exception as e:
-        print(f"Error calculating loan cashback total: {e}")
-        return Decimal('0')
-
-def process_loan_cashback(loan, payment, instance_name, created_by_user_id):
-    """Process automatic cashback for a loan payment based on LoanCashbackConfig"""
-    try:
-        session = db_manager.get_session_for_instance(instance_name)
-        
-        # Get all active cashback configs for this loan
-        configs = session.query(LoanCashbackConfig).filter_by(
-            loan_id=loan.id,
-            is_active=True
-        ).all()
-        
-        cashback_details = []
-        total_cashback = Decimal('0')
-        
-        for config in configs:
-            if config.cashback_type == 'percentage':
-                # Calculate points as percentage of interest amount
-                points = payment.interest_amount * config.cashback_value
-            else:  # fixed
-                # Use fixed amount
-                points = config.cashback_value
-            
-            # Round to 2 decimal places
-            points = points.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            
-            if points > 0:
-                # Create cashback transaction
-                transaction = CashbackTransaction(
-                    from_user_id=None,  # System/admin grant
-                    to_user_id=config.user_id,
-                    points=points,
-                    transaction_type='loan_interest_auto',
-                    related_loan_id=loan.id,
-                    related_payment_id=payment.id,
-                    notes=f"Automatic cashback from loan '{loan.loan_name}' payment",
-                    created_by_user_id=created_by_user_id
-                )
-                session.add(transaction)
-                total_cashback += points
-                cashback_details.append({
-                    'user': config.user.username,
-                    'points': float(points),
-                    'type': config.cashback_type
-                })
-        
-        session.commit()
-        
-        # Log cashback activity if any cashback was given
-        if total_cashback > 0:
-            try:
-                from lms_logging import get_logging_manager
-                logging_mgr = get_logging_manager(instance_name)
-                # Get username from created_by_user_id
-                created_by_user = session.query(User).filter_by(id=created_by_user_id).first()
-                username = created_by_user.username if created_by_user else 'system'
-                
-                logging_mgr.log_activity(
-                    action='cashback_loan_auto',
-                    username=username,
-                    user_id=created_by_user_id,
-                    resource_type='loan',
-                    resource_id=loan.id,
-                    details={
-                        'loan_name': loan.loan_name,
-                        'payment_id': payment.id,
-                        'total_cashback': float(total_cashback),
-                        'cashback_details': cashback_details
-                    }
-                )
-            except Exception as log_error:
-                print(f"[ERROR] Failed to log loan cashback: {log_error}")
-        
-    except Exception as e:
-        print(f"Error processing loan cashback: {e}")
-        session.rollback()
+# Loan helper functions moved to app_loans.py
 
 def calculate_daily_interest(principal, annual_rate):
     """Calculate daily interest amount"""
@@ -1563,9 +1531,9 @@ def admin_dashboard(instance_name):
         flash('Access denied')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    # Get statistics
-    total_loans = get_loan_query().count()
-    total_principal = sum(loan.principal_amount for loan in get_loan_query().all())
+    # Get statistics (exclude closed loans)
+    total_loans = get_loan_query().filter_by(status='active', is_active=True).count()
+    total_principal = sum(loan.principal_amount for loan in get_loan_query().filter_by(status='active', is_active=True).all())
     total_interest_earned = sum(payment.interest_amount for payment in get_payment_query().filter_by(status='verified').all())
     total_users = get_user_query().count()
     tracker_summary_errors = []
@@ -1596,6 +1564,8 @@ def admin_dashboard(instance_name):
     
     # Calculate loan-wise cashback (total cashback from all loans)
     loan_cashback_total = Decimal('0')
+    from app_loans import get_loan_cashback_total
+    from app_trackers import get_tracker_cashback_total
     all_loans = get_loan_query().all()
     for loan in all_loans:
         loan_cashback = get_loan_cashback_total(loan.id, instance_name)
@@ -1995,121 +1965,8 @@ def admin_config(instance_name):
                          instance_name=instance_name)
 
 # Admin Cashback Management Routes
-# Admin Loans route
-@app.route('/<instance_name>/admin/loans')
-@login_required
-def admin_loans(instance_name):
-    """Admin loans page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # Get filter parameters
-    loan_type = request.args.get('loan_type', '')
-    frequency = request.args.get('frequency', '')
-    customer_id = request.args.get('customer', '')
-    loan_name = request.args.get('loan_name', '')
-    min_rate = request.args.get('min_rate', '')
-    max_rate = request.args.get('max_rate', '')
-    status = request.args.get('status', '')
-    
-    # Build query
-    query = get_loan_query()
-    
-    if loan_type:
-        query = query.filter(Loan.loan_type == loan_type)
-    if frequency:
-        query = query.filter(Loan.payment_frequency == frequency)
-    if customer_id:
-        query = query.filter(Loan.customer_id == customer_id)
-    if loan_name:
-        query = query.filter(Loan.loan_name.contains(loan_name))
-    if min_rate:
-        # Convert percentage to decimal for comparison
-        min_rate_decimal = float(min_rate) / 100
-        query = query.filter(Loan.interest_rate >= min_rate_decimal)
-    if max_rate:
-        # Convert percentage to decimal for comparison
-        max_rate_decimal = float(max_rate) / 100
-        query = query.filter(Loan.interest_rate <= max_rate_decimal)
-    if status:
-        if status == 'active':
-            query = query.filter(Loan.is_active == True, Loan.status == 'active')
-        elif status == 'closed':
-            query = query.filter(Loan.status == 'closed')
-        elif status == 'paid_off':
-            query = query.filter(Loan.is_active == False, Loan.status != 'closed')
-    
-    # Get sorting parameters
-    sort_by = request.args.get('sort', 'created_at')
-    sort_order = request.args.get('order', 'desc')
-    
-    if sort_by == 'customer':
-        if sort_order == 'asc':
-            query = query.join(User).order_by(User.username.asc())
-        else:
-            query = query.join(User).order_by(User.username.desc())
-    elif sort_by == 'loan_name':
-        if sort_order == 'asc':
-            query = query.order_by(Loan.loan_name.asc())
-        else:
-            query = query.order_by(Loan.loan_name.desc())
-    elif sort_by == 'principal':
-        if sort_order == 'asc':
-            query = query.order_by(Loan.principal_amount.asc())
-        else:
-            query = query.order_by(Loan.principal_amount.desc())
-    elif sort_by == 'rate':
-        if sort_order == 'asc':
-            query = query.order_by(Loan.interest_rate.asc())
-        else:
-            query = query.order_by(Loan.interest_rate.desc())
-    else:  # created_at
-        if sort_order == 'asc':
-            query = query.order_by(Loan.created_at.asc())
-        else:
-            query = query.order_by(Loan.created_at.desc())
-    
-    loans = query.all()
-    customers = get_user_query().filter_by(is_admin=False).all()
-    
-    # Calculate interest paid and cashback for each loan
-    loans_with_interest = []
-    total_cashback = Decimal('0')
-    for loan in loans:
-        # Get verified interest payments for this loan
-        interest_paid = get_payment_query().filter_by(
-            loan_id=loan.id, 
-            status='verified'
-        ).with_entities(db.func.sum(Payment.interest_amount)).scalar() or 0
-        
-        # Calculate cashback total for this loan
-        loan_cashback = get_loan_cashback_total(loan.id, instance_name)
-        total_cashback += loan_cashback
-        
-        loans_with_interest.append({
-            'loan': loan,
-            'interest_paid': interest_paid,
-            'cashback_total': loan_cashback
-        })
-    
-    return render_template('admin/loans.html', 
-                         loans=loans_with_interest, 
-                         customers=customers,
-                         loan_type=loan_type,
-                         frequency=frequency,
-                         customer_id=customer_id,
-                         loan_name=loan_name,
-                         min_rate=min_rate,
-                         max_rate=max_rate,
-                         status=status,
-                         sort_by=sort_by,
-                         sort_order=sort_order,
-                         total_cashback=total_cashback,
-                         instance_name=instance_name)
+# Loan routes moved to app_loans.py
+# Tracker routes moved to app_trackers.py
 
 # Admin Users route
 @app.route('/<instance_name>/admin/users')
@@ -2182,76 +2039,11 @@ def admin_create_user(instance_name):
     
     return render_template('admin/create_user.html', instance_name=instance_name)
 
-# Admin Create Loan route
-@app.route('/<instance_name>/admin/create-loan', methods=['GET', 'POST'])
-@login_required
-def admin_create_loan(instance_name):
-    """Admin create loan page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    if request.method == 'POST':
-        customer_id = request.form['customer_id']
-        loan_name = request.form['loan_name']
-        principal_amount = Decimal(request.form['principal'])
-        interest_rate = Decimal(request.form['interest_rate']) / 100
-        payment_frequency = request.form['payment_frequency']
-        loan_type = request.form['loan_type']
-        admin_notes = request.form.get('admin_notes', '')
-        customer_notes = request.form.get('customer_notes', '')
-        # Handle custom creation date if provided
-        custom_created_date = request.form.get('loan_created_date')
-        custom_created_time = request.form.get('loan_created_time')
-        
-        if custom_created_date:
-            try:
-                if custom_created_time:
-                    # Combine date and time
-                    created_at_str = f"{custom_created_date} {custom_created_time}"
-                    created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
-                else:
-                    # Use date only, set time to 00:00
-                    created_at = datetime.strptime(custom_created_date, '%Y-%m-%d')
-            except ValueError:
-                flash('Invalid date format. Using current date.', 'warning')
-                created_at = datetime.utcnow()
-        elif custom_created_time:
-            try:
-                # If only time is provided, use current date with specified time
-                time_obj = datetime.strptime(custom_created_time, '%H:%M').time()
-                created_at = datetime.utcnow().replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
-            except ValueError:
-                flash('Invalid time format. Using current date/time.', 'warning')
-                created_at = datetime.utcnow()
-        else:
-            created_at = datetime.utcnow()
-        
-        loan = Loan(
-            customer_id=customer_id,
-            loan_name=loan_name,
-            principal_amount=principal_amount,
-            remaining_principal=principal_amount,
-            interest_rate=interest_rate,
-            payment_frequency=payment_frequency,
-            loan_type=loan_type,
-            admin_notes=admin_notes,
-            customer_notes=customer_notes,
-            created_at=created_at
-        )
-        add_to_current_instance(loan)
-        
-        flash('Loan created successfully')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-    
-    customers = get_user_query().filter_by(is_admin=False).all()
-    return render_template('admin/create_loan.html', 
-                         customers=customers,
-                         instance_name=instance_name)
+# Admin Payments route (kept here as it's not loan-specific)
+# Loan routes moved to app_loans.py - removed duplicates
 
+# Admin Create Backup route
+# Customer routes
 # Admin Payments route
 @app.route('/<instance_name>/admin/payments')
 @login_required
@@ -2465,261 +2257,6 @@ def admin_toggle_moderator(instance_name, user_id):
     return redirect(url_for('admin_users', instance_name=instance_name))
 
 
-# Admin Assign Moderator to Loan route
-@app.route('/<instance_name>/admin/loan/<int:loan_id>/assign-moderator/<int:moderator_id>', methods=['POST'])
-@login_required
-def admin_assign_moderator_to_loan(instance_name, loan_id, moderator_id):
-    """Assign a moderator to a loan"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first()
-    # Allow any user (customer or admin) to be assigned as moderator - no need for is_moderator flag
-    moderator = get_user_query().filter_by(id=moderator_id).first()
-    
-    if not loan or not moderator:
-        flash('Loan or user not found', 'error')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-    
-    if moderator not in loan.assigned_moderators:
-        loan.assigned_moderators.append(moderator)
-        commit_current_instance()
-        flash(f'{moderator.username} assigned to loan: {loan.loan_name}', 'success')
-    else:
-        flash(f'{moderator.username} is already assigned to this loan', 'info')
-    
-    return redirect(url_for('admin_view_loan', instance_name=instance_name, loan_id=loan_id))
-
-
-# Admin Unassign Moderator from Loan route
-@app.route('/<instance_name>/admin/loan/<int:loan_id>/unassign-moderator/<int:moderator_id>', methods=['POST'])
-@login_required
-def admin_unassign_moderator_from_loan(instance_name, loan_id, moderator_id):
-    """Unassign a moderator from a loan"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first()
-    moderator = get_user_query().filter_by(id=moderator_id).first()
-    
-    if not loan or not moderator:
-        flash('Loan or moderator not found', 'error')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-    
-    if moderator in loan.assigned_moderators:
-        loan.assigned_moderators.remove(moderator)
-        commit_current_instance()
-        flash(f'{moderator.username} unassigned from loan: {loan.loan_name}', 'success')
-    else:
-        flash(f'{moderator.username} is not assigned to this loan', 'info')
-    
-    return redirect(url_for('admin_view_loan', instance_name=instance_name, loan_id=loan_id))
-
-
-# Admin Assign Moderator to Tracker route
-@app.route('/<instance_name>/admin/tracker/<int:tracker_id>/assign-moderator/<int:moderator_id>', methods=['POST'])
-@login_required
-def admin_assign_moderator_to_tracker(instance_name, tracker_id, moderator_id):
-    """Assign a moderator to a tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id).first()
-    # Allow any user (customer or admin) to be assigned as moderator - no need for is_moderator flag
-    moderator = get_user_query().filter_by(id=moderator_id).first()
-    
-    if not tracker or not moderator:
-        flash('Tracker or user not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    if moderator not in tracker.assigned_moderators:
-        tracker.assigned_moderators.append(moderator)
-        commit_current_instance()
-        flash(f'{moderator.username} assigned to tracker: {tracker.tracker_name}', 'success')
-    else:
-        flash(f'{moderator.username} is already assigned to this tracker', 'info')
-    
-    return redirect(url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker_id))
-
-
-# Admin Unassign Moderator from Tracker route
-@app.route('/<instance_name>/admin/tracker/<int:tracker_id>/unassign-moderator/<int:moderator_id>', methods=['POST'])
-@login_required
-def admin_unassign_moderator_from_tracker(instance_name, tracker_id, moderator_id):
-    """Unassign a moderator from a tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id).first()
-    moderator = get_user_query().filter_by(id=moderator_id).first()
-    
-    if not tracker or not moderator:
-        flash('Tracker or moderator not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    if moderator in tracker.assigned_moderators:
-        tracker.assigned_moderators.remove(moderator)
-        commit_current_instance()
-        flash(f'{moderator.username} unassigned from tracker: {tracker.tracker_name}', 'success')
-    else:
-        flash(f'{moderator.username} is not assigned to this tracker', 'info')
-    
-    return redirect(url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker_id))
-
-
-# Admin Edit Loan route
-@app.route('/<instance_name>/admin/edit-loan/<int:loan_id>', methods=['GET', 'POST'])
-@login_required
-def admin_edit_loan(instance_name, loan_id):
-    """Admin edit loan page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    if request.method == 'POST':
-        loan.loan_name = request.form['loan_name']
-        loan.principal_amount = Decimal(request.form['principal'])
-        # remaining_principal is calculated automatically, not edited directly
-        loan.interest_rate = Decimal(request.form['interest_rate']) / 100
-        loan.payment_frequency = request.form['payment_frequency']
-        loan.loan_type = request.form['loan_type']
-        loan.admin_notes = request.form.get('admin_notes', '')
-        loan.customer_notes = request.form.get('customer_notes', '')
-        
-        # Handle custom creation date if provided
-        custom_created_date = request.form.get('loan_created_date')
-        custom_created_time = request.form.get('loan_created_time')
-        
-        if custom_created_date:
-            try:
-                if custom_created_time:
-                    # Combine date and time
-                    created_at_str = f"{custom_created_date} {custom_created_time}"
-                    loan.created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
-                else:
-                    # Use date only, set time to 00:00
-                    loan.created_at = datetime.strptime(custom_created_date, '%Y-%m-%d')
-            except ValueError:
-                flash('Invalid date format. Using current date.', 'warning')
-                # Keep existing created_at if date is invalid
-        elif custom_created_time:
-            # If only time is provided, update the time part of existing date
-            try:
-                time_obj = datetime.strptime(custom_created_time, '%H:%M').time()
-                loan.created_at = loan.created_at.replace(hour=time_obj.hour, minute=time_obj.minute, second=0, microsecond=0)
-            except ValueError:
-                flash('Invalid time format. Time not updated.', 'warning')
-        
-        commit_current_instance()
-        flash('Loan updated successfully')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-    
-    # Get payment history for this loan
-    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
-    
-    return render_template('admin/edit_loan.html', 
-                         loan=loan,
-                         payments=payments,
-                         instance_name=instance_name)
-
-# Admin View Loan route
-@app.route('/<instance_name>/admin/loan/<int:loan_id>')
-@login_required
-def admin_view_loan(instance_name, loan_id):
-    """Admin view loan details page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    # Calculate interest information
-    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
-    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-    interest_data = calculate_accumulated_interest(loan)
-    accumulated_interest_daily = interest_data['daily']
-    accumulated_interest_monthly = interest_data['monthly']
-    
-    # Get payment history
-    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
-    
-    # Calculate verified amounts
-    verified_payments = [p for p in payments if p.status == 'verified']
-    verified_principal = sum(payment.principal_amount for payment in verified_payments)
-    verified_interest = sum(payment.interest_amount for payment in verified_payments)
-    
-    # Calculate pending amounts
-    pending_payments = [p for p in payments if p.status == 'pending']
-    pending_principal = sum(payment.principal_amount for payment in pending_payments)
-    pending_interest = sum(payment.interest_amount for payment in pending_payments)
-    pending_total = pending_principal + pending_interest
-    
-    # Calculate days active
-    days_active = (date.today() - loan.created_at.date()).days
-    
-    # Calculate total cashback given for this loan
-    loan_cashback_total = get_loan_cashback_total(loan_id, instance_name)
-    
-    # Get cashback for each payment
-    payment_cashback_map = {}
-    for payment in payments:
-        payment_cashback_map[payment.id] = get_payment_cashback_total(payment.id, instance_name)
-    
-    # Get cashback configs for this loan
-    cashback_configs = get_loan_cashback_config_query().filter_by(
-        loan_id=loan_id,
-        is_active=True
-    ).all()
-    
-    # Get all users for assignment - any user (customer or admin) can be assigned as moderator
-    # Exclude the current admin user to avoid self-assignment
-    all_moderators = get_user_query().filter(User.id != current_user.id).order_by(User.username).all()
-    
-    return render_template('admin/view_loan.html', 
-                         loan=loan,
-                         daily_interest=daily_interest,
-                         monthly_interest=monthly_interest,
-                         accumulated_interest_daily=accumulated_interest_daily,
-                         accumulated_interest_monthly=accumulated_interest_monthly,
-                         interest_data=interest_data,
-                         verified_principal=verified_principal,
-                         verified_interest=verified_interest,
-                         loan_cashback_total=loan_cashback_total,
-                         pending_principal=pending_principal,
-                         pending_interest=pending_interest,
-                         pending_total=pending_total,
-                         payments=payments,
-                         days_active=days_active,
-                         all_moderators=all_moderators,
-                         current_date=date.today(),
-                         payment_cashback_map=payment_cashback_map,
-                         cashback_configs=cashback_configs,
-                         instance_name=instance_name)
-
 # Admin Edit Payment route
 @app.route('/<instance_name>/admin/edit-payment/<int:payment_id>', methods=['GET', 'POST'])
 @login_required
@@ -2729,175 +2266,83 @@ def admin_edit_payment(instance_name, payment_id):
         return redirect('/')
     
     if not current_user.is_admin:
-        flash('Access denied')
+        flash('Access denied', 'error')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    payment = get_payment_query().filter_by(id=payment_id).first() or abort(404)
+    payment = get_payment_query().filter_by(id=payment_id).first()
+    if not payment:
+        flash('Payment not found', 'error')
+        return redirect(url_for('admin_payments', instance_name=instance_name))
+    
     loan = payment.loan  # Get the loan associated with this payment
     
     if request.method == 'POST':
-        # Store old status for comparison
+        # Store old values for loan recalculation
         old_status = payment.status
+        old_principal_amount = payment.principal_amount
+        old_interest_amount = payment.interest_amount
         
-        payment.amount = Decimal(request.form['amount'])
-        payment.payment_method = request.form['payment_method']
-        payment.transaction_id = request.form.get('transaction_id', '')
-        payment.status = request.form['status']
+        # Get form data
+        new_amount = Decimal(request.form.get('amount', 0))
+        new_interest_amount = Decimal(request.form.get('interest_amount', 0))
+        new_principal_amount = Decimal(request.form.get('principal_amount', 0))
+        new_transaction_id = request.form.get('transaction_id', '')
+        new_payment_method = request.form.get('payment_method', '')
+        new_status = request.form.get('status', 'pending')
         
-        # Parse payment date
+        # Validate amounts
+        if new_amount != new_interest_amount + new_principal_amount:
+            flash('Total amount must equal interest + principal amount', 'error')
+            return render_template('admin/edit_payment.html', 
+                                 payment=payment,
+                                 loan=loan,
+                                 instance_name=instance_name)
+        
+        # Update payment
+        payment.amount = new_amount
+        payment.interest_amount = new_interest_amount
+        payment.principal_amount = new_principal_amount
+        payment.transaction_id = new_transaction_id
+        payment.payment_method = new_payment_method
+        payment.status = new_status
+        
+        # Parse payment date if provided
         payment_date_str = request.form.get('payment_date')
         if payment_date_str:
             try:
                 payment.payment_date = datetime.strptime(payment_date_str, '%Y-%m-%dT%H:%M')
             except ValueError:
-                flash('Invalid date format')
+                flash('Invalid date format', 'error')
                 return render_template('admin/edit_payment.html', 
                                      payment=payment,
                                      loan=loan,
                                      instance_name=instance_name)
         
         # Handle status changes and balance adjustments
-        if payment.status == 'verified' and old_status == 'pending':
+        if new_status == 'verified' and old_status == 'pending':
             # Payment is being verified - reduce balance
-            if loan.loan_type != 'interest_only':
-                loan.remaining_principal -= payment.principal_amount
-                if loan.remaining_principal < 0:
-                    loan.remaining_principal = Decimal('0')
-            
-            # Process cashback
-            session = db_manager.get_session_for_instance(instance_name)
-            
-            # Process manual cashback if provided (admin can override/split configured cashback)
-            usernames = request.form.getlist('cashback_username[]')
-            points_list = request.form.getlist('cashback_points[]')
-            
-            has_manual_cashback = False
-            manual_cashback_details = []
-            total_manual_cashback = Decimal('0')
-            
-            for username, points_str in zip(usernames, points_list):
-                username = username.strip()
-                if not username:
-                    continue
-                
-                try:
-                    points = Decimal(str(points_str))
-                    if points <= 0:
-                        continue
-                    has_manual_cashback = True
-                except (ValueError, InvalidOperation):
-                    continue
-                
-                # Validate username
-                recipient = validate_username_exists(username, instance_name)
-                if recipient:
-                    transaction = CashbackTransaction(
-                        from_user_id=None,  # System/admin grant
-                        to_user_id=recipient.id,
-                        points=points,
-                        transaction_type='loan_interest_manual',
-                        related_loan_id=loan.id,
-                        related_payment_id=payment.id,
-                        notes=f"Manual cashback from loan '{loan.loan_name}' payment verification",
-                        created_by_user_id=current_user.id
-                    )
-                    session.add(transaction)
-                    total_manual_cashback += points
-                    manual_cashback_details.append({
-                        'user': username,
-                        'points': float(points)
-                    })
-            
-            # Only process automatic cashback if admin didn't provide manual cashback
-            if not has_manual_cashback:
-                process_loan_cashback(loan, payment, instance_name, current_user.id)
-            else:
-                session.commit()
-                
-                # Log manual cashback activity
-                if total_manual_cashback > 0:
-                    try:
-                        from lms_logging import get_logging_manager
-                        logging_mgr = get_logging_manager(instance_name)
-                        logging_mgr.log_activity(
-                            action='cashback_loan_manual',
-                            username=current_user.username,
-                            user_id=current_user.id,
-                            resource_type='loan',
-                            resource_id=loan.id,
-                            details={
-                                'loan_name': loan.loan_name,
-                                'payment_id': payment.id,
-                                'total_cashback': float(total_manual_cashback),
-                                'cashback_details': manual_cashback_details
-                            }
-                        )
-                    except Exception as log_error:
-                        print(f"[ERROR] Failed to log manual loan cashback: {log_error}")
-            
-        elif payment.status == 'pending' and old_status == 'verified':
+            loan.remaining_principal -= new_principal_amount
+        elif new_status == 'pending' and old_status == 'verified':
             # Payment is being unverified - add back to balance
-            if loan.loan_type != 'interest_only':
-                loan.remaining_principal += payment.principal_amount
-                if loan.remaining_principal > loan.principal_amount:
-                    loan.remaining_principal = loan.principal_amount
-        elif payment.status == 'verified' and old_status == 'verified':
-            # Payment was already verified, no balance change needed
-            pass
+            loan.remaining_principal += old_principal_amount
+        elif new_status == 'verified' and old_status == 'verified':
+            # Payment was already verified, adjust for amount changes
+            principal_difference = new_principal_amount - old_principal_amount
+            loan.remaining_principal -= principal_difference
+        
+        # Ensure remaining principal doesn't go negative
+        loan.remaining_principal = max(Decimal('0'), loan.remaining_principal)
         
         commit_current_instance()
-        
-        # Log admin action
-        try:
-            logging_mgr = get_logging_manager(instance_name)
-            metrics_mgr = get_metrics_manager(instance_name)
-            action = 'verify_payment' if payment.status == 'verified' and old_status == 'pending' else 'edit_payment'
-            logging_mgr.log_admin_action(action, 'payment', payment.id, 
-                                       username=current_user.username,
-                                       details={'old_status': old_status, 'new_status': payment.status})
-            metrics_mgr.record_admin_action(action, current_user.username)
-            
-            # Update payment metrics if status changed
-            if payment.status == 'verified' and old_status == 'pending':
-                metrics_mgr.record_payment(current_user.username, float(payment.amount), status='verified')
-        except Exception as log_error:
-            print(f"[ERROR] Failed to log admin action: {log_error}")
-        
-        flash('Payment updated successfully')
+        flash('Payment updated successfully', 'success')
         return redirect(url_for('admin_payments', instance_name=instance_name))
     
-    # Calculate configured cashback points for display
-    configured_cashback = []
-    if payment.status == 'pending':  # Only show if payment is not yet verified
-        configs = get_loan_cashback_config_query().filter_by(
-            loan_id=loan.id,
-            is_active=True
-        ).all()
-        
-        for config in configs:
-            if config.cashback_type == 'percentage':
-                # Calculate points as percentage of interest amount
-                points = payment.interest_amount * config.cashback_value
-            else:  # fixed
-                # Use fixed amount
-                points = config.cashback_value
-            
-            # Round to 2 decimal places
-            points = points.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            
-            if points > 0:
-                configured_cashback.append({
-                    'user': config.user,
-                    'points': points,
-                    'type': config.cashback_type,
-                    'value': config.cashback_value
-                })
-    
+    # GET request - show edit form
     return render_template('admin/edit_payment.html', 
                          payment=payment,
                          loan=loan,
-                         configured_cashback=configured_cashback,
                          instance_name=instance_name)
+
 
 # Admin Delete Payment route
 @app.route('/<instance_name>/admin/delete-payment/<int:payment_id>', methods=['POST'])
@@ -2908,17 +2353,27 @@ def admin_delete_payment(instance_name, payment_id):
         return redirect('/')
     
     if not current_user.is_admin:
-        flash('Access denied')
+        flash('Access denied', 'error')
         return redirect(url_for('customer_dashboard', instance_name=instance_name))
     
-    payment = get_payment_query().filter_by(id=payment_id).first() or abort(404)
+    payment = get_payment_query().filter_by(id=payment_id).first()
+    if not payment:
+        flash('Payment not found', 'error')
+        return redirect(url_for('admin_payments', instance_name=instance_name))
+    
     loan = payment.loan
+    
+    # Store payment details before deletion
+    payment_amount = payment.amount
+    payment_status = payment.status
+    payment_principal = payment.principal_amount
+    loan_id = loan.id
     
     try:
         # If payment was verified, we need to adjust the loan balance
-        if payment.status == 'verified':
+        if payment_status == 'verified':
             # Add back the principal amount to remaining_principal
-            loan.remaining_principal += payment.principal_amount
+            loan.remaining_principal += payment_principal
             # Ensure remaining_principal doesn't exceed original principal
             if loan.remaining_principal > loan.principal_amount:
                 loan.remaining_principal = loan.principal_amount
@@ -2933,110 +2388,22 @@ def admin_delete_payment(instance_name, payment_id):
             metrics_mgr = get_metrics_manager(instance_name)
             logging_mgr.log_admin_action('delete_payment', 'payment', payment_id, 
                                        username=current_user.username,
-                                       details={'payment_amount': str(payment.amount), 'loan_id': loan.id})
+                                       details={'payment_amount': str(payment_amount), 'loan_id': loan_id})
             metrics_mgr.record_admin_action('delete_payment', current_user.username)
         except Exception as log_error:
             print(f"[ERROR] Failed to log admin action: {log_error}")
         
-        flash(f'Payment of ₹{payment.amount:,.2f} deleted successfully')
+        flash(f'Payment of ₹{payment_amount:,.2f} deleted successfully', 'success')
         return redirect(url_for('admin_payments', instance_name=instance_name))
         
     except Exception as e:
-        flash(f'Error deleting payment: {str(e)}')
+        flash(f'Error deleting payment: {str(e)}', 'error')
         return redirect(url_for('admin_payments', instance_name=instance_name))
 
-# Admin Generate Loan Excel Report route
-@app.route('/<instance_name>/admin/loan/<int:loan_id>/excel')
-@login_required
-def admin_loan_excel(instance_name, loan_id):
-    """Generate and download Excel report for loan calculations"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    try:
-        # Generate Excel file
-        output = generate_loan_calculation_excel(loan)
-        
-        # Create filename
-        filename = f"loan_calculation_{loan.loan_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        
-        # Send file
-        from flask import send_file
-        return send_file(
-            output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=filename
-        )
-    except Exception as e:
-        flash(f'Error generating Excel report: {str(e)}')
-        return redirect(url_for('admin_view_loan', instance_name=instance_name, loan_id=loan_id))
 
-# Admin Close Loan route
-@app.route('/<instance_name>/admin/close-loan/<int:loan_id>', methods=['POST'])
-@login_required
-def admin_close_loan(instance_name, loan_id):
-    """Admin close loan for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    try:
-        # Close the loan
-        loan.status = 'closed'
-        loan.is_active = False
-        commit_current_instance()
-        
-        flash(f'Loan "{loan.loan_name}" has been closed successfully')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-        
-    except Exception as e:
-        flash(f'Error closing loan: {str(e)}')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-
-# Admin Delete Loan route
-@app.route('/<instance_name>/admin/delete-loan/<int:loan_id>', methods=['POST'])
-@login_required
-def admin_delete_loan(instance_name, loan_id):
-    """Admin delete loan for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    try:
-        # Check if loan has any payments
-        payments_count = get_payment_query().filter_by(loan_id=loan_id).count()
-        if payments_count > 0:
-            flash(f'Cannot delete loan "{loan.loan_name}" because it has {payments_count} payment(s). Please delete all payments first.')
-            return redirect(url_for('admin_loans', instance_name=instance_name))
-        
-        # Delete the loan
-        loan_name = loan.loan_name
-        get_loan_query().filter_by(id=loan_id).delete()
-        commit_current_instance()
-        
-        flash(f'Loan "{loan_name}" has been deleted successfully')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
-        
-    except Exception as e:
-        flash(f'Error deleting loan: {str(e)}')
-        return redirect(url_for('admin_loans', instance_name=instance_name))
+# Tracker moderator assignment routes moved to app_trackers.py
+# Loan routes (admin_edit_loan, admin_view_loan, admin_close_loan, admin_delete_loan, admin_split_loan, admin_assign_payment_to_split, admin_assign_moderator_to_loan, admin_unassign_moderator_from_loan, admin_loan_excel, admin_delete_payment) moved to app_loans.py
+# Customer loan routes (customer_all_loans, customer_loan_detail, customer_edit_notes) moved to app_loans.py
 
 # Admin Create Backup route
 # Customer routes
@@ -3050,8 +2417,12 @@ def customer_dashboard(instance_name):
     if current_user.is_admin:
         return redirect(url_for('admin_dashboard', instance_name=instance_name))
     
-    # Get customer's active loans only
-    loans = get_loan_query().filter_by(customer_id=current_user.id, is_active=True).all()
+    # Get customer's active loans only (exclude closed)
+    loans = get_loan_query().filter_by(
+        customer_id=current_user.id, 
+        is_active=True,
+        status='active'
+    ).all()
     
     loan_data = []
     for loan in loans:
@@ -3109,173 +2480,7 @@ def customer_dashboard(instance_name):
                          cashback_balance=cashback_balance,
                          instance_name=instance_name)
 
-@app.route('/<instance_name>/customer/loans')
-@login_required
-def customer_all_loans(instance_name):
-    """Customer view all loans page"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard', instance_name=instance_name))
-    
-    # Get customer's active loans only
-    loans = get_loan_query().filter_by(customer_id=current_user.id, is_active=True).all()
-    
-    loan_data = []
-    for loan in loans:
-        daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
-        monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-        interest_data = calculate_accumulated_interest(loan)
-        accumulated_interest_daily = interest_data['daily']
-        accumulated_interest_monthly = interest_data['monthly']
-        
-        # Calculate pending payments for this specific loan
-        pending_payments = get_payment_query().filter_by(loan_id=loan.id, status='pending').all()
-        pending_principal = sum(payment.principal_amount for payment in pending_payments)
-        pending_interest = sum(payment.interest_amount for payment in pending_payments)
-        pending_total = sum(payment.amount for payment in pending_payments)
-        
-        # Calculate verified payments for this specific loan
-        verified_payments = get_payment_query().filter_by(loan_id=loan.id, status='verified').all()
-        verified_principal = sum(payment.principal_amount for payment in verified_payments)
-        verified_interest = sum(payment.interest_amount for payment in verified_payments)
-        
-        loan_data.append({
-            'loan': loan,
-            'daily_interest': daily_interest,
-            'monthly_interest': monthly_interest,
-            'accumulated_interest_daily': accumulated_interest_daily,
-            'accumulated_interest_monthly': accumulated_interest_monthly,
-            'interest_data': interest_data,
-            'pending_principal': pending_principal,
-            'pending_interest': pending_interest,
-            'pending_total': pending_total,
-            'verified_principal': verified_principal,
-            'verified_interest': verified_interest
-        })
-    
-    return render_template('customer/all_loans.html',
-                         loan_data=loan_data,
-                         instance_name=instance_name)
-
-# Customer Loan Detail route
-@app.route('/<instance_name>/customer/loan/<int:loan_id>')
-@login_required
-def customer_loan_detail(instance_name, loan_id):
-    """Customer loan detail page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    # Check if loan belongs to current user and is active
-    if loan.customer_id != current_user.id or not loan.is_active:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # Calculate interest information
-    daily_interest = calculate_daily_interest(loan.remaining_principal, loan.interest_rate)
-    monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
-    interest_data = calculate_accumulated_interest(loan)
-    accumulated_interest_daily = interest_data['daily']
-    accumulated_interest_monthly = interest_data['monthly']
-    
-    # Get payment history
-    payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
-    
-    # Calculate total interest paid for this loan
-    total_interest_paid = sum(payment.interest_amount for payment in payments if payment.status == 'verified')
-    
-    # Calculate verified principal paid for this loan
-    verified_principal = sum(payment.principal_amount for payment in payments if payment.status == 'verified')
-    
-    # Calculate pending amounts for this loan
-    pending_principal = sum(payment.principal_amount for payment in payments if payment.status == 'pending')
-    pending_interest = sum(payment.interest_amount for payment in payments if payment.status == 'pending')
-    pending_total = pending_principal + pending_interest
-    
-    # Calculate days active
-    days_active = (date.today() - loan.created_at.date()).days
-    
-    # Calculate previous principal and interest for each payment
-    # We need to calculate what the principal and interest were before each payment
-    payments_with_previous = []
-    current_principal = loan.principal_amount
-    current_interest_paid = 0
-    
-    # Process payments in chronological order (oldest first)
-    payments_chronological = sorted(payments, key=lambda p: p.payment_date)
-    
-    for payment in payments_chronological:
-        # Store the previous amounts before this payment
-        previous_principal = current_principal
-        previous_interest_paid = current_interest_paid
-        
-        # Update current amounts after this payment (only if verified)
-        if payment.status == 'verified':
-            current_principal -= payment.principal_amount
-            current_interest_paid += payment.interest_amount
-        
-        # Add payment with previous amounts
-        payments_with_previous.append({
-            'payment': payment,
-            'previous_principal': previous_principal,
-            'previous_interest_paid': previous_interest_paid
-        })
-    
-    # Reverse to show newest first
-    payments_with_previous.reverse()
-    
-    return render_template('customer/loan_detail.html', 
-                         loan=loan,
-                         daily_interest=daily_interest,
-                         monthly_interest=monthly_interest,
-                         accumulated_interest_daily=accumulated_interest_daily,
-                         accumulated_interest_monthly=accumulated_interest_monthly,
-                         interest_data=interest_data,
-                         total_interest_paid=total_interest_paid,
-                         verified_principal=verified_principal,
-                         pending_principal=pending_principal,
-                         pending_interest=pending_interest,
-                         pending_total=pending_total,
-                         payments=payments_with_previous,
-                         days_active=days_active,
-                         current_date=date.today(),
-                         instance_name=instance_name)
-
-# Customer Edit Notes route
-@app.route('/<instance_name>/customer/loan/<int:loan_id>/edit-notes', methods=['GET', 'POST'])
-@login_required
-def customer_edit_notes(instance_name, loan_id):
-    """Customer edit notes page for specific instance"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if current_user.is_admin:
-        return redirect(url_for('admin_dashboard', instance_name=instance_name))
-    
-    loan = get_loan_query().filter_by(id=loan_id).first() or abort(404)
-    
-    # Check if loan belongs to current user
-    if loan.customer_id != current_user.id:
-        flash('Access denied')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    if request.method == 'POST':
-        customer_notes = request.form.get('customer_notes', '')
-        loan.customer_notes = customer_notes
-        commit_current_instance()
-        
-        flash('Notes updated successfully')
-        return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
-    
-    return render_template('customer/edit_notes.html', 
-                         loan=loan,
-                         instance_name=instance_name)
+# Tracker routes moved to app_trackers.py - removing duplicates
 
 # Password Management Routes
 
@@ -3424,126 +2629,51 @@ def admin_reset_user_password(instance_name, user_id):
     return render_template('admin/reset_user_password.html', user=user, instance_name=instance_name)
 
 # ============================================================================
-# DAILY TRACKER ROUTES
+# DAILY TRACKER ROUTES - Moved to app_trackers.py
+
+# Email helper function
+def send_password_reset_email(email, token, instance_name):
+    """Send password reset email (simplified implementation)"""
+    # In production, use proper email service like SendGrid, AWS SES, etc.
+    # For now, we'll just print the reset link to console
+    reset_url = f"http://127.0.0.1:8080/{instance_name}/reset-password/{token}"
+    
+    print(f"\n=== PASSWORD RESET EMAIL ===")
+    print(f"To: {email}")
+    print(f"Subject: Password Reset Request")
+    print(f"Reset Link: {reset_url}")
+    print(f"=============================\n")
+    
+    # In production, replace this with actual email sending:
+    # msg = MIMEMultipart()
+    # msg['From'] = "noreply@lendingapp.com"
+    # msg['To'] = email
+    # msg['Subject'] = "Password Reset Request"
+    # 
+    # body = f"""
+    # You requested a password reset for your account.
+    # 
+    # Click the link below to reset your password:
+    # {reset_url}
+    # 
+    # This link will expire in 1 hour.
+    # 
+    # If you didn't request this, please ignore this email.
+    # """
+    # 
+    # msg.attach(MIMEText(body, 'plain'))
+    # 
+    # server = smtplib.SMTP('smtp.gmail.com', 587)
+    # server.starttls()
+    # server.login("your-email@gmail.com", "your-password")
+    # text = msg.as_string()
+    # server.sendmail("noreply@lendingapp.com", email, text)
+    # server.quit()
+
+
 # ============================================================================
-
-@app.route('/<instance_name>/admin/daily-trackers')
-@login_required
-def admin_daily_trackers(instance_name):
-    """Admin view all daily trackers"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # Get filter parameters
-    filter_user_id = request.args.get('user_id', type=int)
-    filter_status = request.args.get('status', '')
-    filter_tracker_name = request.args.get('tracker_name', '')
-    filter_per_day_payment = request.args.get('per_day_payment', type=float)
-    filter_pending_min = request.args.get('pending_min', type=float)
-    filter_pending_max = request.args.get('pending_max', type=float)
-    
-    # Base query
-    query = get_daily_tracker_query().filter_by(is_active=True)
-    
-    # Apply filters
-    if filter_user_id:
-        query = query.filter_by(user_id=filter_user_id)
-    
-    if filter_tracker_name:
-        query = query.filter(DailyTracker.tracker_name.ilike(f'%{filter_tracker_name}%'))
-    
-    if filter_per_day_payment:
-        query = query.filter(DailyTracker.per_day_payment == filter_per_day_payment)
-    
-    trackers = query.all()
-    
-    # Get summary data for each tracker
-    tracker_summaries = []
-    total_trackers = 0
-    total_payments_sum = 0
-    total_pending_sum = 0
-    total_cashback = Decimal('0')
-    
-    for tracker in trackers:
-        try:
-            summary = get_tracker_summary(instance_name, tracker.filename)
-            
-            # Apply status filter
-            if filter_status:
-                if filter_status == 'active' and tracker.is_closed_by_user:
-                    continue
-                elif filter_status == 'closed' and not tracker.is_closed_by_user:
-                    continue
-            
-            # Apply pending filter
-            pending = summary.get('pending', 0)
-            if filter_pending_min is not None and pending < filter_pending_min:
-                continue
-            if filter_pending_max is not None and pending > filter_pending_max:
-                continue
-            
-            # Calculate cashback total for this tracker
-            tracker_cashback = get_tracker_cashback_total(tracker.id, instance_name)
-            
-            tracker_summaries.append({
-                'tracker': tracker,
-                'summary': summary,
-                'pending': pending,
-                'total_payments': summary.get('total_payments', 0),
-                'days_with_payments': summary.get('total_days', 0),
-                'total_days_count': summary.get('total_days_count', 0),
-                'cashback_total': tracker_cashback
-            })
-            
-            total_trackers += 1
-            total_payments_sum += summary.get('total_payments', 0)
-            total_pending_sum += pending
-            total_cashback += tracker_cashback
-            
-        except Exception as e:
-            # If we can't read the tracker, still include it with error
-            tracker_cashback = get_tracker_cashback_total(tracker.id, instance_name)
-            total_cashback += tracker_cashback
-            tracker_summaries.append({
-                'tracker': tracker,
-                'summary': {},
-                'pending': 0,
-                'total_payments': 0,
-                'days_with_payments': 0,
-                'total_days_count': 0,
-                'cashback_total': tracker_cashback,
-                'error': str(e)
-            })
-    
-    # Get users for dropdown
-    users = get_user_query().filter_by(is_admin=False).all()
-    
-    return render_template('admin/daily_trackers.html', 
-                         tracker_summaries=tracker_summaries,
-                         total_trackers=total_trackers,
-                         total_payments_sum=total_payments_sum,
-                         total_pending_sum=total_pending_sum,
-                         total_cashback=total_cashback,
-                         users=users,
-                         instance_name=instance_name,
-                         tracker_types=TRACKER_TYPES,
-                         filters={
-                             'user_id': filter_user_id,
-                             'status': filter_status,
-                             'tracker_name': filter_tracker_name,
-                             'per_day_payment': filter_per_day_payment,
-                             'pending_min': filter_pending_min,
-                             'pending_max': filter_pending_max
-                         })
-
-
-@app.route('/<instance_name>/admin/daily-trackers/create', methods=['GET', 'POST'])
-@login_required
-def admin_create_daily_tracker(instance_name):
+# MODERATOR ROUTES - Moved to app_moderator.py
+# ============================================================================
     """Admin create new daily tracker"""
     if instance_name not in VALID_INSTANCES:
         return redirect('/')
@@ -3624,1226 +2754,9 @@ def admin_create_daily_tracker(instance_name):
                          tracker_types=TRACKER_TYPES)
 
 
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>')
-@login_required
-def admin_view_daily_tracker(instance_name, tracker_id):
-    """Admin view a specific daily tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    try:
-        # Get tracker data from Excel
-        tracker_data = get_tracker_data(instance_name, tracker.filename)
-        summary = get_tracker_summary(instance_name, tracker.filename)
-        
-        # Get pending entries for this tracker
-        pending_entries = get_tracker_entry_query().filter_by(
-            tracker_id=tracker_id,
-            status='pending'
-        ).order_by(TrackerEntry.day).all()
-        
-        # Calculate total cashback given for this tracker
-        tracker_cashback_total = get_tracker_cashback_total(tracker_id, instance_name)
-        
-        # Calculate cashback for each day/row
-        day_cashback_map = {}
-        for row in tracker_data['data']:
-            day = row.get('day')
-            if day is not None:
-                # Convert day to int if it's a string
-                if isinstance(day, str):
-                    try:
-                        day = int(float(day.replace(',', '').strip()))
-                    except (ValueError, AttributeError):
-                        continue
-                elif isinstance(day, float):
-                    day = int(day)
-                
-                day_cashback = get_tracker_day_cashback(tracker_id, day, instance_name)
-                day_cashback_map[day] = day_cashback
-        
-        # Get all users for assignment - any user (customer or admin) can be assigned as moderator
-        # Exclude the current admin user to avoid self-assignment
-        all_moderators = get_user_query().filter(User.id != current_user.id).order_by(User.username).all()
-        
-        return render_template('admin/view_daily_tracker.html',
-                             tracker=tracker,
-                             tracker_data=tracker_data,
-                             summary=summary,
-                             pending_entries=pending_entries,
-                             tracker_cashback_total=tracker_cashback_total,
-                             day_cashback_map=day_cashback_map,
-                             all_moderators=all_moderators,
-                             instance_name=instance_name)
-    except Exception as e:
-        flash(f'Error reading tracker data: {str(e)}', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/add-entry', methods=['GET', 'POST'])
-@login_required
-def admin_add_tracker_entry(instance_name, tracker_id):
-    """Admin add entry to daily tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    if request.method == 'POST':
-        try:
-            day = int(request.form['day'])
-            entry_data = {}
-            
-            # Collect all form fields dynamically
-            for key, value in request.form.items():
-                if key != 'day' and value.strip():
-                    # Convert numeric fields
-                    if key in ['daily_payments', 'cumulative', 'balance', 
-                              'reinvest', 'pocket_money', 'total_invested']:
-                        try:
-                            entry_data[key] = Decimal(value)
-                        except:
-                            entry_data[key] = value
-                    else:
-                        entry_data[key] = value
-            
-            # Update the tracker
-            update_tracker_entry(instance_name, tracker.filename, day, entry_data)
-            
-            # Update the tracker's updated_at timestamp
-            tracker.updated_at = datetime.utcnow()
-            commit_current_instance()
-            
-            # Process cashback if provided
-            session = db_manager.get_session_for_instance(instance_name)
-            usernames = request.form.getlist('cashback_username[]')
-            points_list = request.form.getlist('cashback_points[]')
-            
-            for username, points_str in zip(usernames, points_list):
-                username = username.strip()
-                if not username:
-                    continue
-                
-                try:
-                    points = Decimal(str(points_str))
-                    if points <= 0:
-                        continue
-                except (ValueError, InvalidOperation):
-                    continue
-                
-                # Validate username
-                recipient = validate_username_exists(username, instance_name)
-                if recipient:
-                    transaction = CashbackTransaction(
-                        from_user_id=None,  # System/admin grant
-                        to_user_id=recipient.id,
-                        points=points,
-                        transaction_type='tracker_entry',
-                        related_tracker_id=tracker.id,
-                        related_tracker_entry_day=day,
-                        notes=f"Cashback from tracker '{tracker.tracker_name}' entry (Day {day})",
-                        created_by_user_id=current_user.id
-                    )
-                    session.add(transaction)
-            
-            session.commit()
-            
-            # Log tracker entry update
-            from lms_logging import get_logging_manager
-            from lms_metrics import get_metrics_manager
-            logging_mgr = get_logging_manager(instance_name)
-            metrics_mgr = get_metrics_manager(instance_name)
-            
-            daily_payment = entry_data.get('daily_payments', 0)
-            
-            # Get cashback info for this entry
-            cashback_info = None
-            try:
-                day_cashback = get_tracker_day_cashback(tracker_id, day, instance_name)
-                if day_cashback > 0:
-                    # Get cashback transactions for this day
-                    session = db_manager.get_session_for_instance(instance_name)
-                    cashback_txns = session.query(CashbackTransaction).filter_by(
-                        related_tracker_id=tracker_id,
-                        related_tracker_entry_day=day,
-                        transaction_type='tracker_entry'
-                    ).all()
-                    cashback_info = {
-                        'total': float(day_cashback),
-                        'transactions': [
-                            {
-                                'user': txn.to_user.username if txn.to_user else 'unknown',
-                                'points': float(txn.points)
-                            }
-                            for txn in cashback_txns
-                        ]
-                    }
-            except Exception as e:
-                print(f"[ERROR] Failed to get cashback info for logging: {e}")
-            
-            log_details = {
-                'tracker_name': tracker.tracker_name,
-                'day': day,
-                'daily_payment': str(daily_payment),
-                'customer': tracker.user.username if tracker.user else None,
-                'row_index': row_index
-            }
-            if cashback_info:
-                log_details['cashback'] = cashback_info
-            
-            logging_mgr.log_admin_action(
-                action='admin_tracker_entry_update',
-                resource_type='tracker',
-                resource_id=tracker_id,
-                username=current_user.username,
-                details=log_details
-            )
-            metrics_mgr.record_tracker_entry(
-                tracker_id=tracker_id,
-                username=current_user.username,
-                amount=float(daily_payment) if daily_payment else 0
-            )
-            
-            flash(f'Entry for Day {day} updated successfully', 'success')
-            return redirect(url_for('admin_view_daily_tracker', 
-                                  instance_name=instance_name, 
-                                  tracker_id=tracker_id))
-            
-        except Exception as e:
-            flash(f'Error updating entry: {str(e)}', 'error')
-            print(f"Error updating entry: {e}")
-    
-    # GET request - show form
-    try:
-        tracker_data = get_tracker_data(instance_name, tracker.filename)
-        return render_template('admin/add_tracker_entry.html',
-                             tracker=tracker,
-                             tracker_data=tracker_data,
-                             instance_name=instance_name)
-    except Exception as e:
-        flash(f'Error reading tracker data: {str(e)}', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/edit-entry/<int:row_index>', methods=['GET', 'POST'])
-@login_required
-def admin_edit_tracker_entry(instance_name, tracker_id, row_index):
-    """Admin edit a specific entry by row index"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    # Get tracker data
-    try:
-        tracker_data = get_tracker_data(instance_name, tracker.filename)
-    except Exception as e:
-        flash(f'Error reading tracker data: {str(e)}', 'error')
-        return redirect(url_for('admin_view_daily_tracker', 
-                              instance_name=instance_name, 
-                              tracker_id=tracker_id))
-    
-    # Validate row_index
-    if row_index < 0 or row_index >= len(tracker_data['data']):
-        flash('Invalid row index', 'error')
-        return redirect(url_for('admin_view_daily_tracker', 
-                              instance_name=instance_name, 
-                              tracker_id=tracker_id))
-    
-    row_data = tracker_data['data'][row_index]
-    
-    if request.method == 'POST':
-        try:
-            entry_data = {}
-            
-            # Collect all form fields dynamically
-            for key, value in request.form.items():
-                if value.strip():
-                    # Convert numeric fields
-                    if key in ['day', 'daily_payments', 'cumulative', 'balance', 
-                              'reinvest', 'pocket_money', 'total_invested']:
-                        try:
-                            entry_data[key] = Decimal(value) if key != 'day' else int(value)
-                        except:
-                            entry_data[key] = value
-                    else:
-                        entry_data[key] = value
-            
-            # Update the tracker by row index
-            sys.path.insert(0, str(Path(__file__).parent / 'daily-trackers'))
-            from tracker_manager import update_tracker_entry_by_index
-            update_tracker_entry_by_index(instance_name, tracker.filename, row_index, entry_data)
-            
-            # Update the tracker's updated_at timestamp
-            tracker.updated_at = datetime.utcnow()
-            commit_current_instance()
-            
-            # Process cashback if provided
-            session = db_manager.get_session_for_instance(instance_name)
-            day = entry_data.get('day', row_index + 1)
-            
-            # Delete existing cashback transactions for this entry (to handle edits/deletions)
-            existing_transactions = session.query(CashbackTransaction).filter_by(
-                related_tracker_id=tracker.id,
-                related_tracker_entry_day=day,
-                transaction_type='tracker_entry'
-            ).all()
-            for txn in existing_transactions:
-                session.delete(txn)
-            
-            # Add new cashback transactions from form
-            usernames = request.form.getlist('cashback_username[]')
-            points_list = request.form.getlist('cashback_points[]')
-            
-            for username, points_str in zip(usernames, points_list):
-                username = username.strip()
-                if not username:
-                    continue
-                
-                try:
-                    points = Decimal(str(points_str))
-                    if points <= 0:
-                        continue
-                except (ValueError, InvalidOperation):
-                    continue
-                
-                # Validate username
-                recipient = validate_username_exists(username, instance_name)
-                if recipient:
-                    transaction = CashbackTransaction(
-                        from_user_id=None,  # System/admin grant
-                        to_user_id=recipient.id,
-                        points=points,
-                        transaction_type='tracker_entry',
-                        related_tracker_id=tracker.id,
-                        related_tracker_entry_day=day,
-                        notes=f"Cashback from tracker '{tracker.tracker_name}' entry (Day {day})",
-                        created_by_user_id=current_user.id
-                    )
-                    session.add(transaction)
-            
-            session.commit()
-            
-            # Log tracker entry update
-            from lms_logging import get_logging_manager
-            from lms_metrics import get_metrics_manager
-            logging_mgr = get_logging_manager(instance_name)
-            metrics_mgr = get_metrics_manager(instance_name)
-            
-            daily_payment = entry_data.get('daily_payments', 0)
-            day = row_data.get('day', row_index)
-            
-            # Get cashback info for this entry
-            cashback_info = None
-            try:
-                day_cashback = get_tracker_day_cashback(tracker_id, day, instance_name)
-                if day_cashback > 0:
-                    # Get cashback transactions for this day
-                    cashback_txns = session.query(CashbackTransaction).filter_by(
-                        related_tracker_id=tracker_id,
-                        related_tracker_entry_day=day,
-                        transaction_type='tracker_entry'
-                    ).all()
-                    cashback_info = {
-                        'total': float(day_cashback),
-                        'transactions': [
-                            {
-                                'user': txn.to_user.username if txn.to_user else 'unknown',
-                                'points': float(txn.points)
-                            }
-                            for txn in cashback_txns
-                        ]
-                    }
-            except Exception as e:
-                print(f"[ERROR] Failed to get cashback info for logging: {e}")
-            
-            log_details = {
-                'tracker_name': tracker.tracker_name,
-                'day': day,
-                'daily_payment': str(daily_payment),
-                'customer': tracker.user.username if tracker.user else None,
-                'row_index': row_index
-            }
-            if cashback_info:
-                log_details['cashback'] = cashback_info
-            
-            logging_mgr.log_admin_action(
-                action='admin_tracker_entry_update',
-                resource_type='tracker',
-                resource_id=tracker_id,
-                username=current_user.username,
-                details=log_details
-            )
-            metrics_mgr.record_tracker_entry(
-                tracker_id=tracker_id,
-                username=current_user.username,
-                amount=float(daily_payment) if daily_payment else 0
-            )
-            
-            flash(f'Entry for Day {row_data.get("day", row_index)} updated successfully', 'success')
-            return redirect(url_for('admin_view_daily_tracker', 
-                                  instance_name=instance_name, 
-                                  tracker_id=tracker_id))
-            
-        except Exception as e:
-            flash(f'Error updating entry: {str(e)}', 'error')
-            print(f"Error updating entry: {e}")
-    
-    # Get existing cashback transactions for this tracker entry
-    existing_cashback = []
-    day = row_data.get('day', row_index + 1)
-    # Convert day to int if it's a string
-    if isinstance(day, str):
-        try:
-            day = int(float(day.replace(',', '').strip()))
-        except (ValueError, AttributeError):
-            day = row_index + 1
-    elif isinstance(day, float):
-        day = int(day)
-    
-    try:
-        session = db_manager.get_session_for_instance(instance_name)
-        existing_transactions = session.query(CashbackTransaction).filter_by(
-            related_tracker_id=tracker.id,
-            related_tracker_entry_day=day,
-            transaction_type='tracker_entry'
-        ).all()
-        
-        for txn in existing_transactions:
-            existing_cashback.append({
-                'user': txn.to_user,
-                'points': txn.points,
-                'transaction_id': txn.id
-            })
-    except Exception as e:
-        print(f"Error fetching existing cashback: {e}")
-    
-    # Get tracker cashback configs and calculate configured cashback
-    configured_cashback = []
-    try:
-        cashback_configs = get_tracker_cashback_config_query().filter_by(
-            tracker_id=tracker.id,
-            is_active=True
-        ).all()
-        
-        # Get daily_payments from row_data - handle various formats
-        daily_payment = row_data.get('daily_payments', 0)
-        
-        # Convert to Decimal, handling strings, None, and numeric types
-        if daily_payment is None:
-            daily_payment = Decimal('0')
-        elif isinstance(daily_payment, str):
-            try:
-                # Remove any currency symbols, commas, and whitespace
-                cleaned = daily_payment.replace('₹', '').replace(',', '').replace(' ', '').strip()
-                daily_payment = Decimal(cleaned) if cleaned else Decimal('0')
-            except (ValueError, InvalidOperation):
-                daily_payment = Decimal('0')
-        elif isinstance(daily_payment, (int, float)):
-            daily_payment = Decimal(str(daily_payment))
-        else:
-            try:
-                daily_payment = Decimal(str(daily_payment))
-            except (ValueError, InvalidOperation):
-                daily_payment = Decimal('0')
-        
-        # Calculate cashback for each config
-        for config in cashback_configs:
-            if config.cashback_type == 'percentage':
-                # config.cashback_value is already a Decimal (0.01 = 1%)
-                points = daily_payment * config.cashback_value
-            else:  # fixed
-                points = config.cashback_value
-            
-            # Round to 2 decimal places
-            points = points.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-            
-            configured_cashback.append({
-                'username': config.user.username,
-                'points': points,
-                'config_type': config.cashback_type,
-                'config_value': config.cashback_value,
-                'daily_payment_used': daily_payment  # For debugging
-            })
-    except Exception as e:
-        print(f"Error fetching configured cashback: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    # GET request - show form with current values
-    return render_template('admin/edit_tracker_entry.html',
-                         tracker=tracker,
-                         tracker_data=tracker_data,
-                         row_data=row_data,
-                         row_index=row_index,
-                         existing_cashback=existing_cashback,
-                         configured_cashback=configured_cashback,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/admin/daily-trackers/pending-entries')
-@login_required
-def admin_pending_tracker_entries(instance_name):
-    """Admin view all pending tracker entries"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # Get all pending tracker entries
-    pending_entries = get_tracker_entry_query().filter_by(status='pending').order_by(
-        TrackerEntry.submitted_at.desc()
-    ).all()
-    
-    # Group by tracker for better organization
-    entries_by_tracker = {}
-    for entry in pending_entries:
-        if entry.tracker_id not in entries_by_tracker:
-            entries_by_tracker[entry.tracker_id] = []
-        entries_by_tracker[entry.tracker_id].append(entry)
-    
-    return render_template('admin/pending_tracker_entries.html',
-                         pending_entries=pending_entries,
-                         entries_by_tracker=entries_by_tracker,
-                         instance_name=instance_name)
-
-@app.route('/<instance_name>/admin/daily-trackers/approve-entry/<int:entry_id>', methods=['GET', 'POST'])
-@login_required
-def admin_approve_tracker_entry(instance_name, entry_id):
-    """Admin approve/reject tracker entry"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    entry = get_tracker_entry_query().filter_by(id=entry_id).first()
-    if not entry:
-        flash('Entry not found', 'error')
-        return redirect(url_for('admin_pending_tracker_entries', instance_name=instance_name))
-    
-    tracker = entry.tracker
-    entry_data = json.loads(entry.entry_data)
-    
-    if request.method == 'POST':
-        action = request.form.get('action')  # 'approve' or 'reject'
-        
-        if action == 'approve':
-            try:
-                # Update Excel file with the entry data
-                update_tracker_entry(instance_name, tracker.filename, entry.day, entry_data)
-                
-                # Update tracker timestamp
-                tracker.updated_at = datetime.utcnow()
-                
-                # Mark entry as verified
-                entry.status = 'verified'
-                entry.verified_by_user_id = current_user.id
-                entry.verified_at = datetime.utcnow()
-                
-                commit_current_instance()
-                
-                # Check if cashback is enabled
-                enable_cashback = request.form.get('enable_cashback') == 'on'
-                
-                # Process cashback only if enabled
-                if enable_cashback:
-                    session = db_manager.get_session_for_instance(instance_name)
-                    
-                    # Get tracker cashback configs
-                    cashback_configs = get_tracker_cashback_config_query().filter_by(
-                        tracker_id=tracker.id,
-                        is_active=True
-                    ).all()
-                    
-                    daily_payment = entry_data.get('daily_payments', Decimal('0'))
-                    # Convert string to Decimal, handling various formats
-                    if isinstance(daily_payment, str):
-                        try:
-                            cleaned = daily_payment.replace('₹', '').replace(',', '').replace(' ', '').strip()
-                            daily_payment = Decimal(cleaned) if cleaned else Decimal('0')
-                        except (ValueError, InvalidOperation):
-                            daily_payment = Decimal('0')
-                    elif daily_payment is None:
-                        daily_payment = Decimal('0')
-                    elif isinstance(daily_payment, (int, float)):
-                        daily_payment = Decimal(str(daily_payment))
-                    else:
-                        try:
-                            daily_payment = Decimal(str(daily_payment))
-                        except (ValueError, InvalidOperation):
-                            daily_payment = Decimal('0')
-                    
-                    # Process manual cashback from form
-                    usernames = request.form.getlist('cashback_username[]')
-                    points_list = request.form.getlist('cashback_points[]')
-                    
-                    # Check if manual cashback is provided
-                    has_manual_cashback = False
-                    manual_cashback_users = set()
-                    for username, points_str in zip(usernames, points_list):
-                        username = username.strip()
-                        if username and points_str:
-                            try:
-                                points = Decimal(str(points_str))
-                                if points > 0:
-                                    has_manual_cashback = True
-                                    manual_cashback_users.add(username.lower())
-                            except (ValueError, InvalidOperation):
-                                pass
-                    
-                    cashback_details = []
-                    total_cashback = Decimal('0')
-                    
-                    # Only process automatic cashback if no manual cashback is provided
-                    # This prevents double-adding when admin uses pre-filled values
-                    if not has_manual_cashback:
-                        # Process automatic cashback from configs
-                        for config in cashback_configs:
-                            if config.cashback_type == 'percentage':
-                                points = daily_payment * config.cashback_value
-                            else:  # fixed
-                                points = config.cashback_value
-                            
-                            if points > 0:
-                                transaction = CashbackTransaction(
-                                    from_user_id=None,
-                                    to_user_id=config.user_id,
-                                    points=points,
-                                    transaction_type='tracker_entry',
-                                    related_tracker_id=tracker.id,
-                                    related_tracker_entry_day=entry.day,
-                                    notes=f"Auto cashback from tracker '{tracker.tracker_name}' entry (Day {entry.day})",
-                                    created_by_user_id=current_user.id
-                                )
-                                session.add(transaction)
-                                total_cashback += points
-                                cashback_details.append({
-                                    'user': config.user.username,
-                                    'points': float(points),
-                                    'type': 'auto'
-                                })
-                    # Process manual cashback from form (if provided, this overrides automatic)
-                    if has_manual_cashback:
-                        for username, points_str in zip(usernames, points_list):
-                            username = username.strip()
-                            if not username:
-                                continue
-                            
-                            try:
-                                points = Decimal(str(points_str))
-                                if points <= 0:
-                                    continue
-                            except (ValueError, InvalidOperation):
-                                continue
-                            
-                            recipient = validate_username_exists(username, instance_name)
-                            if recipient:
-                                transaction = CashbackTransaction(
-                                    from_user_id=None,
-                                    to_user_id=recipient.id,
-                                    points=points,
-                                    transaction_type='tracker_entry',
-                                    related_tracker_id=tracker.id,
-                                    related_tracker_entry_day=entry.day,
-                                    notes=f"Cashback from tracker '{tracker.tracker_name}' entry (Day {entry.day})",
-                                    created_by_user_id=current_user.id
-                                )
-                                session.add(transaction)
-                                total_cashback += points
-                                cashback_details.append({
-                                    'user': username,
-                                    'points': float(points),
-                                    'type': 'manual'
-                                })
-                    
-                    session.commit()
-                    
-                    # Log cashback activity if any cashback was given
-                    if total_cashback > 0:
-                        try:
-                            from lms_logging import get_logging_manager
-                            logging_mgr = get_logging_manager(instance_name)
-                            logging_mgr.log_activity(
-                                action='cashback_tracker_entry',
-                                username=current_user.username,
-                                user_id=current_user.id,
-                                resource_type='tracker',
-                                resource_id=tracker.id,
-                                details={
-                                    'tracker_name': tracker.tracker_name,
-                                    'day': entry.day,
-                                    'daily_payment': float(daily_payment),
-                                    'total_cashback': float(total_cashback),
-                                    'cashback_details': cashback_details
-                                }
-                            )
-                        except Exception as log_error:
-                            print(f"[ERROR] Failed to log tracker cashback: {log_error}")
-                
-                flash(f'Entry for Day {entry.day} approved successfully', 'success')
-                return redirect(url_for('admin_pending_tracker_entries', instance_name=instance_name))
-                
-            except Exception as e:
-                flash(f'Error approving entry: {str(e)}', 'error')
-                print(f"Error approving entry: {e}")
-        
-        elif action == 'reject':
-            rejection_reason = request.form.get('rejection_reason', '')
-            
-            # Get original daily_payments value for the note
-            original_daily_payment = entry_data.get('daily_payments', Decimal('0'))
-            # Convert to Decimal, handling various formats
-            if isinstance(original_daily_payment, str):
-                try:
-                    cleaned = original_daily_payment.replace('₹', '').replace(',', '').replace(' ', '').strip()
-                    original_daily_payment = Decimal(cleaned) if cleaned else Decimal('0')
-                except (ValueError, InvalidOperation):
-                    original_daily_payment = Decimal('0')
-            elif original_daily_payment is None:
-                original_daily_payment = Decimal('0')
-            elif isinstance(original_daily_payment, (int, float)):
-                original_daily_payment = Decimal(str(original_daily_payment))
-            else:
-                try:
-                    original_daily_payment = Decimal(str(original_daily_payment))
-                except (ValueError, InvalidOperation):
-                    original_daily_payment = Decimal('0')
-            
-            # Create entry data with 0 values (as if they filled 0)
-            rejected_entry_data = entry_data.copy()
-            rejected_entry_data['daily_payments'] = Decimal('0')
-            # Don't set cumulative - let it be recalculated automatically by update_tracker_entry
-            
-            # Build notes: combine rejection reason with original value info
-            notes_parts = []
-            if original_daily_payment > 0:
-                notes_parts.append(f"Rejected by admin for value: ₹{original_daily_payment:.2f}")
-            else:
-                notes_parts.append("Rejected by admin")
-            
-            if rejection_reason:
-                notes_parts.append(f"Reason: {rejection_reason}")
-            
-            # Update notes field (append to existing notes if any)
-            existing_notes = rejected_entry_data.get('notes', '')
-            if existing_notes:
-                rejected_entry_data['notes'] = f"{existing_notes}. {'. '.join(notes_parts)}"
-            else:
-                rejected_entry_data['notes'] = '. '.join(notes_parts)
-            
-            # Remove cumulative from entry_data so it gets recalculated
-            if 'cumulative' in rejected_entry_data:
-                del rejected_entry_data['cumulative']
-            
-            # Update Excel file with 0 values and rejection note
-            try:
-                update_tracker_entry(instance_name, tracker.filename, entry.day, rejected_entry_data)
-                
-                # Update tracker timestamp
-                tracker.updated_at = datetime.utcnow()
-            except Exception as e:
-                print(f"Error updating Excel file on rejection: {e}")
-                flash(f'Entry rejected but error updating Excel file: {str(e)}', 'warning')
-            
-            # Mark entry as rejected in database
-            entry.status = 'rejected'
-            entry.verified_by_user_id = current_user.id
-            entry.verified_at = datetime.utcnow()
-            entry.rejection_reason = rejection_reason
-            commit_current_instance()
-            
-            flash(f'Entry for Day {entry.day} rejected and set to 0', 'success')
-            return redirect(url_for('admin_pending_tracker_entries', instance_name=instance_name))
-    
-    # GET request - show approval form
-    # Get existing cashback configs for this tracker
-    cashback_configs = get_tracker_cashback_config_query().filter_by(
-        tracker_id=tracker.id,
-        is_active=True
-    ).all()
-    
-    # Calculate configured cashback
-    configured_cashback = []
-    daily_payment = entry_data.get('daily_payments', Decimal('0'))
-    
-    # Convert to Decimal, handling strings, None, and numeric types
-    if daily_payment is None:
-        daily_payment = Decimal('0')
-    elif isinstance(daily_payment, str):
-        try:
-            # Remove any currency symbols, commas, and whitespace
-            cleaned = daily_payment.replace('₹', '').replace(',', '').replace(' ', '').strip()
-            daily_payment = Decimal(cleaned) if cleaned else Decimal('0')
-        except (ValueError, InvalidOperation):
-            daily_payment = Decimal('0')
-    elif isinstance(daily_payment, (int, float)):
-        daily_payment = Decimal(str(daily_payment))
-    else:
-        try:
-            daily_payment = Decimal(str(daily_payment))
-        except (ValueError, InvalidOperation):
-            daily_payment = Decimal('0')
-    
-    for config in cashback_configs:
-        if config.cashback_type == 'percentage':
-            points = daily_payment * config.cashback_value
-        else:  # fixed
-            points = config.cashback_value
-        
-        # Round to 2 decimal places
-        points = points.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        
-        configured_cashback.append({
-            'username': config.user.username,
-            'points': points
-        })
-    
-    # Only show user list to admins, not moderators
-    all_users = None
-    if current_user.is_admin:
-        all_users = get_user_query().order_by(User.username).all()
-    
-    return render_template('admin/approve_tracker_entry.html',
-                         entry=entry,
-                         tracker=tracker,
-                         entry_data=entry_data,
-                         configured_cashback=configured_cashback,
-                         all_users=all_users,
-                         is_admin=current_user.is_admin,
-                         instance_name=instance_name)
-
 # ============================================================================
-# CUSTOMER DAILY TRACKER ROUTES
+# MODERATOR ROUTES - Moved to app_moderator.py
 # ============================================================================
-
-@app.route('/<instance_name>/customer/trackers-dashboard')
-@login_required
-def customer_trackers_dashboard(instance_name):
-    """Customer trackers dashboard - list all trackers with summary"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    # Get all user's trackers (active and not closed)
-    trackers = get_daily_tracker_query().filter_by(
-        user_id=current_user.id, 
-        is_active=True,
-        is_closed_by_user=False
-    ).all()
-    
-    if not trackers:
-        flash('No daily trackers found for your account', 'info')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # Build tracker summary data
-    tracker_summaries = []
-    total_pending = 0.0  # Use float instead of Decimal
-    
-    for tracker in trackers:
-        try:
-            # Get tracker data and summary
-            tracker_data = get_tracker_data(instance_name, tracker.filename)
-            summary = get_tracker_summary(instance_name, tracker.filename)
-            
-            # Find last paid date from data rows with date
-            last_paid_date = None
-            for row in reversed(tracker_data['data']):
-                if row.get('daily_payments') and row.get('date'):
-                    last_paid_date = row.get('date')
-                    break
-            
-            # Use pending from summary (already calculated correctly)
-            pending = float(summary['pending'])  # Ensure it's float
-            total_pending += pending
-            
-            tracker_summaries.append({
-                'tracker': tracker,
-                'last_paid_date': last_paid_date if last_paid_date else "No payments yet",
-                'total_payments': summary['total_payments'],
-                'pending': pending,
-                'balance': summary.get('balance', 0),
-                'cumulative': summary.get('cumulative', 0),
-                'days_with_payments': summary['total_days'],
-                'total_days_count': summary['total_days_count']
-            })
-        except Exception as e:
-            print(f"Error processing tracker {tracker.id}: {e}")
-            # Add tracker with error indication
-            tracker_summaries.append({
-                'tracker': tracker,
-                'last_paid_date': None,
-                'total_payments': 0,
-                'pending': 0,
-                'balance': 0,
-                'cumulative': 0,
-                'days_with_payments': 0,
-                'total_days_count': 0,
-                'error': str(e)
-            })
-    
-    return render_template('customer/trackers_dashboard.html',
-                         tracker_summaries=tracker_summaries,
-                         total_pending=total_pending,
-                         instance_name=instance_name)
-
-
-@app.route('/<instance_name>/customer/daily-tracker')
-@app.route('/<instance_name>/customer/daily-tracker/<int:tracker_id>')
-@login_required
-def customer_daily_tracker(instance_name, tracker_id=None):
-    """Customer view their daily tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    # Get user's tracker (active and not closed)
-    if tracker_id:
-        # Specific tracker requested - verify it belongs to user
-        tracker = get_daily_tracker_query().filter_by(
-            id=tracker_id,
-            user_id=current_user.id, 
-            is_active=True,
-            is_closed_by_user=False
-        ).first()
-    else:
-        # No specific tracker - get first one
-        tracker = get_daily_tracker_query().filter_by(
-            user_id=current_user.id, 
-            is_active=True,
-            is_closed_by_user=False
-        ).first()
-    
-    if not tracker:
-        flash('No daily tracker found for your account', 'info')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    try:
-        # Get tracker data from Excel
-        tracker_data = get_tracker_data(instance_name, tracker.filename)
-        summary = get_tracker_summary(instance_name, tracker.filename)
-        
-        # Get pending entries for this tracker
-        pending_entries = get_tracker_entry_query().filter_by(
-            tracker_id=tracker.id,
-            status='pending'
-        ).order_by(TrackerEntry.day).all()
-        
-        # Merge pending entries with tracker data
-        # Create a map of day -> pending entry data
-        pending_entries_map = {}
-        for entry in pending_entries:
-            entry_data = json.loads(entry.entry_data)
-            day = entry.day
-            pending_entries_map[day] = {
-                'entry': entry,
-                'data': entry_data,
-                'is_pending': True
-            }
-        
-        # Update tracker_data to include pending entries
-        # For each row, if there's a pending entry for that day, use pending data
-        merged_data = []
-        seen_days = set()  # Track days to prevent duplicates
-        
-        # Helper function to convert numeric values
-        def convert_numeric_value(value, field_name=''):
-            """Convert value to float, handling strings with currency symbols"""
-            if value is None:
-                return None
-            if isinstance(value, (int, float, Decimal)):
-                return float(value)
-            if isinstance(value, str):
-                try:
-                    # Remove currency symbols, commas, and whitespace
-                    cleaned = value.replace('₹', '').replace('$', '').replace(',', '').strip()
-                    if not cleaned:
-                        return None
-                    return float(cleaned)
-                except (ValueError, AttributeError, TypeError):
-                    return None
-            # Try to convert unknown types
-            try:
-                return float(value)
-            except (ValueError, TypeError, AttributeError):
-                return None
-        
-        for row in tracker_data['data']:
-            day = row.get('day')
-            # Convert day to int if needed
-            if isinstance(day, str):
-                try:
-                    day = int(float(day.replace(',', '').strip()))
-                except (ValueError, AttributeError):
-                    day = None
-            elif isinstance(day, float):
-                day = int(day)
-            
-            # Skip if day is None or duplicate
-            if day is None:
-                continue
-            
-            # Handle duplicate days - prefer pending entry, skip duplicate Excel rows
-            if day in seen_days:
-                if day in pending_entries_map:
-                    # Already added as pending entry, skip this Excel row
-                    continue
-                else:
-                    # Duplicate Excel row, skip it
-                    continue
-            
-            seen_days.add(day)
-            
-            if day is not None and day in pending_entries_map:
-                # Use pending entry data, but keep some fields from Excel (like cumulative formulas)
-                pending_data = pending_entries_map[day]['data'].copy()
-                # Merge with Excel row, pending data takes precedence
-                merged_row = row.copy()
-                merged_row.update(pending_data)
-                merged_row['is_pending'] = True
-                merged_row['pending_entry_id'] = pending_entries_map[day]['entry'].id
-                
-                # Convert all numeric fields to float
-                for numeric_field in ['daily_payments', 'cumulative', 'balance', 
-                                     'reinvest', 'pocket_money', 'total_invested']:
-                    if numeric_field in merged_row:
-                        merged_row[numeric_field] = convert_numeric_value(
-                            merged_row[numeric_field], 
-                            field_name=numeric_field
-                        )
-                
-                merged_data.append(merged_row)
-            else:
-                # Use Excel data
-                merged_row = row.copy()
-                merged_row['is_pending'] = False
-                
-                # Convert all numeric fields to float
-                for numeric_field in ['daily_payments', 'cumulative', 'balance', 
-                                     'reinvest', 'pocket_money', 'total_invested']:
-                    if numeric_field in merged_row:
-                        merged_row[numeric_field] = convert_numeric_value(
-                            merged_row[numeric_field], 
-                            field_name=numeric_field
-                        )
-                
-                merged_data.append(merged_row)
-        
-        # Recalculate summary including pending entries
-        # Calculate totals as if pending entries are approved
-        total_payments_from_excel = summary.get('total_payments', 0)
-        pending_payments_sum = Decimal('0')
-        for entry in pending_entries:
-            entry_data = json.loads(entry.entry_data)
-            daily_payment = entry_data.get('daily_payments', 0)
-            if isinstance(daily_payment, str):
-                try:
-                    daily_payment = Decimal(str(daily_payment).replace(',', '').strip())
-                except (ValueError, InvalidOperation):
-                    daily_payment = Decimal('0')
-            elif daily_payment is None:
-                daily_payment = Decimal('0')
-            else:
-                daily_payment = Decimal(str(daily_payment))
-            pending_payments_sum += daily_payment
-        
-        # Calculate total cashback for tracker
-        tracker_cashback_total = get_tracker_cashback_total(tracker.id, instance_name)
-        
-        # Updated summary with pending included
-        updated_summary = summary.copy()
-        updated_summary['total_payments'] = float(total_payments_from_excel) + float(pending_payments_sum)
-        updated_summary['pending_entries_count'] = len(pending_entries)
-        updated_summary['pending_payments_sum'] = float(pending_payments_sum)
-        updated_summary['cashback_total'] = float(tracker_cashback_total)
-        
-        # Calculate cashback for each day
-        day_cashback_map = {}
-        for row in merged_data:
-            day = row.get('day')
-            if day is not None:
-                if isinstance(day, str):
-                    try:
-                        day = int(float(day.replace(',', '').strip()))
-                    except (ValueError, AttributeError):
-                        continue
-                elif isinstance(day, float):
-                    day = int(day)
-                
-                day_cashback = get_tracker_day_cashback(tracker.id, day, instance_name)
-                day_cashback_map[day] = day_cashback
-        
-        return render_template('customer/daily_tracker.html',
-                             tracker=tracker,
-                             tracker_data={'data': merged_data, 'parameters': tracker_data['parameters'], 'tracker_type': tracker_data['tracker_type']},
-                             summary=updated_summary,
-                             pending_entries=pending_entries,
-                             day_cashback_map=day_cashback_map,
-                             instance_name=instance_name)
-    except Exception as e:
-        flash(f'Error reading tracker data: {str(e)}', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/customer/daily-tracker/close', methods=['POST'])
-@login_required
-def customer_close_tracker(instance_name):
-    """Customer closes/hides their daily tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    # Get user's tracker
-    tracker = get_daily_tracker_query().filter_by(
-        user_id=current_user.id, 
-        is_active=True,
-        is_closed_by_user=False
-    ).first()
-    
-    if not tracker:
-        flash('No active tracker found', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    # Close the tracker (user won't see it anymore, but admin can still access)
-    tracker.is_closed_by_user = True
-    tracker.updated_at = datetime.utcnow()
-    commit_current_instance()
-    
-    flash('Tracker closed successfully. Contact admin if you need to reopen it.', 'success')
-    return redirect(url_for('customer_dashboard', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/delete', methods=['POST'])
-@login_required
-def admin_delete_tracker(instance_name, tracker_id):
-    """Admin deletes a tracker permanently"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    # Mark as deleted (soft delete)
-    tracker.is_active = False
-    tracker.updated_at = datetime.utcnow()
-    commit_current_instance()
-    
-    flash(f'Tracker "{tracker.tracker_name}" deleted successfully', 'success')
-    return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/reopen', methods=['POST'])
-@login_required
-def admin_reopen_tracker(instance_name, tracker_id):
-    """Admin reopens a tracker closed by user"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    # Reopen the tracker for user
-    tracker.is_closed_by_user = False
-    tracker.updated_at = datetime.utcnow()
-    commit_current_instance()
-    
-    flash(f'Tracker "{tracker.tracker_name}" reopened successfully', 'success')
-    return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/close', methods=['POST'])
-@login_required
-def admin_close_tracker(instance_name, tracker_id):
-    """Admin closes a tracker for user (hides it from user view)"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    # Close the tracker (user won't see it)
-    tracker.is_closed_by_user = True
-    tracker.updated_at = datetime.utcnow()
-    commit_current_instance()
-    
-    flash(f'Tracker "{tracker.tracker_name}" closed successfully', 'success')
-    return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-
-
-@app.route('/<instance_name>/admin/daily-trackers/<int:tracker_id>/download')
-@login_required
-def admin_download_tracker(instance_name, tracker_id):
-    """Admin downloads the Excel file for a tracker"""
-    if instance_name not in VALID_INSTANCES:
-        return redirect('/')
-    
-    if not current_user.is_admin:
-        flash('Access denied', 'error')
-        return redirect(url_for('customer_dashboard', instance_name=instance_name))
-    
-    tracker = get_daily_tracker_query().filter_by(id=tracker_id, is_active=True).first()
-    if not tracker:
-        flash('Tracker not found', 'error')
-        return redirect(url_for('admin_daily_trackers', instance_name=instance_name))
-    
-    try:
-        # Get the directory where the tracker file is stored
-        from tracker_manager import get_tracker_directory
-        tracker_dir = get_tracker_directory(instance_name)
-        
-        # Send the file for download
-        return send_from_directory(
-            tracker_dir,
-            tracker.filename,
-            as_attachment=True,
-            download_name=f"{tracker.user.username}_{tracker.tracker_name}_{tracker.filename}"
-        )
-    except Exception as e:
-        flash(f'Error downloading tracker: {str(e)}', 'error')
-        return redirect(url_for('admin_view_daily_tracker', 
-                              instance_name=instance_name, 
-                              tracker_id=tracker_id))
 
 
 # Email helper function
@@ -4884,6 +2797,23 @@ def send_password_reset_email(email, token, instance_name):
     # text = msg.as_string()
     # server.sendmail("noreply@lendingapp.com", email, text)
     # server.quit()
+
+
+# ============================================================================
+# MODERATOR ROUTES - Moved to app_moderator.py
+# ============================================================================
+
+
+# Initialize the app only when run directly
+# ============================================================================
+# MODERATOR ROUTES - Moved to app_moderator.py
+# ============================================================================
+
+
+# Initialize the app only when run directly
+# ============================================================================
+# MODERATOR ROUTES - Moved to app_moderator.py
+# ============================================================================
 
 
 # ============================================================================
