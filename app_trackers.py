@@ -1551,8 +1551,15 @@ def register_routes():
                     daily_payment = Decimal(str(daily_payment))
                 pending_payments_sum += daily_payment
             
-            # Calculate total cashback for tracker
-            tracker_cashback_total = get_tracker_cashback_total(tracker.id, instance_name)
+            # Calculate total cashback for tracker for logged-in user only
+            session = db_manager.get_session_for_instance(instance_name)
+            tracker_cashback_total = session.query(
+                db.func.sum(CashbackTransaction.points)
+            ).filter_by(
+                related_tracker_id=tracker.id,
+                transaction_type='tracker_entry',
+                to_user_id=current_user.id
+            ).scalar() or Decimal('0')
             
             # Updated summary with pending included
             updated_summary = summary.copy()
@@ -1561,8 +1568,9 @@ def register_routes():
             updated_summary['pending_payments_sum'] = float(pending_payments_sum)
             updated_summary['cashback_total'] = float(tracker_cashback_total)
             
-            # Calculate cashback for each day
+            # Calculate cashback for each day for logged-in user only
             day_cashback_map = {}
+            has_any_cashback = False
             for row in merged_data:
                 day = row.get('day')
                 if day is not None:
@@ -1574,8 +1582,19 @@ def register_routes():
                     elif isinstance(day, float):
                         day = int(day)
                     
-                    day_cashback = get_tracker_day_cashback(tracker.id, day, instance_name)
+                    day_cashback = session.query(
+                        db.func.sum(CashbackTransaction.points)
+                    ).filter_by(
+                        related_tracker_id=tracker.id,
+                        related_tracker_entry_day=day,
+                        transaction_type='tracker_entry',
+                        to_user_id=current_user.id
+                    ).scalar() or Decimal('0')
+                    
+                    day_cashback = float(day_cashback)
                     day_cashback_map[day] = day_cashback
+                    if day_cashback > 0:
+                        has_any_cashback = True
             
             return render_template('customer/daily_tracker.html',
                                  tracker=tracker,
@@ -1583,6 +1602,7 @@ def register_routes():
                                  summary=updated_summary,
                                  pending_entries=pending_entries,
                                  day_cashback_map=day_cashback_map,
+                                 has_any_cashback=has_any_cashback,
                                  instance_name=instance_name)
         except Exception as e:
             flash(f'Error reading tracker data: {str(e)}', 'error')
