@@ -104,7 +104,10 @@
                             <th class="text-end">{{ _('Totals') }}:</th>
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='loan.principal_amount')) }}</th>
                             <th>₹{{ "%.2f"|format(loan_data|sum(attribute='monthly_interest')) }}</th>
-                            <th>₹{{ "%.2f"|format(loan_data|sum(attribute='interest_pending')) }}</th>
+                            <th>
+                                {% set total_interest_pending = loan_data|sum(attribute='interest_pending') %}
+                                <strong class="{% if total_interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ "%.2f"|format(total_interest_pending) }}</strong>
+                            </th>
                             <th></th>
                         </tr>
                     </tfoot>

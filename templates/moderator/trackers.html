@@ -105,11 +105,11 @@
                                         {% if item.get('error') %}
                                         <span class="text-muted">-</span>
                                         {% elif item.pending > 0 %}
-                                        <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(item.pending) }}</span>
+                                        <span class="text-danger"><strong>₹{{ "%.2f"|format(item.pending) }}</strong></span>
                                         {% elif item.pending < 0 %}
-                                        <span class="badge bg-success">-₹{{ "%.2f"|format(item.pending|abs) }}</span>
+                                        <span class="text-success"><strong>-₹{{ "%.2f"|format(item.pending|abs) }}</strong></span>
                                         {% else %}
-                                        <span class="badge bg-success">₹0.00</span>
+                                        <span class="text-success"><strong>₹0.00</strong></span>
                                         {% endif %}
                                     </td>
                                     <td>{{ tracker.start_date.strftime('%Y-%m-%d') }}</td>
@@ -129,11 +129,11 @@
                                     <td class="text-success">₹{{ "%.2f"|format(total_payments_sum) }}</td>
                                     <td>
                                         {% if total_pending_sum > 0 %}
-                                        <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(total_pending_sum) }}</span>
+                                        <strong class="text-danger">₹{{ "%.2f"|format(total_pending_sum) }}</strong>
                                         {% elif total_pending_sum < 0 %}
-                                        <span class="badge bg-success">-₹{{ "%.2f"|format(total_pending_sum|abs) }}</span>
+                                        <strong class="text-success">-₹{{ "%.2f"|format(total_pending_sum|abs) }}</strong>
                                         {% else %}
-                                        <span class="badge bg-success">₹0.00</span>
+                                        <strong class="text-success">₹0.00</strong>
                                         {% endif %}
                                     </td>
                                     <td colspan="2"></td>

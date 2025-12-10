@@ -105,11 +105,11 @@
                             </td>
                             <td>
                                 {% if summary.pending > 0 %}
-                                <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(summary.pending) }}</span>
+                                <span class="text-danger"><strong>₹{{ "%.2f"|format(summary.pending) }}</strong></span>
                                 {% elif summary.pending < 0 %}
-                                <span class="badge bg-success">-₹{{ "%.2f"|format(summary.pending|abs) }}</span>
+                                <span class="text-success"><strong>-₹{{ "%.2f"|format(summary.pending|abs) }}</strong></span>
                                 {% else %}
-                                <span class="badge bg-success">₹0.00</span>
+                                <span class="text-success"><strong>₹0.00</strong></span>
                                 {% endif %}
                             </td>
                             <td>
@@ -123,9 +123,9 @@
                             <th colspan="6" class="text-end">{{ _('Totals') }}:</th>
                             <th>
                                 {% if total_pending > 0 %}
-                                <span class="badge bg-warning text-dark">₹{{ "%.2f"|format(total_pending) }}</span>
+                                <strong class="text-danger">₹{{ "%.2f"|format(total_pending) }}</strong>
                                 {% else %}
-                                <span class="badge bg-success">₹0.00</span>
+                                <strong class="text-success">₹0.00</strong>
                                 {% endif %}
                             </th>
                             <th>₹{{ "%.2f"|format(tracker_summaries|sum(attribute='total_payments')) }}</th>

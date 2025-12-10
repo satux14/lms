@@ -805,10 +805,24 @@ def get_user_cashback_balance(user_id, instance_name):
         # Get session for the instance
         session = db_manager.get_session_for_instance(instance_name)
         
+        # Check if this is a system user (admin)
+        # System users should not accumulate balance from deduction/redemption transactions
+        user = session.query(User).filter_by(id=user_id).first()
+        is_system_user = user and user.is_admin
+        
         # Sum of all points received
-        received = session.query(
+        received_query = session.query(
             db.func.sum(CashbackTransaction.points)
-        ).filter_by(to_user_id=user_id).scalar() or Decimal('0')
+        ).filter_by(to_user_id=user_id)
+        
+        # Exclude deduction and redemption transactions for system users
+        # (these should not increase system user balance - they're just accounting entries)
+        if is_system_user:
+            received_query = received_query.filter(
+                ~CashbackTransaction.transaction_type.in_(['deduction', 'redemption'])
+            )
+        
+        received = received_query.scalar() or Decimal('0')
         
         # Sum of all points sent
         sent = session.query(
