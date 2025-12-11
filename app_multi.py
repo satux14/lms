@@ -2041,6 +2041,50 @@ def admin_users(instance_name):
                          customer_count=customer_count,
                          instance_name=instance_name)
 
+# Admin Edit User Email route
+@app.route('/<instance_name>/admin/user/<int:user_id>/edit-email', methods=['POST'])
+@login_required
+def admin_edit_user_email(instance_name, user_id):
+    """Admin edit user email"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    if not current_user.is_admin:
+        flash('Access denied', 'error')
+        return redirect(url_for('customer_dashboard', instance_name=instance_name))
+    
+    user = get_user_query().get(user_id)
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('admin_users', instance_name=instance_name))
+    
+    new_email = request.form.get('email', '').strip()
+    
+    # Allow empty email (set to None)
+    if not new_email:
+        user.email = None
+        flash(f'Email removed for user {user.username}', 'success')
+    else:
+        # Validate email format (basic validation)
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, new_email):
+            flash('Invalid email format', 'error')
+            return redirect(url_for('admin_users', instance_name=instance_name))
+        
+        # Check if email already exists for another user
+        existing_user = get_user_query().filter_by(email=new_email).first()
+        if existing_user and existing_user.id != user_id:
+            flash(f'Email already in use by user: {existing_user.username}', 'error')
+            return redirect(url_for('admin_users', instance_name=instance_name))
+        
+        user.email = new_email
+        flash(f'Email updated for user {user.username}', 'success')
+    
+    commit_current_instance()
+    
+    return redirect(url_for('admin_users', instance_name=instance_name))
+
 # Admin Create User route
 @app.route('/<instance_name>/admin/create-user', methods=['GET', 'POST'])
 @login_required
