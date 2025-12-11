@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Lending Management System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-cog me-2"></i>Settings
+            </h2>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
+                <i class="fas fa-bell me-2"></i>Notifications
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="account-tab" data-bs-toggle="tab" data-bs-target="#account" type="button" role="tab">
+                <i class="fas fa-user me-2"></i>Account
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="settingsTabContent">
+        <!-- Notifications Tab -->
+        <div class="tab-pane fade show active" id="notifications" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>Email Notifications</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('user_settings', instance_name=current_instance) }}">
+                        <input type="hidden" name="action" value="notifications">
+                        
+                        <!-- Email Address -->
+                        <div class="mb-4">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-at me-1"></i>Email Address
+                            </label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   value="{{ current_user.email or '' }}" 
+                                   {% if not notification_pref or notification_pref.enabled %}required{% endif %}>
+                            <div class="form-text">
+                                Email address is required to receive notifications.
+                            </div>
+                        </div>
+
+                        <!-- Master Toggle -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       role="switch" 
+                                       id="emailEnabled" 
+                                       name="email_enabled" 
+                                       value="1"
+                                       {% if not notification_pref or notification_pref.enabled %}checked{% endif %}
+                                       onchange="toggleNotificationOptions()">
+                                <label class="form-check-label" for="emailEnabled">
+                                    <strong>Enable Email Notifications</strong>
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Master switch for all email notifications.
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Notification Types -->
+                        <div id="notificationOptions" {% if notification_pref and not notification_pref.enabled %}style="display:none;"{% endif %}>
+                            <h6 class="mb-3">Notification Types</h6>
+                            
+                            {% if current_user.is_admin %}
+                            <!-- Admin Notifications -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="paymentApprovals" 
+                                           name="payment_approvals" 
+                                           value="1"
+                                           {% if not preferences or preferences.get('payment_approvals', True) %}checked{% endif %}>
+                                    <label class="form-check-label" for="paymentApprovals">
+                                        <i class="fas fa-money-bill-wave me-2 text-primary"></i>Payment Approval Requests
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Receive notifications when new payments require approval.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="trackerApprovals" 
+                                           name="tracker_approvals" 
+                                           value="1"
+                                           {% if not preferences or preferences.get('tracker_approvals', True) %}checked{% endif %}>
+                                    <label class="form-check-label" for="trackerApprovals">
+                                        <i class="fas fa-calendar-check me-2 text-success"></i>Tracker Entry Approval Requests
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Receive notifications when new tracker entries require approval.
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if not current_user.is_admin %}
+                            <!-- Customer/Moderator Notifications -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="paymentStatus" 
+                                           name="payment_status" 
+                                           value="1"
+                                           {% if preferences and preferences.get('payment_status', False) %}checked{% endif %}>
+                                    <label class="form-check-label" for="paymentStatus">
+                                        <i class="fas fa-check-circle me-2 text-info"></i>Payment Status Updates
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Receive notifications when your payments are approved or rejected.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="trackerStatus" 
+                                           name="tracker_status" 
+                                           value="1"
+                                           {% if preferences and preferences.get('tracker_status', False) %}checked{% endif %}>
+                                    <label class="form-check-label" for="trackerStatus">
+                                        <i class="fas fa-clipboard-check me-2 text-warning"></i>Tracker Entry Status Updates
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Receive notifications when your tracker entries are approved or rejected.
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Notification Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Tab -->
+        <div class="tab-pane fade" id="account" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Account Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Username</label>
+                        <p class="form-control-plaintext">{{ current_user.username }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email</label>
+                        <p class="form-control-plaintext">{{ current_user.email or 'Not set' }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Role</label>
+                        <p class="form-control-plaintext">
+                            {% if current_user.is_admin %}
+                                <span class="badge bg-danger">Admin</span>
+                            {% elif current_user.is_moderator %}
+                                <span class="badge bg-warning">Moderator</span>
+                            {% else %}
+                                <span class="badge bg-info">Customer</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <hr>
+
+                    <div class="mt-4">
+                        <a href="{{ url_for('change_password_form', instance_name=current_instance) }}" class="btn btn-secondary">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleNotificationOptions() {
+    const enabled = document.getElementById('emailEnabled').checked;
+    const options = document.getElementById('notificationOptions');
+    const emailInput = document.getElementById('email');
+    
+    if (enabled) {
+        options.style.display = 'block';
+        emailInput.required = true;
+    } else {
+        options.style.display = 'none';
+        emailInput.required = false;
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleNotificationOptions();
+});
+</script>
+{% endblock %}
+
