@@ -67,11 +67,20 @@ The Daily Reports System automatically generates and sends comprehensive busines
 
 ## Setup Instructions
 
-### Step 1: Run Database Migration
+### Step 1: Install Dependencies
+
+The Daily Reports system uses **APScheduler** for automated scheduling. This runs within your Flask application - no external cron jobs or configuration needed!
 
 ```bash
 cd /Users/rsk/Documents/GitHub/lms-dev
 
+# Install/update dependencies
+pip install -r requirements.txt
+```
+
+### Step 2: Run Database Migration
+
+```bash
 # Dry run first
 python3 migrate_report_preferences.py --dry-run
 
@@ -86,7 +95,7 @@ Expected output:
 ✓ Created report preferences for 1 admin user(s)
 ```
 
-### Step 2: Configure Report Preferences
+### Step 3: Configure Report Preferences
 
 1. Navigate to Settings: `http://127.0.0.1:9090/dev/settings`
 2. Click on "Daily Reports" tab
@@ -100,54 +109,38 @@ Expected output:
      - Priority Alerts & Action Items
 4. Click "Save Report Settings"
 
-### Step 3: Set Up Cron Jobs (Production)
+### Step 4: Start/Restart Your Application
 
-On your production server, set up cron jobs to run the scheduler:
+The scheduler starts automatically when the Flask application starts:
 
+**For Development:**
 ```bash
-# Edit crontab
-crontab -e
+python run_multi.py
 ```
 
-Add these lines:
-
+**For Docker:**
 ```bash
-# Morning report at 8:00 AM (adjust time as needed)
-0 8 * * * cd /path/to/lms-production && python3 daily_report_scheduler.py morning >> logs/reports.log 2>&1
-
-# Evening report at 8:00 PM (adjust time as needed)
-0 20 * * * cd /path/to/lms-production && python3 daily_report_scheduler.py evening >> logs/reports.log 2>&1
+docker-compose up -d --build
 ```
 
-**Important:** Adjust paths and times according to your setup.
-
-### Step 4: Create Logs Directory
-
-```bash
-mkdir -p /path/to/lms-production/logs
+You'll see this in the logs:
+```
+============================================================
+✅ Report Scheduler Initialized
+============================================================
+📊 Daily Reports Schedule (IST):
+   🌅 Morning Report: 8:00 AM
+   🌙 Evening Report: 8:00 PM
+============================================================
 ```
 
-### Step 5: Test the Scheduler
+### That's It! 🎉
 
-Test manually before relying on cron:
+The scheduler is now running. Reports will be sent automatically at:
+- **8:00 AM IST** (Morning Report)
+- **8:00 PM IST** (Evening Report)
 
-```bash
-# Test morning report
-python3 daily_report_scheduler.py morning
-
-# Test evening report
-python3 daily_report_scheduler.py evening
-
-# Test specific instance only
-python3 daily_report_scheduler.py morning prod
-```
-
-Check the output for:
-```
-✓ Sent morning report to admin (prod)
-```
-
-Check your email inbox for the report.
+**No cron jobs needed!** The scheduler runs within your Docker container.
 
 ## Using On-Demand Reports
 
@@ -183,77 +176,92 @@ SMTP_PASSWORD=vbmhddffmrdilbxk
 SMTP_FROM_EMAIL=thesrsconsulting@gmail.com
 ```
 
-## Cron Time Configuration
+## APScheduler Advantages
 
-### Understanding Cron Syntax
+### Why APScheduler?
 
+✅ **No External Dependencies** - Runs within Flask, no cron needed  
+✅ **Docker-Friendly** - Works perfectly in containers  
+✅ **Timezone-Aware** - Handles IST automatically  
+✅ **Auto-Restart** - Starts when container starts  
+✅ **Easy to Modify** - Change schedule in code, rebuild once  
+✅ **Integrated Logging** - All logs in one place  
+✅ **Misfire Handling** - Catches up if a job is missed  
+
+### How It Works
+
+1. **Scheduler initializes** when Flask app starts
+2. **Two jobs registered**:
+   - Morning report at 8:00 AM IST
+   - Evening report at 8:00 PM IST
+3. **Runs in background thread** - doesn't block Flask
+4. **Auto-shuts down** gracefully when app stops
+
+### Changing Schedule Times
+
+To change report times, edit `app_scheduler.py`:
+
+```python
+# Change morning time (currently 8:00 AM)
+scheduler.add_job(
+    func=lambda: send_morning_reports_job(app),
+    trigger=CronTrigger(hour=8, minute=0, timezone='Asia/Kolkata'),  # Change hour/minute here
+    ...
+)
+
+# Change evening time (currently 8:00 PM)
+scheduler.add_job(
+    func=lambda: send_evening_reports_job(app),
+    trigger=CronTrigger(hour=20, minute=0, timezone='Asia/Kolkata'),  # Change hour/minute here
+    ...
+)
 ```
-* * * * * command
-│ │ │ │ │
-│ │ │ │ └─── Day of week (0-7, Sun=0 or 7)
-│ │ │ └───── Month (1-12)
-│ │ └─────── Day of month (1-31)
-│ └───────── Hour (0-23)
-└─────────── Minute (0-59)
-```
 
-### Example Schedules
-
+Then rebuild Docker:
 ```bash
-# Morning report at 8:00 AM
-0 8 * * * python3 daily_report_scheduler.py morning
-
-# Morning report at 7:30 AM
-30 7 * * * python3 daily_report_scheduler.py morning
-
-# Evening report at 8:00 PM (20:00)
-0 20 * * * python3 daily_report_scheduler.py evening
-
-# Evening report at 10:00 PM (22:00)
-0 22 * * * python3 daily_report_scheduler.py evening
-
-# Only run on weekdays (Mon-Fri)
-0 8 * * 1-5 python3 daily_report_scheduler.py morning
+docker-compose up -d --build
 ```
 
 ## Monitoring & Logs
 
-### Check Cron Logs
+### Check Application Logs
 
+The scheduler output appears in your Flask application logs.
+
+**For Development:**
 ```bash
-# View recent reports log
-tail -f /path/to/lms/logs/reports.log
+# Logs appear in terminal where you ran run_multi.py
+```
 
-# Check if cron job ran
-grep "daily_report_scheduler" /var/log/syslog
+**For Docker:**
+```bash
+# View live logs
+docker-compose logs -f web
 
-# Check last 10 report runs
-tail -20 /path/to/lms/logs/reports.log
+# View recent logs
+docker-compose logs --tail=100 web
+
+# Search for scheduler logs
+docker-compose logs web | grep -i "report"
 ```
 
 ### Verify Reports Are Sending
 
+Check your Docker logs around scheduled times (8:00 AM and 8:00 PM):
+
 ```bash
-# Run manual test
-cd /path/to/lms-production
-python3 daily_report_scheduler.py morning
+docker-compose logs web | grep "Scheduled"
 ```
 
 Expected output:
 ```
 ============================================================
-📊 Daily Report Scheduler - MORNING
+📊 Scheduled Morning Reports
 🕐 2025-12-11 08:00:00
 ============================================================
 
-📌 Processing instance: prod
-----------------------------------------
-  📊 Generating report for admin...
-  📧 Sending to thesrsconsulting@gmail.com...
-  ✓ Sent morning report to admin (prod)
+✓ Sent morning report to admin (prod)
 
-============================================================
-📊 Report Summary
 ============================================================
 ✓ Successfully sent:  1 reports
 ============================================================
@@ -263,34 +271,40 @@ Expected output:
 
 ### Reports Not Being Sent
 
-**Check 1: Cron Job Running?**
+**Check 1: Scheduler Running?**
 ```bash
-crontab -l  # List cron jobs
+# Check Docker logs for scheduler initialization
+docker-compose logs web | grep "Scheduler Initialized"
 ```
 
-**Check 2: Python Path Correct?**
-```bash
-which python3  # Should show /usr/bin/python3 or similar
+You should see:
+```
+✅ Report Scheduler Initialized
+📊 Daily Reports Schedule (IST):
+   🌅 Morning Report: 8:00 AM
+   🌙 Evening Report: 8:00 PM
 ```
 
-**Check 3: File Permissions**
-```bash
-chmod +x /path/to/lms/daily_report_scheduler.py
-```
-
-**Check 4: Report Preferences**
+**Check 2: Report Preferences**
 - Go to Settings → Daily Reports
 - Ensure "Enable Daily Reports" is ON
 - Verify email address is set
 
-**Check 5: SMTP Configuration**
+**Check 3: SMTP Configuration**
 ```bash
 docker-compose logs web | grep -i smtp
 ```
 
-**Check 6: Logs**
+**Check 4: Application Running?**
 ```bash
-tail -50 /path/to/lms/logs/reports.log
+docker-compose ps
+# Should show 'web' service as 'Up'
+```
+
+**Check 5: Check Scheduler Logs**
+```bash
+# View all scheduler-related logs
+docker-compose logs web | grep -E "(Scheduled|Report|APScheduler)"
 ```
 
 ### Email Not Received
@@ -303,23 +317,28 @@ tail -50 /path/to/lms/logs/reports.log
    ```
 4. **Check logs** for error messages
 
-### Cron Job Not Running
+### Scheduler Not Running
 
-1. **Verify cron service** is running:
+1. **Restart Docker container**:
    ```bash
-   sudo systemctl status cron    # Ubuntu/Debian
-   sudo systemctl status crond   # CentOS/RHEL
+   docker-compose restart web
    ```
 
-2. **Check cron permissions**:
+2. **Check for errors during startup**:
    ```bash
-   ls -l /var/spool/cron/crontabs/$(whoami)
+   docker-compose logs web | tail -50
    ```
 
-3. **Test command manually** first:
+3. **Verify APScheduler is installed**:
    ```bash
-   cd /path/to/lms && python3 daily_report_scheduler.py morning
+   docker-compose exec web pip list | grep APScheduler
+   # Should show: APScheduler    3.10.4
    ```
+
+4. **Test manually via On-Demand button**:
+   - Go to Settings → Daily Reports
+   - Click "Generate & Send Report Now"
+   - Check if email arrives
 
 ## Report Schedule Best Practices
 
@@ -335,19 +354,18 @@ tail -50 /path/to/lms/logs/reports.log
 - End-of-day summary
 - Identify items for tomorrow
 
-### Timezone Considerations
+### Timezone Handling
 
-Cron uses **server timezone**. To use IST (Indian Standard Time):
+APScheduler is configured for **Asia/Kolkata (IST)** timezone:
 
-1. **Check server timezone:**
-   ```bash
-   timedatectl  # or: date +%Z
-   ```
+```python
+scheduler = BackgroundScheduler(daemon=True, timezone='Asia/Kolkata')
+```
 
-2. **If different from IST, adjust cron times accordingly**
-   - Server in UTC: IST is UTC+5:30
-   - 8:00 AM IST = 2:30 AM UTC
-   - 8:00 PM IST = 2:30 PM UTC (14:30)
+This means:
+- Reports send at **8:00 AM IST** and **8:00 PM IST**
+- No matter what timezone your server is in
+- Handles DST automatically (though IST doesn't have DST)
 
 ## Sample Report Output
 
@@ -417,25 +435,27 @@ Potential features for future versions:
 ## Production Deployment Checklist
 
 - [ ] Run database migration (`migrate_report_preferences.py`)
+- [ ] Update dependencies (`pip install -r requirements.txt` or rebuild Docker)
 - [ ] Configure report preferences in Settings
 - [ ] Set admin email addresses
-- [ ] Add cron jobs to crontab
-- [ ] Create logs directory
-- [ ] Test manual report generation
+- [ ] Restart application/Docker container
+- [ ] Verify scheduler initialized (check logs for "✅ Report Scheduler Initialized")
+- [ ] Test on-demand report generation
 - [ ] Verify first scheduled report received
-- [ ] Monitor logs for first week
+- [ ] Monitor Docker logs for first week
 
 ## Support
 
 For issues or questions:
-1. Check logs: `tail -f logs/reports.log`
-2. Test manually: `python3 daily_report_scheduler.py morning`
-3. Review this documentation
-4. Check email configuration
-5. Verify cron job syntax
+1. Check Docker logs: `docker-compose logs web | grep -i report`
+2. Verify scheduler is running: Look for "✅ Report Scheduler Initialized" in logs
+3. Test manually: Use "Generate & Send Report Now" button in Settings
+4. Review this documentation
+5. Check email configuration in Docker environment variables
+6. Restart container: `docker-compose restart web`
 
 ---
 
 **Implementation Date:** December 11, 2025  
-**Version:** 1.0.0 - Daily Reports System
+**Version:** 2.0.0 - Daily Reports System (APScheduler)
 
