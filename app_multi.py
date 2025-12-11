@@ -655,6 +655,10 @@ def init_app():
         get_metrics_manager_func=get_metrics_manager
     )
     
+    # Initialize report scheduler (APScheduler)
+    from app_scheduler import init_scheduler
+    init_scheduler(app)
+    
     # Register moderator routes
     from app_moderator import register_moderator_routes
     register_moderator_routes(
