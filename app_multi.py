@@ -2536,14 +2536,72 @@ def admin_edit_payment(instance_name, payment_id):
         # Ensure remaining principal doesn't go negative
         loan.remaining_principal = max(Decimal('0'), loan.remaining_principal)
         
+        # Handle cashback when payment is verified
+        if new_status == 'verified' and old_status == 'pending':
+            # Get cashback usernames and points from form
+            cashback_usernames = request.form.getlist('cashback_username[]')
+            cashback_points = request.form.getlist('cashback_points[]')
+            
+            # Process cashback transactions
+            session_db = db_manager.get_session_for_instance(instance_name)
+            for username, points_str in zip(cashback_usernames, cashback_points):
+                if username and points_str:
+                    try:
+                        points = Decimal(points_str)
+                        if points > 0:
+                            # Get user
+                            recipient = session_db.query(User).filter_by(username=username.strip()).first()
+                            if recipient:
+                                # Create cashback transaction
+                                cashback_transaction = CashbackTransaction(
+                                    from_user_id=None,  # System/admin grant
+                                    to_user_id=recipient.id,
+                                    points=points,
+                                    transaction_type='loan_interest_manual',
+                                    related_loan_id=loan.id,
+                                    related_payment_id=payment.id,
+                                    notes=f'Manual cashback for payment #{payment.id} on loan {loan.name}',
+                                    created_by_user_id=current_user.id,
+                                    created_at=datetime.utcnow()
+                                )
+                                session_db.add(cashback_transaction)
+                    except (ValueError, TypeError):
+                        continue  # Skip invalid points
+        
         commit_current_instance()
         flash('Payment updated successfully', 'success')
         return redirect(url_for('admin_payments', instance_name=instance_name))
     
     # GET request - show edit form
+    # Fetch loan cashback configuration to pre-fill cashback section
+    configured_cashback = []
+    if payment.interest_amount and payment.interest_amount > 0:
+        session_db = db_manager.get_session_for_instance(instance_name)
+        cashback_configs = session_db.query(LoanCashbackConfig).filter_by(
+            loan_id=loan.id,
+            is_active=True
+        ).all()
+        
+        for config in cashback_configs:
+            user = session_db.query(User).get(config.user_id)
+            if user:
+                # Calculate cashback points based on configuration
+                if config.cashback_type == 'percentage':
+                    points = payment.interest_amount * config.cashback_value
+                else:  # fixed
+                    points = config.cashback_value
+                
+                configured_cashback.append({
+                    'user': user,
+                    'points': float(points),
+                    'config_type': config.cashback_type,
+                    'config_value': float(config.cashback_value)
+                })
+    
     return render_template('admin/edit_payment.html', 
                          payment=payment,
                          loan=loan,
+                         configured_cashback=configured_cashback,
                          instance_name=instance_name)
 
 
