@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 20px auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 40px 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 32px; }
+        .header p { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }
+        .section { padding: 30px; border-bottom: 1px solid #e0e0e0; }
+        .section-title { font-size: 22px; color: #2c3e50; margin: 0 0 20px 0; font-weight: bold; border-left: 4px solid #3498db; padding-left: 15px; }
+        .metric-row { display: table; width: 100%; margin-bottom: 15px; }
+        .metric-card { display: table-cell; background: #f8f9fa; padding: 20px; margin: 5px; border-radius: 8px; text-align: center; vertical-align: top; }
+        .metric-value { font-size: 32px; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        .metric-label { font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-small { font-size: 24px; }
+        .trend-up { color: #28a745; }
+        .trend-down { color: #dc3545; }
+        .alert-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 10px 0; border-radius: 4px; }
+        .alert-urgent { background: #f8d7da; border-left-color: #dc3545; }
+        .alert-title { font-weight: bold; margin-bottom: 5px; }
+        .detail-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        .detail-table td { padding: 12px 8px; border-bottom: 1px solid #e0e0e0; }
+        .detail-table td:first-child { font-weight: 500; color: #666; width: 40%; }
+        .detail-table td:last-child { text-align: right; font-weight: 600; color: #2c3e50; }
+        .footer { background: #2c3e50; color: white; padding: 20px 30px; text-align: center; }
+        .footer a { color: #3498db; text-decoration: none; }
+        .top-list { list-style: none; padding: 0; margin: 10px 0; }
+        .top-list li { background: #f8f9fa; padding: 10px 15px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Daily Business Report</h1>
+            <p>{{ report_data.executive_summary.report_date }} - {{ report_data.report_type|title }} Report</p>
+        </div>
+        
+        <!-- Executive Summary -->
+        <div class="section">
+            <h2 class="section-title">Executive Summary</h2>
+            <div class="metric-row">
+                <div class="metric-card">
+                    <div class="metric-label">Today's Collections</div>
+                    <div class="metric-value">₹{{ "%.2f"|format(report_data.executive_summary.todays_collections) }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Pending Approvals</div>
+                    <div class="metric-value metric-small">{{ report_data.executive_summary.pending_approvals }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Active Users</div>
+                    <div class="metric-value metric-small">{{ report_data.executive_summary.active_users_today }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Items -->
+        {% if report_data.action_items.urgent or report_data.action_items.review %}
+        <div class="section">
+            <h2 class="section-title">⚡ Actions Required</h2>
+            
+            {% if report_data.action_items.urgent %}
+            <div class="alert-box alert-urgent">
+                <div class="alert-title">🔴 URGENT</div>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                    {% for item in report_data.action_items.urgent %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            {% if report_data.action_items.review %}
+            <div class="alert-box">
+                <div class="alert-title">🟡 REVIEW</div>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                    {% for item in report_data.action_items.review %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Loan Performance -->
+        <div class="section">
+            <h2 class="section-title">💵 Loan Performance</h2>
+            
+            <table class="detail-table">
+                <tr>
+                    <td>Payments Received Today</td>
+                    <td>{{ report_data.loan_performance.todays_payments.count }} payments</td>
+                </tr>
+                <tr>
+                    <td>Total Amount</td>
+                    <td>₹{{ "%.2f"|format(report_data.loan_performance.todays_payments.total_amount) }}</td>
+                </tr>
+                <tr>
+                    <td>Interest Collected</td>
+                    <td>₹{{ "%.2f"|format(report_data.loan_performance.todays_payments.interest_amount) }}</td>
+                </tr>
+                <tr>
+                    <td>Principal Collected</td>
+                    <td>₹{{ "%.2f"|format(report_data.loan_performance.todays_payments.principal_amount) }}</td>
+                </tr>
+                <tr>
+                    <td>Pending Approvals</td>
+                    <td>{{ report_data.loan_performance.pending_payments.count }} (₹{{ "%.2f"|format(report_data.loan_performance.pending_payments.amount) }})</td>
+                </tr>
+                <tr>
+                    <td>New Loans Created</td>
+                    <td>{{ report_data.loan_performance.new_loans.count }} (₹{{ "%.2f"|format(report_data.loan_performance.new_loans.principal) }})</td>
+                </tr>
+            </table>
+            
+            {% if report_data.loan_performance.top_customers %}
+            <p style="font-weight: bold; margin-top: 20px; margin-bottom: 10px;">🏆 Top Paying Customers Today:</p>
+            <ul class="top-list">
+                {% for customer in report_data.loan_performance.top_customers %}
+                <li>
+                    <span>{{ customer.username }}</span>
+                    <span style="font-weight: bold; color: #28a745;">₹{{ "%.2f"|format(customer.amount) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        
+        <!-- Tracker Performance -->
+        <div class="section">
+            <h2 class="section-title">📅 Tracker Performance</h2>
+            
+            <table class="detail-table">
+                <tr>
+                    <td>Entries Today</td>
+                    <td>{{ report_data.tracker_performance.todays_entries.count }} entries</td>
+                </tr>
+                <tr>
+                    <td>Total Amount</td>
+                    <td>₹{{ "%.2f"|format(report_data.tracker_performance.todays_entries.total_amount) }}</td>
+                </tr>
+                <tr>
+                    <td>Pending Approvals</td>
+                    <td>{{ report_data.tracker_performance.pending_entries.count }} entries</td>
+                </tr>
+                <tr>
+                    <td>Active Trackers</td>
+                    <td>{{ report_data.tracker_performance.active_trackers }} of {{ report_data.tracker_performance.total_trackers }}</td>
+                </tr>
+                <tr>
+                    <td>Completion Rate</td>
+                    <td>{{ report_data.tracker_performance.completion_rate }}%</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Cashback Activity -->
+        <div class="section">
+            <h2 class="section-title">🎁 Cashback Activity</h2>
+            
+            <p style="font-weight: bold; margin-bottom: 10px;">Distributed Today:</p>
+            <table class="detail-table">
+                <tr>
+                    <td>Automatic (Loans)</td>
+                    <td>₹{{ "%.2f"|format(report_data.cashback_activity.distributed_today.automatic_loan.points) }} ({{ report_data.cashback_activity.distributed_today.automatic_loan.count }} txns)</td>
+                </tr>
+                <tr>
+                    <td>Automatic (Trackers)</td>
+                    <td>₹{{ "%.2f"|format(report_data.cashback_activity.distributed_today.automatic_tracker.points) }} ({{ report_data.cashback_activity.distributed_today.automatic_tracker.count }} txns)</td>
+                </tr>
+                <tr>
+                    <td>Manual Admin Awards</td>
+                    <td>₹{{ "%.2f"|format(report_data.cashback_activity.distributed_today.manual_admin.points) }} ({{ report_data.cashback_activity.distributed_today.manual_admin.count }} txns)</td>
+                </tr>
+                <tr style="font-weight: bold;">
+                    <td>Redeemed Today</td>
+                    <td>₹{{ "%.2f"|format(report_data.cashback_activity.redeemed_today.points) }} ({{ report_data.cashback_activity.redeemed_today.count }} reqs)</td>
+                </tr>
+                <tr>
+                    <td>Pending Redemptions</td>
+                    <td>{{ report_data.cashback_activity.pending_redemptions.count }} (₹{{ "%.2f"|format(report_data.cashback_activity.pending_redemptions.amount) }})</td>
+                </tr>
+                <tr style="background-color: #e8f5e9;">
+                    <td><strong>Total Cashback Balance</strong></td>
+                    <td><strong>₹{{ "%.2f"|format(report_data.cashback_activity.total_balance) }}</strong></td>
+                </tr>
+            </table>
+            
+            {% if report_data.cashback_activity.top_earners %}
+            <p style="font-weight: bold; margin-top: 20px; margin-bottom: 10px;">⭐ Top Cashback Earners Today:</p>
+            <ul class="top-list">
+                {% for earner in report_data.cashback_activity.top_earners %}
+                <li>
+                    <span>{{ earner.username }}</span>
+                    <span style="font-weight: bold; color: #9c27b0;">₹{{ "%.2f"|format(earner.points) }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        
+        <!-- Trends & Comparisons -->
+        <div class="section">
+            <h2 class="section-title">📈 Trends & Comparisons</h2>
+            
+            <table class="detail-table">
+                <tr>
+                    <td>vs Yesterday</td>
+                    <td>
+                        {% if report_data.trends.vs_yesterday.collections_change_percent > 0 %}
+                        <span class="trend-up">+{{ report_data.trends.vs_yesterday.collections_change_percent }}% ↗</span>
+                        {% elif report_data.trends.vs_yesterday.collections_change_percent < 0 %}
+                        <span class="trend-down">{{ report_data.trends.vs_yesterday.collections_change_percent }}% ↘</span>
+                        {% else %}
+                        <span>No change</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Weekly Average</td>
+                    <td>₹{{ "%.2f"|format(report_data.trends.vs_last_week.weekly_avg) }}/day</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="section">
+            <h2 class="section-title">🎯 Quick Stats</h2>
+            
+            <table class="detail-table">
+                <tr>
+                    <td>Total Active Loans</td>
+                    <td>{{ report_data.quick_stats.total_loans }} (₹{{ "%.2f"|format(report_data.quick_stats.total_principal) }})</td>
+                </tr>
+                <tr>
+                    <td>Total Active Trackers</td>
+                    <td>{{ report_data.quick_stats.total_trackers }} (₹{{ "%.2f"|format(report_data.quick_stats.total_investment) }})</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- User Activity -->
+        <div class="section" style="border-bottom: none;">
+            <h2 class="section-title">👥 User Activity</h2>
+            
+            <table class="detail-table">
+                <tr>
+                    <td>Active Users Today</td>
+                    <td>{{ report_data.user_activity.active_users_today }} users</td>
+                </tr>
+                <tr>
+                    <td>New Users Created</td>
+                    <td>{{ report_data.user_activity.new_users }} users</td>
+                </tr>
+                <tr>
+                    <td>Total Users</td>
+                    <td>{{ report_data.user_activity.total_users }} users</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p style="margin: 0 0 10px 0;">Generated at {{ report_data.generated_at }}</p>
+            <p style="margin: 0; font-size: 12px; opacity: 0.8;">
+                LMS Daily Report System | <a href="http://127.0.0.1:9090/{{ instance_name }}/admin">View Dashboard</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

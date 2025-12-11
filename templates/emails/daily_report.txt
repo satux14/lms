@@ -1,0 +1,114 @@
+================================================================
+                   DAILY BUSINESS REPORT
+             {{ report_data.executive_summary.report_date }}
+                 {{ report_data.report_type|upper }} REPORT
+================================================================
+
+EXECUTIVE SUMMARY
+-----------------
+Today's Collections:    ₹{{ "%.2f"|format(report_data.executive_summary.todays_collections) }}
+Pending Approvals:      {{ report_data.executive_summary.pending_approvals }} items
+Active Users Today:     {{ report_data.executive_summary.active_users_today }} users
+
+{% if report_data.action_items.urgent or report_data.action_items.review %}
+================================================================
+ACTIONS REQUIRED
+================================================================
+
+{% if report_data.action_items.urgent %}
+🔴 URGENT:
+{% for item in report_data.action_items.urgent %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+
+{% if report_data.action_items.review %}
+🟡 REVIEW:
+{% for item in report_data.action_items.review %}
+  - {{ item }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+================================================================
+LOAN PERFORMANCE
+================================================================
+
+Today's Payments:
+  Count:                {{ report_data.loan_performance.todays_payments.count }} payments
+  Total Amount:         ₹{{ "%.2f"|format(report_data.loan_performance.todays_payments.total_amount) }}
+  Interest Collected:   ₹{{ "%.2f"|format(report_data.loan_performance.todays_payments.interest_amount) }}
+  Principal Collected:  ₹{{ "%.2f"|format(report_data.loan_performance.todays_payments.principal_amount) }}
+
+Pending Payments:       {{ report_data.loan_performance.pending_payments.count }} (₹{{ "%.2f"|format(report_data.loan_performance.pending_payments.amount) }})
+New Loans Created:      {{ report_data.loan_performance.new_loans.count }} (₹{{ "%.2f"|format(report_data.loan_performance.new_loans.principal) }})
+
+{% if report_data.loan_performance.top_customers %}
+🏆 Top Paying Customers Today:
+{% for customer in report_data.loan_performance.top_customers %}
+  {{ loop.index }}. {{ customer.username }} - ₹{{ "%.2f"|format(customer.amount) }}
+{% endfor %}
+{% endif %}
+
+================================================================
+TRACKER PERFORMANCE
+================================================================
+
+Entries Today:          {{ report_data.tracker_performance.todays_entries.count }} entries
+Total Amount:           ₹{{ "%.2f"|format(report_data.tracker_performance.todays_entries.total_amount) }}
+Pending Approvals:      {{ report_data.tracker_performance.pending_entries.count }} entries
+Active Trackers:        {{ report_data.tracker_performance.active_trackers }} of {{ report_data.tracker_performance.total_trackers }}
+Completion Rate:        {{ report_data.tracker_performance.completion_rate }}%
+
+================================================================
+CASHBACK ACTIVITY
+================================================================
+
+Distributed Today:
+  Automatic (Loans):    ₹{{ "%.2f"|format(report_data.cashback_activity.distributed_today.automatic_loan.points) }} ({{ report_data.cashback_activity.distributed_today.automatic_loan.count }} txns)
+  Automatic (Trackers): ₹{{ "%.2f"|format(report_data.cashback_activity.distributed_today.automatic_tracker.points) }} ({{ report_data.cashback_activity.distributed_today.automatic_tracker.count }} txns)
+  Manual Admin Awards:  ₹{{ "%.2f"|format(report_data.cashback_activity.distributed_today.manual_admin.points) }} ({{ report_data.cashback_activity.distributed_today.manual_admin.count }} txns)
+
+Redeemed Today:         ₹{{ "%.2f"|format(report_data.cashback_activity.redeemed_today.points) }} ({{ report_data.cashback_activity.redeemed_today.count }} reqs)
+Pending Redemptions:    {{ report_data.cashback_activity.pending_redemptions.count }} (₹{{ "%.2f"|format(report_data.cashback_activity.pending_redemptions.amount) }})
+
+Total Cashback Balance: ₹{{ "%.2f"|format(report_data.cashback_activity.total_balance) }}
+
+{% if report_data.cashback_activity.top_earners %}
+⭐ Top Cashback Earners Today:
+{% for earner in report_data.cashback_activity.top_earners %}
+  {{ loop.index }}. {{ earner.username }} - ₹{{ "%.2f"|format(earner.points) }}
+{% endfor %}
+{% endif %}
+
+================================================================
+TRENDS & COMPARISONS
+================================================================
+
+vs Yesterday:           {% if report_data.trends.vs_yesterday.collections_change_percent > 0 %}+{% endif %}{{ report_data.trends.vs_yesterday.collections_change_percent }}%
+Weekly Average:         ₹{{ "%.2f"|format(report_data.trends.vs_last_week.weekly_avg) }}/day
+
+================================================================
+QUICK STATS
+================================================================
+
+Total Active Loans:     {{ report_data.quick_stats.total_loans }} (₹{{ "%.2f"|format(report_data.quick_stats.total_principal) }} principal)
+Total Active Trackers:  {{ report_data.quick_stats.total_trackers }} (₹{{ "%.2f"|format(report_data.quick_stats.total_investment) }} investment)
+
+================================================================
+USER ACTIVITY
+================================================================
+
+Active Users Today:     {{ report_data.user_activity.active_users_today }} users
+New Users Created:      {{ report_data.user_activity.new_users }} users
+Total Users:            {{ report_data.user_activity.total_users }} users
+
+================================================================
+
+Generated at: {{ report_data.generated_at }}
+LMS Daily Report System
+
+View Dashboard: http://127.0.0.1:9090/{{ instance_name }}/admin
+
+================================================================
+

@@ -355,6 +355,34 @@ class NotificationPreference(db.Model):
     
     user = db.relationship('User', backref='notification_preferences')
 
+class ReportPreference(db.Model):
+    """Model to store user daily report preferences"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)  # Enable/disable daily reports
+    morning_time = db.Column(db.String(5), default='08:00')  # HH:MM format for morning report
+    evening_time = db.Column(db.String(5), default='20:00')  # HH:MM format for evening report
+    timezone = db.Column(db.String(50), default='Asia/Kolkata')  # User's timezone
+    include_trends = db.Column(db.Boolean, default=True)  # Include trend analysis
+    include_user_activity = db.Column(db.Boolean, default=True)  # Include user activity details
+    include_alerts = db.Column(db.Boolean, default=True)  # Include priority alerts
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', backref='report_preference')
+
+class ReportHistory(db.Model):
+    """Model to track generated and sent reports"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    report_type = db.Column(db.String(20), nullable=False)  # 'morning', 'evening', 'on_demand'
+    generated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_successfully = db.Column(db.Boolean, default=False)
+    error_message = db.Column(db.Text, nullable=True)
+    report_data = db.Column(db.JSON, nullable=True)  # Store report metrics for history
+    
+    user = db.relationship('User', backref='report_history')
+
 # Instance management
 
 def get_current_instance():
@@ -2710,6 +2738,11 @@ def user_settings(instance_name):
         user_id=current_user.id
     ).first()
     
+    # Get or create report preference for the user (admin only)
+    report_pref = session_db.query(ReportPreference).filter_by(
+        user_id=current_user.id
+    ).first()
+    
     if request.method == 'POST':
         action = request.form.get('action')
         
@@ -2747,6 +2780,40 @@ def user_settings(instance_name):
             commit_current_instance()
             flash('Notification settings saved successfully', 'success')
             return redirect(url_for('user_settings', instance_name=instance_name))
+        
+        elif action == 'reports' and current_user.is_admin:
+            # Update report preferences
+            reports_enabled = request.form.get('reports_enabled') == '1'
+            morning_time = request.form.get('morning_time', '08:00')
+            evening_time = request.form.get('evening_time', '20:00')
+            include_trends = request.form.get('include_trends') == '1'
+            include_user_activity = request.form.get('include_user_activity') == '1'
+            include_alerts = request.form.get('include_alerts') == '1'
+            
+            # Create or update report preference
+            if report_pref:
+                report_pref.enabled = reports_enabled
+                report_pref.morning_time = morning_time
+                report_pref.evening_time = evening_time
+                report_pref.include_trends = include_trends
+                report_pref.include_user_activity = include_user_activity
+                report_pref.include_alerts = include_alerts
+                report_pref.updated_at = datetime.utcnow()
+            else:
+                report_pref = ReportPreference(
+                    user_id=current_user.id,
+                    enabled=reports_enabled,
+                    morning_time=morning_time,
+                    evening_time=evening_time,
+                    include_trends=include_trends,
+                    include_user_activity=include_user_activity,
+                    include_alerts=include_alerts
+                )
+                session_db.add(report_pref)
+            
+            commit_current_instance()
+            flash('Report settings saved successfully', 'success')
+            return redirect(url_for('user_settings', instance_name=instance_name))
     
     # Parse preferences for template
     preferences = notification_pref.preferences if notification_pref and notification_pref.preferences else {}
@@ -2754,7 +2821,59 @@ def user_settings(instance_name):
     return render_template('user_settings.html', 
                          instance_name=instance_name,
                          notification_pref=notification_pref,
+                         report_pref=report_pref,
                          preferences=preferences)
+
+# On-Demand Report Generation route
+@app.route('/<instance_name>/generate-report', methods=['POST'])
+@login_required
+def generate_report_on_demand(instance_name):
+    """Generate and send daily report on demand"""
+    if instance_name not in VALID_INSTANCES:
+        return jsonify({'success': False, 'error': 'Invalid instance'}), 400
+    
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    
+    try:
+        from app_reports import generate_daily_report, send_report_email
+        
+        # Check if user has email
+        if not current_user.email:
+            return jsonify({
+                'success': False,
+                'error': 'No email address set. Please add your email in Account settings.'
+            }), 400
+        
+        # Generate report
+        report_data = generate_daily_report(instance_name, report_type='on_demand')
+        
+        if report_data is None:
+            return jsonify({'success': False, 'error': 'Failed to generate report'}), 500
+        
+        # Send email
+        success = send_report_email(current_user, report_data, instance_name)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Report generated and sent successfully',
+                'email': current_user.email
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Report generated but failed to send email. Check SMTP configuration.'
+            }), 500
+    
+    except Exception as e:
+        print(f"Error generating on-demand report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }), 500
 
 # Forgot Password route
 @app.route('/<instance_name>/forgot-password', methods=['GET', 'POST'])
