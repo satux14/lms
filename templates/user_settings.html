@@ -40,6 +40,13 @@
                 <i class="fas fa-bell me-2"></i>Notifications
             </button>
         </li>
+        {% if current_user.is_admin %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
+                <i class="fas fa-chart-bar me-2"></i>Daily Reports
+            </button>
+        </li>
+        {% endif %}
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="account-tab" data-bs-toggle="tab" data-bs-target="#account" type="button" role="tab">
                 <i class="fas fa-user me-2"></i>Account
@@ -186,6 +193,138 @@
             </div>
         </div>
 
+        <!-- Reports Tab (Admin Only) -->
+        {% if current_user.is_admin %}
+        <div class="tab-pane fade" id="reports" role="tabpanel">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Daily Report Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('user_settings', instance_name=current_instance) }}">
+                        <input type="hidden" name="action" value="reports">
+                        
+                        <!-- Enable/Disable Reports -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       role="switch" 
+                                       id="reportsEnabled" 
+                                       name="reports_enabled" 
+                                       value="1"
+                                       {% if not report_pref or report_pref.enabled %}checked{% endif %}
+                                       onchange="toggleReportOptions()">
+                                <label class="form-check-label" for="reportsEnabled">
+                                    <strong>Enable Daily Reports</strong>
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Receive automated daily reports twice a day (morning and evening).
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Schedule Settings -->
+                        <div id="reportOptions" {% if report_pref and not report_pref.enabled %}style="display:none;"{% endif %}>
+                            <h6 class="mb-3"><i class="fas fa-clock me-2"></i>Report Schedule</h6>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="morningTime" class="form-label">Morning Report Time</label>
+                                    <input type="time" 
+                                           class="form-control" 
+                                           id="morningTime" 
+                                           name="morning_time" 
+                                           value="{{ report_pref.morning_time if report_pref else '08:00' }}">
+                                    <div class="form-text">Default: 8:00 AM</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="eveningTime" class="form-label">Evening Report Time</label>
+                                    <input type="time" 
+                                           class="form-control" 
+                                           id="eveningTime" 
+                                           name="evening_time" 
+                                           value="{{ report_pref.evening_time if report_pref else '20:00' }}">
+                                    <div class="form-text">Default: 8:00 PM</div>
+                                </div>
+                            </div>
+
+                            <!-- Report Content Options -->
+                            <h6 class="mb-3"><i class="fas fa-list-check me-2"></i>Include in Report</h6>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="includeTrends" 
+                                           name="include_trends" 
+                                           value="1"
+                                           {% if not report_pref or report_pref.include_trends %}checked{% endif %}>
+                                    <label class="form-check-label" for="includeTrends">
+                                        <i class="fas fa-chart-line me-2 text-success"></i>Trends & Comparisons
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Compare today's performance vs yesterday and weekly averages.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="includeUserActivity" 
+                                           name="include_user_activity" 
+                                           value="1"
+                                           {% if not report_pref or report_pref.include_user_activity %}checked{% endif %}>
+                                    <label class="form-check-label" for="includeUserActivity">
+                                        <i class="fas fa-users me-2 text-info"></i>User Activity Details
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Include user logins, new users, and activity statistics.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="includeAlerts" 
+                                           name="include_alerts" 
+                                           value="1"
+                                           {% if not report_pref or report_pref.include_alerts %}checked{% endif %}>
+                                    <label class="form-check-label" for="includeAlerts">
+                                        <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Priority Alerts & Action Items
+                                    </label>
+                                    <div class="form-text ms-4">
+                                        Highlight urgent items requiring immediate attention.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- On-Demand Report -->
+                        <hr>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Generate Report Now:</strong> Want to see today's report immediately?
+                        </div>
+                        <button type="button" class="btn btn-primary mb-3" id="generateReportBtn">
+                            <i class="fas fa-file-invoice me-2"></i>Generate & Send Report Now
+                        </button>
+
+                        <!-- Save Settings -->
+                        <hr>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>Save Report Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Account Tab -->
         <div class="tab-pane fade" id="account" role="tabpanel">
             <div class="card">
@@ -250,9 +389,55 @@ function toggleNotificationOptions() {
     }
 }
 
+function toggleReportOptions() {
+    const enabled = document.getElementById('reportsEnabled');
+    const options = document.getElementById('reportOptions');
+    
+    if (enabled && enabled.checked) {
+        options.style.display = 'block';
+    } else if (options) {
+        options.style.display = 'none';
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     toggleNotificationOptions();
+    toggleReportOptions();
+    
+    // On-demand report generation
+    const generateBtn = document.getElementById('generateReportBtn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', function() {
+            if (confirm('Generate and send the daily report to your email now?')) {
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+                
+                fetch('{{ url_for("generate_report_on_demand", instance_name=current_instance) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="fas fa-file-invoice me-2"></i>Generate & Send Report Now';
+                    
+                    if (data.success) {
+                        alert('✅ Report generated and sent to your email: ' + data.email);
+                    } else {
+                        alert('❌ Error generating report: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="fas fa-file-invoice me-2"></i>Generate & Send Report Now';
+                    alert('❌ Error: ' + error);
+                });
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
