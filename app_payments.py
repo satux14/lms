@@ -114,6 +114,25 @@ def register_routes():
                 flash(str(e))
                 return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
             
+            # Send notification to admins for approval
+            try:
+                from app_notifications import send_approval_notification
+                send_approval_notification(
+                    instance_name=instance_name,
+                    approval_type='payment',
+                    item_id=payment.id,
+                    item_details={
+                        'loan_name': loan.loan_name,
+                        'customer_name': current_user.username,
+                        'amount': f'{amount:,.2f}',
+                        'payment_date': payment_date.strftime('%Y-%m-%d %H:%M'),
+                        'payment_method': payment_method
+                    }
+                )
+            except Exception as e:
+                print(f"Error sending payment notification: {e}")
+                # Don't fail the payment creation if notification fails
+            
             flash('Payment submitted successfully. It will be verified by admin.')
             return redirect(url_for('customer_loan_detail', instance_name=instance_name, loan_id=loan_id))
         

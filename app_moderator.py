@@ -800,6 +800,26 @@ def register_routes():
                 tracker.updated_at = datetime.utcnow()
                 commit_current_instance()
                 
+                # Send notification to admins for approval
+                try:
+                    from app_notifications import send_approval_notification
+                    # Get the tracker entry that was just created/updated
+                    tracker_entry_id = existing_entry.id if existing_entry else tracker_entry.id
+                    send_approval_notification(
+                        instance_name=instance_name,
+                        approval_type='tracker_entry',
+                        item_id=tracker_entry_id,
+                        item_details={
+                            'tracker_name': tracker.tracker_name,
+                            'user_name': current_user.username,
+                            'day': day,
+                            'amount': f"{entry_data.get('daily_payments', 0):,.2f}"
+                        }
+                    )
+                except Exception as e:
+                    print(f"Error sending tracker entry notification: {e}")
+                    # Don't fail the entry submission if notification fails
+                
                 # Log tracker entry update
                 from lms_logging import get_logging_manager
                 from lms_metrics import get_metrics_manager
@@ -943,6 +963,26 @@ def register_routes():
                 # Update the tracker's updated_at timestamp
                 tracker.updated_at = datetime.utcnow()
                 commit_current_instance()
+                
+                # Send notification to admins for approval
+                try:
+                    from app_notifications import send_approval_notification
+                    # Get the tracker entry that was just created/updated
+                    tracker_entry_id = existing_entry.id if existing_entry else tracker_entry.id
+                    send_approval_notification(
+                        instance_name=instance_name,
+                        approval_type='tracker_entry',
+                        item_id=tracker_entry_id,
+                        item_details={
+                            'tracker_name': tracker.tracker_name,
+                            'user_name': current_user.username,
+                            'day': day,
+                            'amount': f"{entry_data.get('daily_payments', 0):,.2f}"
+                        }
+                    )
+                except Exception as e:
+                    print(f"Error sending tracker entry notification: {e}")
+                    # Don't fail the entry submission if notification fails
                 
                 # Log tracker entry update
                 from lms_logging import get_logging_manager

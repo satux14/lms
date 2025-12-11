@@ -1,0 +1,24 @@
+Payment Approval Required
+========================
+
+Hello {{ admin.username }},
+
+A new payment has been submitted and requires your approval:
+
+PAYMENT DETAILS
+---------------
+Loan:           {{ item_details.loan_name }}
+Customer:       {{ item_details.customer_name }}
+Amount:         ₹{{ item_details.amount }}
+Payment Date:   {{ item_details.payment_date }}
+{% if item_details.payment_method %}Payment Method: {{ item_details.payment_method }}{% endif %}
+
+REVIEW AND APPROVE
+------------------
+Please review and approve this payment at:
+http://127.0.0.1:9090/{{ instance_name }}/admin/payments
+
+---
+This is an automated notification from the Lending Management System.
+If you have any questions, please contact your system administrator.
+

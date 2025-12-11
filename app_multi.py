@@ -342,6 +342,19 @@ class CashbackRedemption(db.Model):
     processed_by = db.relationship('User', foreign_keys=[processed_by_user_id], backref='processed_redemptions')
     redemption_transaction = db.relationship('CashbackTransaction', foreign_keys=[redemption_transaction_id], backref='redemption')
 
+class NotificationPreference(db.Model):
+    """Model to store user notification preferences"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    channel = db.Column(db.String(20), nullable=False, default='email')  # 'email', 'sms', 'slack', etc.
+    enabled = db.Column(db.Boolean, nullable=False, default=True)  # Master switch for this channel
+    preferences = db.Column(db.JSON, nullable=True)  # Channel-specific preferences as JSON
+    # Example preferences for email: {'payment_approvals': True, 'tracker_approvals': True, 'payment_status': False, 'tracker_status': False}
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', backref='notification_preferences')
+
 # Instance management
 
 def get_current_instance():
@@ -2277,6 +2290,25 @@ def admin_add_payment(instance_name, loan_id=None):
             add_to_current_instance(payment)
             commit_current_instance()
             
+            # Send notification to admins for approval
+            try:
+                from app_notifications import send_approval_notification
+                send_approval_notification(
+                    instance_name=instance_name,
+                    approval_type='payment',
+                    item_id=payment.id,
+                    item_details={
+                        'loan_name': loan.loan_name,
+                        'customer_name': loan.customer.username,
+                        'amount': f'{amount:,.2f}',
+                        'payment_date': payment_date.strftime('%Y-%m-%d %H:%M'),
+                        'payment_method': payment_method
+                    }
+                )
+            except Exception as e:
+                print(f"Error sending payment notification: {e}")
+                # Don't fail the payment creation if notification fails
+            
             flash(f'Principal-only payment of ₹{amount:,.2f} added successfully. It will be verified by admin.', 'success')
             return redirect(url_for('admin_payments', instance_name=instance_name))
         
@@ -2293,6 +2325,25 @@ def admin_add_payment(instance_name, loan_id=None):
         except ValueError as e:
             flash(str(e), 'error')
             return redirect(url_for('admin_add_payment', instance_name=instance_name, loan_id=loan_id))
+        
+        # Send notification to admins for approval
+        try:
+            from app_notifications import send_approval_notification
+            send_approval_notification(
+                instance_name=instance_name,
+                approval_type='payment',
+                item_id=payment.id,
+                item_details={
+                    'loan_name': loan.loan_name,
+                    'customer_name': loan.customer.username,
+                    'amount': f'{amount:,.2f}',
+                    'payment_date': payment_date.strftime('%Y-%m-%d %H:%M'),
+                    'payment_method': payment_method
+                }
+            )
+        except Exception as e:
+            print(f"Error sending payment notification: {e}")
+            # Don't fail the payment creation if notification fails
         
         flash('Payment added successfully. It will be verified by admin.', 'success')
         return redirect(url_for('admin_payments', instance_name=instance_name))
@@ -2599,6 +2650,67 @@ def change_password(instance_name):
         return redirect(url_for('admin_dashboard' if current_user.is_admin else 'customer_dashboard', instance_name=instance_name))
     
     return render_template('change_password.html', instance_name=instance_name)
+
+# User Settings route
+@app.route('/<instance_name>/settings', methods=['GET', 'POST'])
+@login_required
+def user_settings(instance_name):
+    """User settings page for notification preferences and account settings"""
+    if instance_name not in VALID_INSTANCES:
+        return redirect('/')
+    
+    session_db = db_manager.get_session_for_instance(instance_name)
+    
+    # Get or create notification preference for the user
+    notification_pref = session_db.query(NotificationPreference).filter_by(
+        user_id=current_user.id
+    ).first()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'notifications':
+            # Update email address if provided
+            email = request.form.get('email', '').strip()
+            email_enabled = request.form.get('email_enabled') == '1'
+            
+            if email:
+                current_user.email = email
+            
+            # Get notification type preferences
+            preferences = {}
+            if current_user.is_admin:
+                preferences['payment_approvals'] = request.form.get('payment_approvals') == '1'
+                preferences['tracker_approvals'] = request.form.get('tracker_approvals') == '1'
+            else:
+                preferences['payment_status'] = request.form.get('payment_status') == '1'
+                preferences['tracker_status'] = request.form.get('tracker_status') == '1'
+            
+            # Create or update notification preference
+            if notification_pref:
+                notification_pref.enabled = email_enabled
+                notification_pref.preferences = preferences
+                notification_pref.updated_at = datetime.utcnow()
+            else:
+                notification_pref = NotificationPreference(
+                    user_id=current_user.id,
+                    channel='email',
+                    enabled=email_enabled,
+                    preferences=preferences
+                )
+                session_db.add(notification_pref)
+            
+            commit_current_instance()
+            flash('Notification settings saved successfully', 'success')
+            return redirect(url_for('user_settings', instance_name=instance_name))
+    
+    # Parse preferences for template
+    preferences = notification_pref.preferences if notification_pref and notification_pref.preferences else {}
+    
+    return render_template('user_settings.html', 
+                         instance_name=instance_name,
+                         notification_pref=notification_pref,
+                         preferences=preferences)
 
 # Forgot Password route
 @app.route('/<instance_name>/forgot-password', methods=['GET', 'POST'])
