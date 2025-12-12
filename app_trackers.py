@@ -811,8 +811,8 @@ def register_routes():
             traceback.print_exc()
         
         # GET request - show form with current values
-        # Import cashback templates
-        from app_cashback import CASHBACK_TEMPLATES
+        # Import tracker-specific cashback templates
+        from app_cashback import TRACKER_CASHBACK_TEMPLATES
         
         # Get all users for admin dropdown
         all_users = None
@@ -826,7 +826,7 @@ def register_routes():
                              row_index=row_index,
                              existing_cashback=existing_cashback,
                              configured_cashback=configured_cashback,
-                             templates=CASHBACK_TEMPLATES,
+                             templates=TRACKER_CASHBACK_TEMPLATES,
                              all_users=all_users,
                              is_admin=current_user.is_admin,
                              instance_name=instance_name)
