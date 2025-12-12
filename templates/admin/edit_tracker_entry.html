@@ -597,10 +597,12 @@ document.querySelectorAll('.add-template-btn').forEach(btn => {
             
             {% if is_admin and all_users %}
             // Build select dropdown for admin
-            const usernameOptions = {% for user in all_users %}'<option value="{{ user.username }}" ${username === '{{ user.username }}' ? 'selected' : ''}>{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>' + {% endfor %}'';
+            let usernameOptions = '<option value="">Select a user...</option>';
+            {% for user in all_users %}
+            usernameOptions += `<option value="{{ user.username }}" ${username === '{{ user.username }}' ? 'selected' : ''}>{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>`;
+            {% endfor %}
             const usernameField = `
                 <select class="form-select form-select-sm" name="cashback_username[]" required>
-                    <option value="">Select a user...</option>
                     ${usernameOptions}
                 </select>
             `;
