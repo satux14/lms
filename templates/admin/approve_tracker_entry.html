@@ -93,7 +93,14 @@
                             <strong>Configured Cashback:</strong>
                             <ul class="mb-0 mt-2">
                                 {% for cb in configured_cashback %}
-                                <li>{{ cb.username }}: ₹{{ "%.2f"|format(cb.points) }}</li>
+                                <li>
+                                    {{ cb.username }}: ₹{{ "%.2f"|format(cb.points) }}
+                                    {% if cb.config_type == 'percentage' %}
+                                        ({{ "%.2f"|format(cb.config_value * 100) }}%)
+                                    {% else %}
+                                        (Fixed: ₹{{ "%.2f"|format(cb.config_value) }})
+                                    {% endif %}
+                                </li>
                                 {% endfor %}
                             </ul>
                         </div>
