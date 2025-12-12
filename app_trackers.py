@@ -814,6 +814,11 @@ def register_routes():
         # Import cashback templates
         from app_cashback import CASHBACK_TEMPLATES
         
+        # Get all users for admin dropdown
+        all_users = None
+        if current_user.is_admin:
+            all_users = get_user_query().order_by(User.username).all()
+        
         return render_template('admin/edit_tracker_entry.html',
                              tracker=tracker,
                              tracker_data=tracker_data,
@@ -822,6 +827,8 @@ def register_routes():
                              existing_cashback=existing_cashback,
                              configured_cashback=configured_cashback,
                              templates=CASHBACK_TEMPLATES,
+                             all_users=all_users,
+                             is_admin=current_user.is_admin,
                              instance_name=instance_name)
 
 

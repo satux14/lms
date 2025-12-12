@@ -1,0 +1,52 @@
+Approval Requests Pending
+==========================
+
+Hello {{ admin.username }},
+
+You have {{ total_count }} approval request{{ 's' if total_count > 1 else '' }} pending review.
+{% if payments|length > 0 and tracker_entries|length > 0 %}
+This includes {{ payments|length }} payment{{ 's' if payments|length > 1 else '' }} and {{ tracker_entries|length }} tracker entr{{ 'ies' if tracker_entries|length > 1 else 'y' }}.
+{% elif payments|length > 0 %}
+All {{ payments|length }} request{{ 's' if payments|length > 1 else '' }} {{ 'are' if payments|length > 1 else 'is' }} for payment approvals.
+{% else %}
+All {{ tracker_entries|length }} request{{ 's' if tracker_entries|length > 1 else '' }} {{ 'are' if tracker_entries|length > 1 else 'is' }} for tracker entry approvals.
+{% endif %}
+
+{% if payments|length > 0 %}
+PAYMENT APPROVALS ({{ payments|length }})
+------------------------------------------
+{% for payment in payments %}
+Payment #{{ payment.id }}
+  Loan: {{ payment.details.get('loan_name', 'Unknown') }}
+  Customer: {{ payment.details.get('customer_name', 'Unknown') }}
+  Amount: ₹{{ payment.details.get('amount', '0.00') }}
+  Date: {{ payment.details.get('payment_date', 'N/A') }}
+  {% if payment.details.get('payment_method') %}Method: {{ payment.details.get('payment_method') }}{% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if tracker_entries|length > 0 %}
+TRACKER ENTRY APPROVALS ({{ tracker_entries|length }})
+-------------------------------------------------------
+{% for entry in tracker_entries %}
+Tracker Entry #{{ entry.id }}
+  Tracker: {{ entry.details.get('tracker_name', 'Unknown') }}
+  User: {{ entry.details.get('user_name', 'Unknown') }}
+  Day: {{ entry.details.get('day', 'N/A') }}
+  Amount: ₹{{ entry.details.get('amount', '0.00') }}
+
+{% endfor %}
+{% endif %}
+
+REVIEW AND APPROVE
+------------------
+Please review and approve these requests at:
+{{ base_url }}/{{ instance_name }}/admin/payments
+
+---
+This is an automated notification from the Lending Management System.
+If you have any questions, please contact your system administrator.
+
+View Dashboard: {{ base_url }}/{{ instance_name }}/admin
+

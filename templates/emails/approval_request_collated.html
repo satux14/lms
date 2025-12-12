@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approval Requests Pending</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            border-radius: 5px 5px 0 0;
+            margin: -30px -30px 20px -30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .summary {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+        .item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 3px solid #28a745;
+        }
+        .item-header {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .item-detail {
+            margin: 5px 0;
+            color: #666;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .button:hover {
+            background-color: #218838;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Approval Requests Pending</h1>
+        </div>
+        
+        <div class="summary">
+            <strong>Hello {{ admin.username }},</strong><br>
+            You have <strong>{{ total_count }} approval request{{ 's' if total_count > 1 else '' }}</strong> pending review.
+            {% if payments|length > 0 and tracker_entries|length > 0 %}
+            This includes {{ payments|length }} payment{{ 's' if payments|length > 1 else '' }} and {{ tracker_entries|length }} tracker entr{{ 'ies' if tracker_entries|length > 1 else 'y' }}.
+            {% elif payments|length > 0 %}
+            All {{ payments|length }} request{{ 's' if payments|length > 1 else '' }} {{ 'are' if payments|length > 1 else 'is' }} for payment approvals.
+            {% else %}
+            All {{ tracker_entries|length }} request{{ 's' if tracker_entries|length > 1 else '' }} {{ 'are' if tracker_entries|length > 1 else 'is' }} for tracker entry approvals.
+            {% endif %}
+        </div>
+        
+        {% if payments|length > 0 %}
+        <div class="section">
+            <div class="section-title">💳 Payment Approvals ({{ payments|length }})</div>
+            {% for payment in payments %}
+            <div class="item">
+                <div class="item-header">Payment #{{ payment.id }}</div>
+                <div class="item-detail"><strong>Loan:</strong> {{ payment.details.get('loan_name', 'Unknown') }}</div>
+                <div class="item-detail"><strong>Customer:</strong> {{ payment.details.get('customer_name', 'Unknown') }}</div>
+                <div class="item-detail"><strong>Amount:</strong> ₹{{ payment.details.get('amount', '0.00') }}</div>
+                <div class="item-detail"><strong>Date:</strong> {{ payment.details.get('payment_date', 'N/A') }}</div>
+                {% if payment.details.get('payment_method') %}
+                <div class="item-detail"><strong>Method:</strong> {{ payment.details.get('payment_method') }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if tracker_entries|length > 0 %}
+        <div class="section">
+            <div class="section-title">📊 Tracker Entry Approvals ({{ tracker_entries|length }})</div>
+            {% for entry in tracker_entries %}
+            <div class="item">
+                <div class="item-header">Tracker Entry #{{ entry.id }}</div>
+                <div class="item-detail"><strong>Tracker:</strong> {{ entry.details.get('tracker_name', 'Unknown') }}</div>
+                <div class="item-detail"><strong>User:</strong> {{ entry.details.get('user_name', 'Unknown') }}</div>
+                <div class="item-detail"><strong>Day:</strong> {{ entry.details.get('day', 'N/A') }}</div>
+                <div class="item-detail"><strong>Amount:</strong> ₹{{ entry.details.get('amount', '0.00') }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center;">
+            <a href="{{ base_url }}/{{ instance_name }}/admin/payments" class="button">Review All Requests</a>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 The SRS Consulting. All rights reserved.</p>
+            <p>LMS Notification System | <a href="{{ base_url }}/{{ instance_name }}/admin">View Dashboard</a></p>
+        </div>
+    </div>
+</body>
+</html>
+

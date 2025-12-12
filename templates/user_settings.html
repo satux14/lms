@@ -143,6 +143,25 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Approval Email Delay -->
+                            <div class="mb-4">
+                                <label for="approvalEmailDelay" class="form-label">
+                                    <i class="fas fa-clock me-1"></i>Approval Email Delay (minutes)
+                                </label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="approvalEmailDelay" 
+                                       name="approval_email_delay_minutes" 
+                                       value="{{ preferences.get('approval_email_delay_minutes', 5) if preferences else 5 }}" 
+                                       min="0" 
+                                       max="60" 
+                                       step="1">
+                                <div class="form-text">
+                                    Wait time before sending approval emails to collate multiple requests into one email. 
+                                    Default: 5 minutes. Set to 0 to send immediately.
+                                </div>
+                            </div>
                             {% endif %}
 
                             {% if not current_user.is_admin %}
