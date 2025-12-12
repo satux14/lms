@@ -2580,7 +2580,7 @@ def admin_edit_payment(instance_name, payment_id):
                                     transaction_type='loan_interest_manual',
                                     related_loan_id=loan.id,
                                     related_payment_id=payment.id,
-                                    notes=f'Manual cashback for payment #{payment.id} on loan {loan.name}',
+                                    notes=f'Manual cashback for payment #{payment.id} on loan {loan.loan_name}',
                                     created_by_user_id=current_user.id,
                                     created_at=datetime.utcnow()
                                 )
