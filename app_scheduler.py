@@ -191,6 +191,7 @@ def init_scheduler(app):
     
     Sets up scheduled jobs for morning and evening reports.
     The scheduler runs in a background thread within the Flask process.
+    Schedule times are read from the first admin user's ReportPreference.
     
     Args:
         app: Flask application instance
@@ -199,10 +200,53 @@ def init_scheduler(app):
         scheduler: BackgroundScheduler instance
     """
     try:
-        # Add morning report job (8:00 AM IST)
+        # Default times
+        morning_hour = 8
+        morning_minute = 0
+        evening_hour = 20
+        evening_minute = 0
+        
+        # Try to read schedule from database
+        with app.app_context():
+            try:
+                from app_multi import db_manager, User, ReportPreference
+                
+                # Use 'prod' instance for configuration (you can change this)
+                session = db_manager.get_session_for_instance('prod')
+                
+                # Get first admin user's preferences
+                admin = session.query(User).filter_by(is_admin=True).first()
+                
+                if admin:
+                    pref = session.query(ReportPreference).filter_by(user_id=admin.id).first()
+                    if pref:
+                        # Parse morning time (HH:MM format)
+                        if pref.morning_time:
+                            try:
+                                morning_parts = pref.morning_time.split(':')
+                                morning_hour = int(morning_parts[0])
+                                morning_minute = int(morning_parts[1]) if len(morning_parts) > 1 else 0
+                            except (ValueError, IndexError):
+                                print(f"⚠️  Invalid morning_time format: {pref.morning_time}, using default 08:00")
+                        
+                        # Parse evening time (HH:MM format)
+                        if pref.evening_time:
+                            try:
+                                evening_parts = pref.evening_time.split(':')
+                                evening_hour = int(evening_parts[0])
+                                evening_minute = int(evening_parts[1]) if len(evening_parts) > 1 else 0
+                            except (ValueError, IndexError):
+                                print(f"⚠️  Invalid evening_time format: {pref.evening_time}, using default 20:00")
+                        
+                        print(f"📅 Loaded schedule from admin preferences: {pref.morning_time} / {pref.evening_time}")
+            
+            except Exception as e:
+                print(f"⚠️  Could not load schedule from database, using defaults: {e}")
+        
+        # Add morning report job with configured time
         scheduler.add_job(
             func=lambda: send_morning_reports_job(app),
-            trigger=CronTrigger(hour=8, minute=0, timezone='Asia/Kolkata'),
+            trigger=CronTrigger(hour=morning_hour, minute=morning_minute, timezone='Asia/Kolkata'),
             id='morning_reports',
             name='Send Daily Morning Reports',
             replace_existing=True,
@@ -210,10 +254,10 @@ def init_scheduler(app):
             misfire_grace_time=300  # Allow 5 minutes grace period
         )
         
-        # Add evening report job (8:00 PM IST)
+        # Add evening report job with configured time
         scheduler.add_job(
             func=lambda: send_evening_reports_job(app),
-            trigger=CronTrigger(hour=20, minute=0, timezone='Asia/Kolkata'),
+            trigger=CronTrigger(hour=evening_hour, minute=evening_minute, timezone='Asia/Kolkata'),
             id='evening_reports',
             name='Send Daily Evening Reports',
             replace_existing=True,
@@ -228,8 +272,8 @@ def init_scheduler(app):
             print("✅ Report Scheduler Initialized")
             print("="*60)
             print("📊 Daily Reports Schedule (IST):")
-            print("   🌅 Morning Report: 8:00 AM")
-            print("   🌙 Evening Report: 8:00 PM")
+            print(f"   🌅 Morning Report: {morning_hour:02d}:{morning_minute:02d}")
+            print(f"   🌙 Evening Report: {evening_hour:02d}:{evening_minute:02d}")
             print("="*60 + "\n")
         
         # Register shutdown hook

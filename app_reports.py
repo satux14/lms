@@ -68,12 +68,16 @@ def get_executive_summary(instance_name, report_date=None):
     # Overdue payments (accumulated interest > 30 days old)
     overdue_count = 0  # Simplified for now
     
+    # Convert date to string for JSON serialization
+    report_date_obj = report_date or date.today()
+    report_date_str = report_date_obj.isoformat() if isinstance(report_date_obj, date) else str(report_date_obj)
+    
     return {
         'todays_collections': float(todays_payments),
         'pending_approvals': pending_payments + pending_entries,
         'overdue_payments': overdue_count,
         'active_users_today': active_users_today,
-        'report_date': report_date or date.today()
+        'report_date': report_date_str
     }
 
 
@@ -560,8 +564,14 @@ def send_report_email(user, report_data, instance_name):
     """Send report email to user"""
     from app_notify_email import EmailNotificationProvider
     from app_notifications import Notification, NotificationChannel
+    import json
     
     try:
+        # Check if user has email
+        if not user.email:
+            print(f"No email address found for user {user.username} (ID: {user.id})")
+            return False
+        
         # Create notification
         notification = Notification(
             channel=NotificationChannel.EMAIL,
@@ -578,16 +588,25 @@ def send_report_email(user, report_data, instance_name):
         )
         
         # Send via email provider
-        provider = EmailNotificationProvider()
+        provider = EmailNotificationProvider(instance_name)
         success = provider.send(notification)
         
-        # Log to report history
+        # Log to report history (convert report_data to JSON-safe format)
         session = db_manager.get_session_for_instance(instance_name)
+        
+        # Convert report_data to JSON string to ensure all objects are serializable
+        try:
+            report_data_json = json.dumps(report_data)
+            report_data_safe = json.loads(report_data_json)  # Verify it's JSON-safe
+        except (TypeError, ValueError) as json_err:
+            print(f"Warning: Could not serialize report_data to JSON: {json_err}")
+            report_data_safe = None
+        
         history = ReportHistory(
             user_id=user.id,
             report_type=report_data['report_type'],
             sent_successfully=success,
-            report_data=report_data
+            report_data=report_data_safe
         )
         session.add(history)
         session.commit()
