@@ -138,7 +138,7 @@ def get_loan_performance(instance_name, report_date=None):
     top_customers = session.query(
         Loan.customer_id,
         func.sum(Payment.amount).label('total_paid')
-    ).join(Payment).filter(
+    ).join(Payment, Loan.id == Payment.loan_id).filter(
         and_(
             Payment.payment_date >= start_dt,
             Payment.payment_date <= end_dt,
@@ -370,7 +370,7 @@ def get_user_activity(instance_name, report_date=None):
     active_user_ids = set()
     
     # From payments
-    payment_users = session.query(Loan.customer_id).join(Payment).filter(
+    payment_users = session.query(Loan.customer_id).join(Payment, Loan.id == Payment.loan_id).filter(
         and_(
             Payment.payment_date >= start_dt,
             Payment.payment_date <= end_dt
