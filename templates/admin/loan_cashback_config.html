@@ -3,9 +3,12 @@
 {% block title %}Loan Cashback Configuration - {{ _('The SRS Consulting') }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid">
     <div class="row">
-        <div class="col-12">
+        {% include 'admin/_sidebar.html' %}
+        
+        <!-- Main content -->
+        <div class="col-md-9 col-lg-10 main-content">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h2">
                     <i class="fas fa-cog me-2"></i>Cashback Configuration for Loan
@@ -14,31 +17,95 @@
                     <i class="fas fa-arrow-left me-2"></i>Back to Loan
                 </a>
             </div>
-        </div>
-    </div>
 
-    <!-- Loan Info -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="mb-3">Loan Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Loan Name:</strong> {{ loan.loan_name }}</p>
-                            <p><strong>Customer:</strong> {{ loan.customer.username }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Principal:</strong> ₹{{ "%.2f"|format(loan.principal_amount) }}</p>
-                            <p><strong>Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}%</p>
+            <!-- Loan Info -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Loan Information</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Loan Name:</strong> {{ loan.loan_name }}</p>
+                                    <p><strong>Customer:</strong> {{ loan.customer.username }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Principal:</strong> ₹{{ "%.2f"|format(loan.principal_amount) }}</p>
+                                    <p><strong>Interest Rate:</strong> {{ "%.2f"|format(loan.interest_rate * 100) }}%</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="row">
+            <div class="row">
+        <!-- Quick Add Templates -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Add Templates</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <p class="text-muted mb-0">Quickly add common cashback configurations. Edit username and percentage before adding.</p>
+                        <button type="button" class="btn btn-success btn-sm" id="addAllTemplatesBtn">
+                            <i class="fas fa-plus-circle me-1"></i>Add All Templates
+                        </button>
+                    </div>
+                    <div class="row">
+                        {% if templates %}
+                        {% for template_key, template in templates.items() %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <form method="POST" action="{{ url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan.id) }}" 
+                                          class="template-form" data-template="{{ template_key }}">
+                                        <input type="hidden" name="action" value="template_add">
+                                        <input type="hidden" name="template_name" value="{{ template_key }}">
+                                        
+                                        <div class="mb-2">
+                                            <label class="form-label small text-muted">Username</label>
+                                            <input type="text" 
+                                                   class="form-control form-control-sm template-username" 
+                                                   name="username_override" 
+                                                   value="{{ template.username }}"
+                                                   placeholder="Enter username">
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <label class="form-label small text-muted">Percentage</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" 
+                                                       class="form-control template-percentage" 
+                                                       name="percentage_override" 
+                                                       value="{{ template.percentage }}"
+                                                       step="0.01" 
+                                                       min="0.01" 
+                                                       max="100"
+                                                       placeholder="5">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-plus me-1"></i>Add
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="col-12">
+                            <p class="text-muted">No templates available.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Add New Configuration -->
         <div class="col-md-5 mb-4">
             <div class="card">
@@ -203,6 +270,88 @@ function updateValueLabel() {
         valueHelp.textContent = 'Enter fixed cashback amount per payment';
     }
 }
+
+// Helper function to check if username exists
+async function checkUsernameExists(username) {
+    try {
+        const response = await fetch('{{ url_for("api_check_username", instance_name=instance_name) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: username })
+        });
+        const data = await response.json();
+        return data.success && data.exists;
+    } catch (error) {
+        console.error('Error checking username:', error);
+        return false;
+    }
+}
+
+// Add All Templates functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const addAllBtn = document.getElementById('addAllTemplatesBtn');
+    if (addAllBtn) {
+        addAllBtn.addEventListener('click', async function() {
+            const forms = document.querySelectorAll('.template-form');
+            const formData = [];
+            const invalidUsers = [];
+            
+            // Validate all usernames first
+            for (const form of forms) {
+                const username = form.querySelector('.template-username').value.trim();
+                const percentage = form.querySelector('.template-percentage').value.trim();
+                const templateName = form.querySelector('input[name="template_name"]').value;
+                
+                if (username && percentage) {
+                    // Check if username exists
+                    const exists = await checkUsernameExists(username);
+                    if (!exists) {
+                        invalidUsers.push(username);
+                    } else {
+                        formData.push({
+                            template_name: templateName,
+                            username_override: username,
+                            percentage_override: percentage
+                        });
+                    }
+                }
+            }
+            
+            if (invalidUsers.length > 0) {
+                alert(`The following users do not exist in the system:\n${invalidUsers.join(', ')}\n\nPlease correct the usernames before adding.`);
+                return;
+            }
+            
+            if (formData.length === 0) {
+                alert('Please fill in at least one template');
+                return;
+            }
+            
+            if (confirm(`Add ${formData.length} cashback configuration(s) at once?`)) {
+                // Create a form to submit all templates
+                const bulkForm = document.createElement('form');
+                bulkForm.method = 'POST';
+                bulkForm.action = '{{ url_for("admin_loan_cashback_config", instance_name=instance_name, loan_id=loan.id) }}';
+                
+                bulkForm.innerHTML = '<input type="hidden" name="action" value="template_add_all">';
+                
+                formData.forEach((data, index) => {
+                    bulkForm.innerHTML += `<input type="hidden" name="templates[${index}][template_name]" value="${data.template_name}">`;
+                    bulkForm.innerHTML += `<input type="hidden" name="templates[${index}][username_override]" value="${data.username_override}">`;
+                    bulkForm.innerHTML += `<input type="hidden" name="templates[${index}][percentage_override]" value="${data.percentage_override}">`;
+                });
+                
+                document.body.appendChild(bulkForm);
+                bulkForm.submit();
+            }
+        });
+    }
+});
 </script>
+        </div>
+    </div>
+</div>
 {% endblock %}
 

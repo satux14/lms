@@ -811,6 +811,9 @@ def register_routes():
             traceback.print_exc()
         
         # GET request - show form with current values
+        # Import cashback templates
+        from app_cashback import CASHBACK_TEMPLATES
+        
         return render_template('admin/edit_tracker_entry.html',
                              tracker=tracker,
                              tracker_data=tracker_data,
@@ -818,6 +821,7 @@ def register_routes():
                              row_index=row_index,
                              existing_cashback=existing_cashback,
                              configured_cashback=configured_cashback,
+                             templates=CASHBACK_TEMPLATES if not configured_cashback else None,
                              instance_name=instance_name)
 
 

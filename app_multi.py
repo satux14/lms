@@ -2618,10 +2618,14 @@ def admin_edit_payment(instance_name, payment_id):
                     'config_value': float(config.cashback_value)
                 })
     
+    # Import cashback templates for use when no global config exists
+    from app_cashback import CASHBACK_TEMPLATES
+    
     return render_template('admin/edit_payment.html', 
                          payment=payment,
                          loan=loan,
                          configured_cashback=configured_cashback,
+                         templates=CASHBACK_TEMPLATES if not configured_cashback and payment.interest_amount and payment.interest_amount > 0 else None,
                          instance_name=instance_name)
 
 
