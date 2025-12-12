@@ -821,7 +821,7 @@ def register_routes():
                              row_index=row_index,
                              existing_cashback=existing_cashback,
                              configured_cashback=configured_cashback,
-                             templates=CASHBACK_TEMPLATES if not configured_cashback else None,
+                             templates=CASHBACK_TEMPLATES,
                              instance_name=instance_name)
 
 

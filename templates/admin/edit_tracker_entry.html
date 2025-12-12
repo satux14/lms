@@ -203,9 +203,11 @@
                                             </ul>
                                         </div>
                                         {% else %}
+                                        {% if not configured_cashback %}
                                         <p class="text-muted small mb-3">
                                             Add cashback points to users for this tracker entry.
                                         </p>
+                                        {% endif %}
                                         
                                         {% if templates %}
                                         <!-- Quick Add Templates -->
@@ -290,55 +292,53 @@
                                                     </div>
                                                 </div>
                                                 {% endfor %}
+                                            {% elif configured_cashback %}
+                                                {% for cb in configured_cashback %}
+                                                <div class="cashback-user-entry mb-3 p-3 border rounded">
+                                                    <div class="row">
+                                                        <div class="col-md-5 mb-2">
+                                                            <label class="form-label small">Username</label>
+                                                            <input type="text" class="form-control form-control-sm" 
+                                                                   name="cashback_username[]" 
+                                                                   value="{{ cb.username }}" 
+                                                                   placeholder="Enter username" required>
+                                                        </div>
+                                                        <div class="col-md-5 mb-2">
+                                                            <label class="form-label small">Points</label>
+                                                            <input type="number" class="form-control form-control-sm" 
+                                                                   name="cashback_points[]" 
+                                                                   step="0.01" min="0.01" 
+                                                                   value="{{ "%.2f"|format(cb.points) }}" 
+                                                                   placeholder="0.00" required>
+                                                        </div>
+                                                        <div class="col-md-2 mb-2 d-flex align-items-end">
+                                                            <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
                                             {% else %}
-                                                {% if configured_cashback %}
-                                                    {% for cb in configured_cashback %}
-                                                    <div class="cashback-user-entry mb-3 p-3 border rounded">
-                                                        <div class="row">
-                                                            <div class="col-md-5 mb-2">
-                                                                <label class="form-label small">Username</label>
-                                                                <input type="text" class="form-control form-control-sm" 
-                                                                       name="cashback_username[]" 
-                                                                       value="{{ cb.username }}" 
-                                                                       placeholder="Enter username" required>
-                                                            </div>
-                                                            <div class="col-md-5 mb-2">
-                                                                <label class="form-label small">Points</label>
-                                                                <input type="number" class="form-control form-control-sm" 
-                                                                       name="cashback_points[]" 
-                                                                       step="0.01" min="0.01" 
-                                                                       value="{{ "%.2f"|format(cb.points) }}" 
-                                                                       placeholder="0.00" required>
-                                                            </div>
-                                                            <div class="col-md-2 mb-2 d-flex align-items-end">
-                                                                <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </div>
+                                                <div class="cashback-user-entry mb-3 p-3 border rounded">
+                                                    <div class="row">
+                                                        <div class="col-md-5 mb-2">
+                                                            <label class="form-label small">Username</label>
+                                                            <input type="text" class="form-control form-control-sm" 
+                                                                   name="cashback_username[]" placeholder="Enter username">
+                                                        </div>
+                                                        <div class="col-md-5 mb-2">
+                                                            <label class="form-label small">Points</label>
+                                                            <input type="number" class="form-control form-control-sm" 
+                                                                   name="cashback_points[]" step="0.01" min="0.01" placeholder="0.00">
+                                                        </div>
+                                                        <div class="col-md-2 mb-2 d-flex align-items-end">
+                                                            <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user" style="display: none;">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <div class="cashback-user-entry mb-3 p-3 border rounded">
-                                                        <div class="row">
-                                                            <div class="col-md-5 mb-2">
-                                                                <label class="form-label small">Username</label>
-                                                                <input type="text" class="form-control form-control-sm" 
-                                                                       name="cashback_username[]" placeholder="Enter username">
-                                                            </div>
-                                                            <div class="col-md-5 mb-2">
-                                                                <label class="form-label small">Points</label>
-                                                                <input type="number" class="form-control form-control-sm" 
-                                                                       name="cashback_points[]" step="0.01" min="0.01" placeholder="0.00">
-                                                            </div>
-                                                            <div class="col-md-2 mb-2 d-flex align-items-end">
-                                                                <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user" style="display: none;">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                {% endif %}
+                                                </div>
                                             {% endif %}
                                         </div>
                                         <button type="button" class="btn btn-outline-primary btn-sm" id="addCashbackUserBtn">
