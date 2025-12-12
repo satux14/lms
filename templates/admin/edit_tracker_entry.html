@@ -525,11 +525,29 @@ updateRemoveButtons();
 
 if (addCashbackBtn) {
     addCashbackBtn.addEventListener('click', function() {
-        const newEntry = cashbackContainer.firstElementChild.cloneNode(true);
+        const templateEntry = cashbackContainer.querySelector('.cashback-user-entry');
+        if (!templateEntry) {
+            console.error('No template entry found');
+            return;
+        }
         
-        // Clear input values
-        newEntry.querySelector('input[name="cashback_username[]"]').value = '';
-        newEntry.querySelector('input[name="cashback_points[]"]').value = '';
+        const newEntry = templateEntry.cloneNode(true);
+        
+        // Clear username field (handle both select and input)
+        const usernameField = newEntry.querySelector('input[name="cashback_username[]"], select[name="cashback_username[]"]');
+        if (usernameField) {
+            usernameField.value = '';
+        } else {
+            console.warn('Username field not found in cloned entry');
+        }
+        
+        // Clear points field
+        const pointsField = newEntry.querySelector('input[name="cashback_points[]"]');
+        if (pointsField) {
+            pointsField.value = '';
+        } else {
+            console.warn('Points field not found in cloned entry');
+        }
         
         cashbackContainer.appendChild(newEntry);
         updateRemoveButtons();
