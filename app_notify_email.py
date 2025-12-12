@@ -50,8 +50,9 @@ class EmailConfig:
 class EmailNotificationProvider(NotificationManager):
     """Email notification provider using SMTP"""
     
-    def __init__(self, config: Optional[EmailConfig] = None):
+    def __init__(self, instance_name: str = 'prod', config: Optional[EmailConfig] = None):
         """Initialize email provider with configuration"""
+        self.instance_name = instance_name
         self.config = config or EmailConfig()
     
     def can_send(self, channel: NotificationChannel) -> bool:
