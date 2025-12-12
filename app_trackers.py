@@ -1150,7 +1150,9 @@ def register_routes():
             
             configured_cashback.append({
                 'username': config.user.username,
-                'points': points
+                'points': points,
+                'config_type': config.cashback_type,
+                'config_value': config.cashback_value  # Percentage as decimal (e.g., 0.001 for 0.1%)
             })
         
         # Only show user list to admins, not moderators
