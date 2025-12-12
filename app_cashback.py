@@ -45,7 +45,13 @@ commit_current_instance = None
 get_current_instance_from_g = None
 db_manager = None
 
-
+# Cashback Templates - Quick add presets
+# Percentages stored as whole numbers (5 = 5%, 35 = 35%)
+CASHBACK_TEMPLATES = {
+    'thesrsconsulting-sw': {'username': 'thesrsconsulting-sw', 'percentage': 5, 'display_name': 'thesrsconsulting-sw'},
+    'thesrsconsulting-trust': {'username': 'thesrsconsulting-trust', 'percentage': 1, 'display_name': 'thesrsconsulting-trust'},
+    'sathish': {'username': 'sathish', 'percentage': 35, 'display_name': 'sathish'}
+}
 
 
 def register_routes():
@@ -438,6 +444,164 @@ def register_routes():
                 except Exception as e:
                     flash(f'Error adding configuration: {str(e)}', 'error')
             
+            elif action == 'template_add':
+                # Quick add from template
+                template_name = request.form.get('template_name')
+                percentage_override = request.form.get('percentage_override')
+                username_override = request.form.get('username_override', '').strip()
+                
+                if not template_name or template_name not in CASHBACK_TEMPLATES:
+                    flash('Invalid template', 'error')
+                    return redirect(url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan_id))
+                
+                template = CASHBACK_TEMPLATES[template_name]
+                # Use override username if provided, otherwise use template default
+                username = username_override if username_override else template['username']
+                
+                # Use override percentage if provided, otherwise use template default
+                # Convert from whole number (5) to decimal (0.05)
+                if percentage_override:
+                    try:
+                        percentage_value = Decimal(str(percentage_override))
+                        if percentage_value <= 0 or percentage_value > 100:
+                            flash('Percentage must be between 0 and 100 (e.g., 5 for 5%)', 'error')
+                            return redirect(url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan_id))
+                        # Convert whole number to decimal (5 -> 0.05)
+                        percentage = percentage_value / Decimal('100')
+                    except (ValueError, InvalidOperation):
+                        flash('Invalid percentage value', 'error')
+                        return redirect(url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan_id))
+                else:
+                    # Convert template percentage from whole number to decimal
+                    percentage = Decimal(str(template['percentage'])) / Decimal('100')
+                
+                # Find user
+                user = validate_username_exists(username, instance_name)
+                if not user:
+                    flash(f'User "{username}" not found', 'error')
+                    return redirect(url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan_id))
+                
+                # Check if config already exists for this loan and user
+                session = db_manager.get_session_for_instance(instance_name)
+                existing = session.query(LoanCashbackConfig).filter_by(
+                    loan_id=loan.id,
+                    user_id=user.id
+                ).first()
+                
+                if existing:
+                    # Update existing config
+                    existing.cashback_type = 'percentage'
+                    existing.cashback_value = percentage
+                    existing.is_active = True
+                    flash(f'Updated existing configuration for {username} to {percentage * 100}%', 'success')
+                else:
+                    # Create new config
+                    config = LoanCashbackConfig(
+                        loan_id=loan.id,
+                        user_id=user.id,
+                        cashback_type='percentage',
+                        cashback_value=percentage,
+                        is_active=True
+                    )
+                    session.add(config)
+                    flash(f'Added {username} ({percentage * 100}%) successfully', 'success')
+                
+                session.commit()
+            
+            elif action == 'template_add_all':
+                # Add all templates at once
+                templates_data = request.form.getlist('templates[]')
+                if not templates_data:
+                    # Try alternative format
+                    templates_data = []
+                    index = 0
+                    while True:
+                        template_name = request.form.get(f'templates[{index}][template_name]')
+                        if not template_name:
+                            break
+                        username_override = request.form.get(f'templates[{index}][username_override]', '').strip()
+                        percentage_override = request.form.get(f'templates[{index}][percentage_override]', '').strip()
+                        templates_data.append({
+                            'template_name': template_name,
+                            'username_override': username_override,
+                            'percentage_override': percentage_override
+                        })
+                        index += 1
+                
+                if not templates_data:
+                    flash('No templates to add', 'error')
+                    return redirect(url_for('admin_loan_cashback_config', instance_name=instance_name, loan_id=loan_id))
+                
+                session = db_manager.get_session_for_instance(instance_name)
+                added_count = 0
+                updated_count = 0
+                errors = []
+                
+                for template_data in templates_data:
+                    template_name = template_data.get('template_name') if isinstance(template_data, dict) else None
+                    username_override = template_data.get('username_override', '').strip() if isinstance(template_data, dict) else ''
+                    percentage_override = template_data.get('percentage_override', '').strip() if isinstance(template_data, dict) else ''
+                    
+                    if not template_name or template_name not in CASHBACK_TEMPLATES:
+                        continue
+                    
+                    template = CASHBACK_TEMPLATES[template_name]
+                    username = username_override if username_override else template['username']
+                    
+                    # Convert percentage
+                    if percentage_override:
+                        try:
+                            percentage_value = Decimal(str(percentage_override))
+                            if percentage_value <= 0 or percentage_value > 100:
+                                errors.append(f'{username}: Invalid percentage')
+                                continue
+                            percentage = percentage_value / Decimal('100')
+                        except (ValueError, InvalidOperation):
+                            errors.append(f'{username}: Invalid percentage value')
+                            continue
+                    else:
+                        percentage = Decimal(str(template['percentage'])) / Decimal('100')
+                    
+                    # Find user
+                    user = validate_username_exists(username, instance_name)
+                    if not user:
+                        errors.append(f'User "{username}" not found')
+                        continue
+                    
+                    # Check if config already exists
+                    existing = session.query(LoanCashbackConfig).filter_by(
+                        loan_id=loan.id,
+                        user_id=user.id
+                    ).first()
+                    
+                    if existing:
+                        existing.cashback_type = 'percentage'
+                        existing.cashback_value = percentage
+                        existing.is_active = True
+                        updated_count += 1
+                    else:
+                        config = LoanCashbackConfig(
+                            loan_id=loan.id,
+                            user_id=user.id,
+                            cashback_type='percentage',
+                            cashback_value=percentage,
+                            is_active=True
+                        )
+                        session.add(config)
+                        added_count += 1
+                
+                session.commit()
+                
+                if added_count > 0 or updated_count > 0:
+                    msg = f'Successfully added {added_count} and updated {updated_count} configuration(s)'
+                    if errors:
+                        msg += f'. Errors: {", ".join(errors)}'
+                    flash(msg, 'success')
+                elif errors:
+                    flash(f'Errors: {", ".join(errors)}', 'error')
+                else:
+                    flash('No configurations were added', 'warning')
+            
             elif action == 'toggle':
                 # Toggle active status
                 config_id = request.form.get('config_id')
@@ -478,6 +642,7 @@ def register_routes():
                              configs=configs,
                              all_users=all_users,
                              is_admin=current_user.is_admin,
+                             templates=CASHBACK_TEMPLATES,
                              instance_name=instance_name)
 
     @app.route('/<instance_name>/admin/cashback/redeem')
@@ -804,11 +969,40 @@ def register_routes():
             is_active=True
         ).all()
         
+        # Get all users for admin dropdown
+        all_users = None
+        if current_user.is_admin:
+            all_users = get_user_query().order_by(User.username).all()
+        
         return render_template('admin/tracker_cashback_config.html',
                              tracker=tracker,
                              cashback_configs=cashback_configs,
+                             templates=CASHBACK_TEMPLATES,
+                             all_users=all_users,
+                             is_admin=current_user.is_admin,
                              instance_name=instance_name)
 
+    # API endpoint to check if username exists
+    @app.route('/<instance_name>/api/check-username', methods=['POST'])
+    @login_required
+    def api_check_username(instance_name):
+        """API endpoint to check if a username exists"""
+        if instance_name not in VALID_INSTANCES:
+            return jsonify({'success': False, 'error': 'Invalid instance'}), 400
+        
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        
+        if not username:
+            return jsonify({'success': False, 'error': 'Username is required'}), 400
+        
+        user = validate_username_exists(username, instance_name)
+        return jsonify({
+            'success': True,
+            'exists': user is not None,
+            'username': username
+        })
+    
     # User Cashback Routes
     @app.route('/<instance_name>/cashback')
     @login_required
