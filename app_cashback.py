@@ -53,6 +53,14 @@ CASHBACK_TEMPLATES = {
     'sathish': {'username': 'sathish', 'percentage': 35, 'display_name': 'sathish'}
 }
 
+# Tracker-specific Cashback Templates - Different percentages for trackers
+# Percentages stored as whole numbers (0.5 = 0.5%, 3.5 = 3.5%)
+TRACKER_CASHBACK_TEMPLATES = {
+    'thesrsconsulting-sw': {'username': 'thesrsconsulting-sw', 'percentage': 0.5, 'display_name': 'thesrsconsulting-sw'},
+    'thesrsconsulting-trust': {'username': 'thesrsconsulting-trust', 'percentage': 0.1, 'display_name': 'thesrsconsulting-trust'},
+    'sathish': {'username': 'sathish', 'percentage': 3.5, 'display_name': 'sathish'}
+}
+
 
 def register_routes():
     """Register all cashback routes"""
@@ -977,7 +985,7 @@ def register_routes():
         return render_template('admin/tracker_cashback_config.html',
                              tracker=tracker,
                              cashback_configs=cashback_configs,
-                             templates=CASHBACK_TEMPLATES,
+                             templates=TRACKER_CASHBACK_TEMPLATES,
                              all_users=all_users,
                              is_admin=current_user.is_admin,
                              instance_name=instance_name)
