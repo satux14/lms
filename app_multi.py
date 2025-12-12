@@ -1407,6 +1407,13 @@ def login(instance_name):
             db_uri = get_database_uri(instance_name)
             print(f"[DEBUG LOGIN] Database URI: {db_uri}")
             
+            # Get session and rollback any pending transactions first
+            session = db_manager.get_session_for_instance(instance_name)
+            try:
+                session.rollback()
+            except:
+                pass  # Ignore if no transaction to rollback
+            
             # Get user query
             user_query = get_user_query()
             print(f"[DEBUG LOGIN] User query object: {user_query}")
@@ -1488,6 +1495,15 @@ def login(instance_name):
             print(f"[DEBUG LOGIN] EXCEPTION in login route: {e}")
             import traceback
             traceback.print_exc()
+            
+            # Rollback session on error
+            try:
+                session = db_manager.get_session_for_instance(instance_name)
+                session.rollback()
+                print(f"[DEBUG LOGIN] Session rolled back after exception")
+            except Exception as rollback_error:
+                print(f"[DEBUG LOGIN] Error during rollback: {rollback_error}")
+            
             flash(f'Login error: {str(e)}', 'error')
     
     print(f"[DEBUG LOGIN] Rendering login template for instance: {instance_name}")
