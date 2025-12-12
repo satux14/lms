@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List
 from enum import Enum
+from datetime import datetime, timedelta
 
 
 class NotificationChannel(Enum):
@@ -144,7 +145,7 @@ def send_approval_notification(
     db_manager=None
 ) -> List[bool]:
     """
-    Send approval notifications to all admins with email notifications enabled
+    Queue approval notifications for collation and delayed sending
     
     Args:
         instance_name: Name of the instance (prod, dev, etc.)
@@ -154,9 +155,9 @@ def send_approval_notification(
         db_manager: Database manager instance
         
     Returns:
-        List of bool values indicating success/failure for each recipient
+        List of bool values indicating success/failure for each recipient (queued)
     """
-    from app_multi import User, db_manager as default_db_manager
+    from app_multi import User, db_manager as default_db_manager, PendingApprovalNotification
     
     if db_manager is None:
         db_manager = default_db_manager
@@ -204,52 +205,188 @@ def send_approval_notification(
                 print(f"Admin {admin.username} has no email address, skipping notification")
                 continue
             
-            # Create notification
-            if approval_type == 'payment':
-                template = 'approval_request_payment'
-                subject = f"Payment Approval Required - {item_details.get('loan_name', 'Unknown Loan')}"
-            elif approval_type == 'tracker_entry':
-                template = 'approval_request_tracker'
-                subject = f"Tracker Entry Approval Required - {item_details.get('tracker_name', 'Unknown Tracker')}"
-            else:
-                print(f"Unknown approval type: {approval_type}")
-                continue
-            
-            # Get base URL from environment
-            import os
-            base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:9090')
-            
-            notification = Notification(
-                channel=NotificationChannel.EMAIL,
+            # Queue the notification instead of sending immediately
+            pending_notification = PendingApprovalNotification(
+                instance_name=instance_name,
                 recipient_id=admin.id,
-                subject=subject,
-                message="",  # Will be rendered from template
-                template=template,
-                context={
-                    'admin': admin,
-                    'item_id': item_id,
-                    'item_details': item_details,
-                    'instance_name': instance_name,
-                    'approval_type': approval_type,
-                    'base_url': base_url
-                },
-                priority=NotificationPriority.HIGH,
-                instance_name=instance_name
+                approval_type=approval_type,
+                item_id=item_id,
+                item_details=item_details,
+                is_sent=False
             )
+            session.add(pending_notification)
+            results.append(True)
             
-            # Send notification
-            success = send_notification(notification)
-            results.append(success)
-            
-            if success:
-                print(f"✓ Sent {approval_type} approval notification to {admin.username} ({admin.email})")
-            else:
-                print(f"✗ Failed to send {approval_type} approval notification to {admin.username}")
+            print(f"✓ Queued {approval_type} approval notification for {admin.username} ({admin.email})")
+        
+        session.commit()
     
     except Exception as e:
-        print(f"Error sending approval notifications: {e}")
+        print(f"Error queueing approval notifications: {e}")
         import traceback
         traceback.print_exc()
+        if 'session' in locals():
+            session.rollback()
     
     return results
 
+
+def process_pending_approval_notifications(instance_name: str = None):
+    """
+    Process pending approval notifications and send collated emails
+    
+    This function:
+    1. Finds all pending notifications older than the configured delay
+    2. Groups them by recipient and approval type
+    3. Sends collated emails
+    
+    Args:
+        instance_name: Optional instance name to process. If None, processes all instances.
+    """
+    from app_multi import db_manager, User, NotificationPreference, PendingApprovalNotification
+    from app_notify_email import EmailNotificationProvider
+    import os
+    
+    instances = [instance_name] if instance_name else ['prod', 'dev', 'testing']
+    base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:9090')
+    
+    for instance in instances:
+        try:
+            session = db_manager.get_session_for_instance(instance)
+            
+            # Get delay time from first admin's preferences (default 5 minutes)
+            # Use the first admin's preference as system-wide setting
+            delay_minutes = 5
+            admin = session.query(User).filter_by(is_admin=True).first()
+            if admin:
+                pref = session.query(NotificationPreference).filter_by(
+                    user_id=admin.id,
+                    channel='email'
+                ).first()
+                if pref and pref.preferences:
+                    delay_minutes = pref.preferences.get('approval_email_delay_minutes', 5)
+                elif not pref:
+                    # No preference set, use default
+                    delay_minutes = 5
+            
+            # Calculate cutoff time
+            cutoff_time = datetime.utcnow() - timedelta(minutes=delay_minutes)
+            
+            # Get all pending notifications older than cutoff
+            pending_notifications = session.query(PendingApprovalNotification).filter(
+                PendingApprovalNotification.instance_name == instance,
+                PendingApprovalNotification.is_sent == False,
+                PendingApprovalNotification.created_at <= cutoff_time
+            ).all()
+            
+            if not pending_notifications:
+                continue
+            
+            # Group by recipient
+            notifications_by_recipient = {}
+            for notification in pending_notifications:
+                recipient_id = notification.recipient_id
+                if recipient_id not in notifications_by_recipient:
+                    notifications_by_recipient[recipient_id] = []
+                notifications_by_recipient[recipient_id].append(notification)
+            
+            # Process each recipient
+            email_provider = EmailNotificationProvider(instance_name=instance)
+            if not email_provider.validate_config():
+                print(f"Email provider not configured for {instance}, skipping")
+                continue
+            
+            for recipient_id, notifications in notifications_by_recipient.items():
+                recipient = session.query(User).get(recipient_id)
+                if not recipient or not recipient.email:
+                    continue
+                
+                # Group by approval type
+                payments = [n for n in notifications if n.approval_type == 'payment']
+                tracker_entries = [n for n in notifications if n.approval_type == 'tracker_entry']
+                
+                # Send collated email
+                success = send_collated_approval_email(
+                    recipient=recipient,
+                    payments=payments,
+                    tracker_entries=tracker_entries,
+                    instance_name=instance,
+                    base_url=base_url,
+                    email_provider=email_provider
+                )
+                
+                if success:
+                    # Mark notifications as sent
+                    for notification in notifications:
+                        notification.is_sent = True
+                        notification.sent_at = datetime.utcnow()
+                    session.commit()
+                    print(f"✓ Sent collated approval email to {recipient.username} ({instance}): {len(payments)} payments, {len(tracker_entries)} tracker entries")
+                else:
+                    print(f"✗ Failed to send collated approval email to {recipient.username} ({instance})")
+                    session.rollback()
+        
+        except Exception as e:
+            print(f"Error processing pending notifications for {instance}: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+def send_collated_approval_email(
+    recipient: 'User',
+    payments: List,
+    tracker_entries: List,
+    instance_name: str,
+    base_url: str,
+    email_provider: 'EmailNotificationProvider'
+) -> bool:
+    """
+    Send a collated approval email with multiple requests
+    
+    Args:
+        recipient: User to send email to
+        payments: List of PendingApprovalNotification objects for payments
+        tracker_entries: List of PendingApprovalNotification objects for tracker entries
+        instance_name: Instance name
+        base_url: Base URL for links
+        email_provider: EmailNotificationProvider instance
+        
+    Returns:
+        bool: True if sent successfully
+    """
+    from app_notifications import Notification, NotificationChannel, NotificationPriority
+    
+    # Build email content
+    total_count = len(payments) + len(tracker_entries)
+    
+    if total_count == 0:
+        return False
+    
+    # Determine subject
+    if len(payments) > 0 and len(tracker_entries) > 0:
+        subject = f"{total_count} Approval Requests Pending - Payments & Tracker Entries"
+    elif len(payments) > 0:
+        subject = f"{len(payments)} Payment Approval Request{'s' if len(payments) > 1 else ''} Pending"
+    else:
+        subject = f"{len(tracker_entries)} Tracker Entry Approval Request{'s' if len(tracker_entries) > 1 else ''} Pending"
+    
+    # Create notification with collated template
+    notification = Notification(
+        channel=NotificationChannel.EMAIL,
+        recipient_id=recipient.id,
+        subject=subject,
+        message="",
+        template='approval_request_collated',
+        context={
+            'admin': recipient,
+            'payments': [{'id': p.item_id, 'details': p.item_details} for p in payments],
+            'tracker_entries': [{'id': t.item_id, 'details': t.item_details} for t in tracker_entries],
+            'instance_name': instance_name,
+            'base_url': base_url,
+            'total_count': total_count
+        },
+        priority=NotificationPriority.HIGH,
+        instance_name=instance_name
+    )
+    
+    return email_provider.send(notification)

@@ -349,11 +349,25 @@ class NotificationPreference(db.Model):
     channel = db.Column(db.String(20), nullable=False, default='email')  # 'email', 'sms', 'slack', etc.
     enabled = db.Column(db.Boolean, nullable=False, default=True)  # Master switch for this channel
     preferences = db.Column(db.JSON, nullable=True)  # Channel-specific preferences as JSON
-    # Example preferences for email: {'payment_approvals': True, 'tracker_approvals': True, 'payment_status': False, 'tracker_status': False}
+    # Example preferences for email: {'payment_approvals': True, 'tracker_approvals': True, 'payment_status': False, 'tracker_status': False, 'approval_email_delay_minutes': 5}
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = db.relationship('User', backref='notification_preferences')
+
+class PendingApprovalNotification(db.Model):
+    """Model to queue approval notifications for collation"""
+    id = db.Column(db.Integer, primary_key=True)
+    instance_name = db.Column(db.String(20), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    approval_type = db.Column(db.String(20), nullable=False)  # 'payment' or 'tracker_entry'
+    item_id = db.Column(db.Integer, nullable=False)  # payment_id or tracker_entry_id
+    item_details = db.Column(db.JSON, nullable=False)  # Details about the item
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    sent_at = db.Column(db.DateTime, nullable=True)  # When the notification was sent
+    is_sent = db.Column(db.Boolean, default=False, nullable=False)
+    
+    recipient = db.relationship('User', backref='pending_approval_notifications')
 
 class ReportPreference(db.Model):
     """Model to store user daily report preferences"""
@@ -2841,6 +2855,17 @@ def user_settings(instance_name):
             if current_user.is_admin:
                 preferences['payment_approvals'] = request.form.get('payment_approvals') == '1'
                 preferences['tracker_approvals'] = request.form.get('tracker_approvals') == '1'
+                # Get approval email delay (default 5 minutes)
+                delay_minutes = request.form.get('approval_email_delay_minutes', '5')
+                try:
+                    delay_minutes = int(delay_minutes)
+                    if delay_minutes < 0:
+                        delay_minutes = 0
+                    elif delay_minutes > 60:
+                        delay_minutes = 60
+                except ValueError:
+                    delay_minutes = 5
+                preferences['approval_email_delay_minutes'] = delay_minutes
             else:
                 preferences['payment_status'] = request.form.get('payment_status') == '1'
                 preferences['tracker_status'] = request.form.get('tracker_status') == '1'

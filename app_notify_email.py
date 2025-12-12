@@ -172,19 +172,28 @@ class EmailNotificationProvider(NotificationManager):
     def _render_template_file(self, template_name: str, context: Dict[str, Any]) -> str:
         """Render email template from file"""
         try:
-            from flask import current_app
+            from flask import current_app, render_template
             with current_app.app_context():
                 # Try to load template from templates/emails/
                 template_path = os.path.join('templates', 'emails', template_name)
                 if os.path.exists(template_path):
-                    with open(template_path, 'r') as f:
-                        template_content = f.read()
-                    return render_template_string(template_content, **context)
+                    # Use Flask's render_template for proper Jinja2 rendering
+                    try:
+                        return render_template(f'emails/{template_name}', **context)
+                    except:
+                        # Fallback to manual rendering if render_template fails
+                        with open(template_path, 'r') as f:
+                            template_content = f.read()
+                        from jinja2 import Template
+                        template = Template(template_content)
+                        return template.render(**context)
                 else:
                     # Template not found, use fallback
                     return self._get_fallback_template(template_name, context)
         except Exception as e:
             print(f"Error rendering template {template_name}: {e}")
+            import traceback
+            traceback.print_exc()
             return self._get_fallback_template(template_name, context)
     
     def _get_fallback_template(self, template_name: str, context: Dict[str, Any]) -> str:

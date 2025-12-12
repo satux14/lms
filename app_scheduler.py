@@ -265,6 +265,28 @@ def init_scheduler(app):
             misfire_grace_time=300  # Allow 5 minutes grace period
         )
         
+        # Add job to process pending approval notifications every minute
+        def process_approval_notifications_job():
+            """Job function to process pending approval notifications"""
+            with app.app_context():
+                try:
+                    from app_notifications import process_pending_approval_notifications
+                    process_pending_approval_notifications()
+                except Exception as e:
+                    print(f"Error processing approval notifications: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        scheduler.add_job(
+            func=process_approval_notifications_job,
+            trigger='interval',
+            minutes=1,
+            id='process_approval_notifications',
+            name='Process Pending Approval Notifications',
+            replace_existing=True,
+            max_instances=1
+        )
+        
         # Start the scheduler
         if not scheduler.running:
             scheduler.start()
@@ -274,6 +296,7 @@ def init_scheduler(app):
             print("📊 Daily Reports Schedule (IST):")
             print(f"   🌅 Morning Report: {morning_hour:02d}:{morning_minute:02d}")
             print(f"   🌙 Evening Report: {evening_hour:02d}:{evening_minute:02d}")
+            print("📧 Approval Notifications: Processed every minute")
             print("="*60 + "\n")
         
         # Register shutdown hook

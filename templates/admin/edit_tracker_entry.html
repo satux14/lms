@@ -271,10 +271,19 @@
                                                     <div class="row">
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Username</label>
+                                                            {% if is_admin and all_users %}
+                                                            <select class="form-select form-select-sm" name="cashback_username[]" required>
+                                                                <option value="">Select a user...</option>
+                                                                {% for user in all_users %}
+                                                                <option value="{{ user.username }}" {% if user.username == cb.user.username %}selected{% endif %}>{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            {% else %}
                                                             <input type="text" class="form-control form-control-sm" 
                                                                    name="cashback_username[]" 
                                                                    value="{{ cb.user.username }}" 
                                                                    placeholder="Enter username" required>
+                                                            {% endif %}
                                                         </div>
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Points</label>
@@ -298,10 +307,19 @@
                                                     <div class="row">
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Username</label>
+                                                            {% if is_admin and all_users %}
+                                                            <select class="form-select form-select-sm" name="cashback_username[]" required>
+                                                                <option value="">Select a user...</option>
+                                                                {% for user in all_users %}
+                                                                <option value="{{ user.username }}" {% if user.username == cb.username %}selected{% endif %}>{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            {% else %}
                                                             <input type="text" class="form-control form-control-sm" 
                                                                    name="cashback_username[]" 
                                                                    value="{{ cb.username }}" 
                                                                    placeholder="Enter username" required>
+                                                            {% endif %}
                                                         </div>
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Points</label>
@@ -324,8 +342,17 @@
                                                     <div class="row">
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Username</label>
+                                                            {% if is_admin and all_users %}
+                                                            <select class="form-select form-select-sm" name="cashback_username[]">
+                                                                <option value="">Select a user...</option>
+                                                                {% for user in all_users %}
+                                                                <option value="{{ user.username }}">{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            {% else %}
                                                             <input type="text" class="form-control form-control-sm" 
                                                                    name="cashback_username[]" placeholder="Enter username">
+                                                            {% endif %}
                                                         </div>
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Points</label>
@@ -564,18 +591,34 @@ document.querySelectorAll('.add-template-btn').forEach(btn => {
         // Calculate points based on percentage of daily payment
         const points = dailyPayment > 0 ? (dailyPayment * percentage / 100) : 0;
         
-        // Add to cashback container
-        const newEntry = document.createElement('div');
-        newEntry.className = 'cashback-user-entry mb-3 p-3 border rounded';
-        newEntry.innerHTML = `
-            <div class="row">
-                <div class="col-md-5 mb-2">
-                    <label class="form-label small">Username</label>
-                    <input type="text" class="form-control form-control-sm" 
-                           name="cashback_username[]" 
-                           value="${username}" 
-                           placeholder="Enter username" required>
-                </div>
+            // Add to cashback container
+            const newEntry = document.createElement('div');
+            newEntry.className = 'cashback-user-entry mb-3 p-3 border rounded';
+            
+            {% if is_admin and all_users %}
+            // Build select dropdown for admin
+            const usernameOptions = {% for user in all_users %}'<option value="{{ user.username }}" ${username === '{{ user.username }}' ? 'selected' : ''}>{{ user.username }}{% if user.email %} ({{ user.email }}){% endif %}</option>' + {% endfor %}'';
+            const usernameField = `
+                <select class="form-select form-select-sm" name="cashback_username[]" required>
+                    <option value="">Select a user...</option>
+                    ${usernameOptions}
+                </select>
+            `;
+            {% else %}
+            const usernameField = `
+                <input type="text" class="form-control form-control-sm" 
+                       name="cashback_username[]" 
+                       value="${username}" 
+                       placeholder="Enter username" required>
+            `;
+            {% endif %}
+            
+            newEntry.innerHTML = `
+                <div class="row">
+                    <div class="col-md-5 mb-2">
+                        <label class="form-label small">Username</label>
+                        ${usernameField}
+                    </div>
                 <div class="col-md-5 mb-2">
                     <label class="form-label small">Points</label>
                     <input type="number" class="form-control form-control-sm" 
