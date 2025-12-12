@@ -114,10 +114,34 @@ class EmailNotificationProvider(NotificationManager):
             return False
     
     def _get_recipient_email(self, notification: Notification) -> Optional[str]:
-        """Get recipient email address from notification context"""
-        if notification.context and 'admin' in notification.context:
-            admin = notification.context['admin']
-            return getattr(admin, 'email', None)
+        """Get recipient email address from notification context or database"""
+        # Try to get from context first (for backward compatibility)
+        if notification.context:
+            # Check for 'admin' key (used in approval notifications)
+            if 'admin' in notification.context:
+                admin = notification.context['admin']
+                email = getattr(admin, 'email', None)
+                if email:
+                    return email
+            
+            # Check for 'user' key (used in daily reports)
+            if 'user' in notification.context:
+                user = notification.context['user']
+                email = getattr(user, 'email', None)
+                if email:
+                    return email
+        
+        # Fallback: Fetch from database using recipient_id
+        if notification.recipient_id:
+            try:
+                from app_multi import db_manager, User
+                session = db_manager.get_session_for_instance(self.instance_name)
+                user = session.query(User).filter_by(id=notification.recipient_id).first()
+                if user and user.email:
+                    return user.email
+            except Exception as e:
+                self.logger.warning(f"Could not fetch email from database for user {notification.recipient_id}: {e}")
+        
         return None
     
     def _render_email_body(self, notification: Notification) -> tuple:
