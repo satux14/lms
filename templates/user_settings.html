@@ -229,6 +229,13 @@
                         <!-- Schedule Settings -->
                         <div id="reportOptions" {% if report_pref and not report_pref.enabled %}style="display:none;"{% endif %}>
                             <h6 class="mb-3"><i class="fas fa-clock me-2"></i>Report Schedule</h6>
+                            
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Note:</strong> Schedule changes require an application restart to take effect.
+                                After saving, restart Docker with: <code>docker-compose restart web</code>
+                            </div>
+                            
                             <div class="row mb-4">
                                 <div class="col-md-6">
                                     <label for="morningTime" class="form-label">Morning Report Time</label>
@@ -237,7 +244,7 @@
                                            id="morningTime" 
                                            name="morning_time" 
                                            value="{{ report_pref.morning_time if report_pref else '08:00' }}">
-                                    <div class="form-text">Default: 8:00 AM</div>
+                                    <div class="form-text">Default: 8:00 AM IST</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="eveningTime" class="form-label">Evening Report Time</label>
@@ -246,7 +253,7 @@
                                            id="eveningTime" 
                                            name="evening_time" 
                                            value="{{ report_pref.evening_time if report_pref else '20:00' }}">
-                                    <div class="form-text">Default: 8:00 PM</div>
+                                    <div class="form-text">Default: 8:00 PM IST</div>
                                 </div>
                             </div>
 

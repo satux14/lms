@@ -101,13 +101,18 @@ Expected output:
 2. Click on "Daily Reports" tab
 3. Configure:
    - ✅ Enable Daily Reports (toggle on)
-   - ⏰ Set Morning Report Time (default: 08:00)
-   - ⏰ Set Evening Report Time (default: 20:00)
+   - ⏰ Set Morning Report Time (default: 08:00 AM IST)
+   - ⏰ Set Evening Report Time (default: 20:00 / 8:00 PM IST)
    - ☑️ Select what to include:
      - Trends & Comparisons
      - User Activity Details
      - Priority Alerts & Action Items
 4. Click "Save Report Settings"
+
+**⚠️ Important:** Schedule changes require a restart:
+```bash
+docker-compose restart web
+```
 
 ### Step 4: Start/Restart Your Application
 
