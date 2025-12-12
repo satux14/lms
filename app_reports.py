@@ -17,6 +17,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from sqlalchemy import func, and_, or_
 import json
+import os
 
 # Import models and utilities
 from app_multi import (
@@ -572,6 +573,9 @@ def send_report_email(user, report_data, instance_name):
             print(f"No email address found for user {user.username} (ID: {user.id})")
             return False
         
+        # Get base URL from environment variable
+        base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:9090')
+        
         # Create notification
         notification = Notification(
             channel=NotificationChannel.EMAIL,
@@ -582,7 +586,8 @@ def send_report_email(user, report_data, instance_name):
             context={
                 'user': user,
                 'report_data': report_data,
-                'instance_name': instance_name
+                'instance_name': instance_name,
+                'base_url': base_url
             },
             instance_name=instance_name
         )

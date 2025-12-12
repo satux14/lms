@@ -16,7 +16,7 @@ Amount:     ₹{{ item_details.amount }}
 REVIEW AND APPROVE
 ------------------
 Please review and approve this tracker entry at:
-http://127.0.0.1:9090/{{ instance_name }}/admin/daily-trackers/pending-entries
+{{ base_url }}/{{ instance_name }}/admin/daily-trackers/pending-entries
 
 ---
 This is an automated notification from the Lending Management System.

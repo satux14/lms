@@ -31,6 +31,8 @@ services:
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-LMS Notification System}
       - SMTP_USE_TLS=${SMTP_USE_TLS:-True}
       - NOTIFICATIONS_ENABLED=${NOTIFICATIONS_ENABLED:-True}
+      # Application Base URL (for email links)
+      - BASE_URL=${BASE_URL:-https://www.thesrsconsulting.in}
     volumes:
       # Mount instances directory (contains databases, uploads, daily-trackers per instance)
       - ${DATA_DIR:-./instances}:/app/instances

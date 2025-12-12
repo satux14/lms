@@ -215,6 +215,10 @@ def send_approval_notification(
                 print(f"Unknown approval type: {approval_type}")
                 continue
             
+            # Get base URL from environment
+            import os
+            base_url = os.environ.get('BASE_URL', 'http://127.0.0.1:9090')
+            
             notification = Notification(
                 channel=NotificationChannel.EMAIL,
                 recipient_id=admin.id,
@@ -226,7 +230,8 @@ def send_approval_notification(
                     'item_id': item_id,
                     'item_details': item_details,
                     'instance_name': instance_name,
-                    'approval_type': approval_type
+                    'approval_type': approval_type,
+                    'base_url': base_url
                 },
                 priority=NotificationPriority.HIGH,
                 instance_name=instance_name
