@@ -108,7 +108,7 @@ Total Users:            {{ report_data.user_activity.total_users }} users
 Generated at: {{ report_data.generated_at }}
 LMS Daily Report System
 
-View Dashboard: http://127.0.0.1:9090/{{ instance_name }}/admin
+View Dashboard: {{ base_url }}/{{ instance_name }}/admin
 
 ================================================================
 

@@ -16,7 +16,7 @@ Payment Date:   {{ item_details.payment_date }}
 REVIEW AND APPROVE
 ------------------
 Please review and approve this payment at:
-http://127.0.0.1:9090/{{ instance_name }}/admin/payments
+{{ base_url }}/{{ instance_name }}/admin/payments
 
 ---
 This is an automated notification from the Lending Management System.
