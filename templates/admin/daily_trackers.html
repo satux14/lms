@@ -161,7 +161,7 @@
                             <tbody>
                                 {% for item in tracker_summaries %}
                                 {% set tracker = item.tracker %}
-                                <tr {% if item.get('error') %}class="table-warning"{% endif %}>
+                                <tr class="clickable-row {% if item.get('error') %}table-warning{% endif %}" data-href="{{ url_for('admin_view_daily_tracker', instance_name=instance_name, tracker_id=tracker.id) }}" style="cursor: pointer;">
                                     <td>{{ tracker.id }}</td>
                                     <td>
                                         <span class="badge bg-info">{{ tracker.user.username }}</span>
@@ -334,6 +334,23 @@ document.getElementById('user_id').addEventListener('change', function() {
 
 document.getElementById('status').addEventListener('change', function() {
     document.getElementById('filterForm').submit();
+});
+
+// Make table rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.clickable-row');
+    rows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on buttons or links
+            if (e.target.closest('button, a, .btn-group')) {
+                return;
+            }
+            const href = this.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

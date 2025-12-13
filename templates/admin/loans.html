@@ -139,7 +139,7 @@
                                    value="{{ request.args.get('loan_name', '') }}" 
                                    placeholder="Search by loan name...">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <label for="interest_rate_filter" class="form-label">{{ _('Interest Rate Range') }}</label>
                             <div class="row">
                                 <div class="col-6">
@@ -151,6 +151,21 @@
                                     <input type="number" class="form-control" id="max_rate_filter" name="max_rate" 
                                            value="{{ request.args.get('max_rate', '') }}" 
                                            placeholder="{{ _('Max %') }}" step="0.01" min="0" max="100">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="interest_pending_filter" class="form-label">{{ _('Interest Pending Range') }}</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="min_pending_filter" name="min_pending" 
+                                           value="{{ request.args.get('min_pending', '') }}" 
+                                           placeholder="{{ _('Min ₹') }}" step="0.01" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="max_pending_filter" name="max_pending" 
+                                           value="{{ request.args.get('max_pending', '') }}" 
+                                           placeholder="{{ _('Max ₹') }}" step="0.01" min="0">
                                 </div>
                             </div>
                         </div>
@@ -169,7 +184,7 @@
             </div>
 
             <!-- Active Filters Summary -->
-            {% if request.args.get('loan_type') or request.args.get('frequency') or request.args.get('customer') or request.args.get('status') or request.args.get('loan_name') or request.args.get('min_rate') or request.args.get('max_rate') %}
+            {% if request.args.get('loan_type') or request.args.get('frequency') or request.args.get('customer') or request.args.get('status') or request.args.get('loan_name') or request.args.get('min_rate') or request.args.get('max_rate') or request.args.get('min_pending') or request.args.get('max_pending') %}
             <div class="row mb-3">
                 <div class="col-12">
                     <div class="alert alert-info">
@@ -210,7 +225,13 @@
                             {% if request.args.get('min_rate') or request.args.get('max_rate') %}
                             <span class="badge bg-primary">
                                 Rate: {{ request.args.get('min_rate', '0') }}% - {{ request.args.get('max_rate', '∞') }}%
-                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
+                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), min_pending=request.args.get('min_pending', ''), max_pending=request.args.get('max_pending', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
+                            </span>
+                            {% endif %}
+                            {% if request.args.get('min_pending') or request.args.get('max_pending') %}
+                            <span class="badge bg-primary">
+                                Interest Pending: ₹{{ request.args.get('min_pending', '0') }} - ₹{{ request.args.get('max_pending', '∞') }}
+                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), status=request.args.get('status', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), sort=request.args.get('sort', ''), order=request.args.get('order', '')) }}" class="text-white ms-1">×</a>
                             </span>
                             {% endif %}
                         </div>
