@@ -205,6 +205,20 @@ def send_approval_notification(
                 print(f"Admin {admin.username} has no email address, skipping notification")
                 continue
             
+            # Check if notification already exists (prevent duplicates)
+            existing_notification = session.query(PendingApprovalNotification).filter_by(
+                instance_name=instance_name,
+                recipient_id=admin.id,
+                approval_type=approval_type,
+                item_id=item_id,
+                is_sent=False
+            ).first()
+            
+            if existing_notification:
+                print(f"⚠ Notification already queued for {admin.username} ({approval_type} #{item_id}), skipping duplicate")
+                results.append(True)
+                continue
+            
             # Queue the notification instead of sending immediately
             pending_notification = PendingApprovalNotification(
                 instance_name=instance_name,

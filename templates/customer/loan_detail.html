@@ -121,7 +121,7 @@
                                 </div>
                                 <div class="col-md-{% if loan_cashback_total > 0 %}3{% else %}4{% endif %}">
                                     <h6 class="text-muted">{{ _('Interest Pending Monthly') }}</h6>
-                                    <h4 class="{% if accumulated_interest_monthly > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ "%.2f"|format(accumulated_interest_monthly) }}</h4>
+                                    <h4 class="{% if interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">₹{{ "%.2f"|format(interest_pending) }}</h4>
                                 </div>
                                 {% if loan_cashback_total > 0 %}
                                 <div class="col-md-3">

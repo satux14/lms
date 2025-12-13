@@ -560,9 +560,10 @@ def register_routes():
         loans = query.all()
         customers = get_user_query().filter_by(is_admin=False).all()
         
-        # Calculate interest paid and cashback for each loan
+        # Calculate interest paid, interest pending, monthly interest, and cashback for each loan
         loans_with_interest = []
         total_cashback = Decimal('0')
+        total_interest_pending = Decimal('0')
         for loan in loans:
             # Get verified interest payments for this loan
             interest_paid = get_payment_query().filter_by(
@@ -570,14 +571,35 @@ def register_routes():
                 status='verified'
             ).with_entities(db.func.sum(Payment.interest_amount)).scalar() or 0
             
+            # Calculate monthly interest
+            monthly_interest = calculate_monthly_interest(loan.remaining_principal, loan.interest_rate)
+            
+            # Calculate interest pending
+            interest_data = calculate_accumulated_interest(loan)
+            interest_pending = interest_data['monthly'] if loan.payment_frequency == 'monthly' else interest_data['daily']
+            total_interest_pending += interest_pending
+            
             # Calculate cashback total for this loan
             loan_cashback = get_loan_cashback_total(loan.id, instance_name)
             total_cashback += loan_cashback
             
+            # Get last paid date (most recent verified payment)
+            verified_payments = get_payment_query().filter_by(loan_id=loan.id, status='verified').all()
+            last_paid_date = None
+            last_paid_amount = None
+            if verified_payments:
+                last_payment = max(verified_payments, key=lambda p: p.payment_date)
+                last_paid_date = last_payment.payment_date.date()
+                last_paid_amount = last_payment.amount
+            
             loans_with_interest.append({
                 'loan': loan,
                 'interest_paid': interest_paid,
-                'cashback_total': loan_cashback
+                'monthly_interest': monthly_interest,
+                'interest_pending': interest_pending,
+                'cashback_total': loan_cashback,
+                'last_paid_date': last_paid_date,
+                'last_paid_amount': last_paid_amount
             })
         
         return render_template('admin/loans.html', 
@@ -592,7 +614,8 @@ def register_routes():
                              status=status,
                              sort_by=sort_by,
                              sort_order=sort_order,
-                             total_cashback=total_cashback,
+                             total_cashback=float(total_cashback),
+                             total_interest_pending=float(total_interest_pending),
                              instance_name=instance_name)
 
 
@@ -1210,6 +1233,14 @@ def register_routes():
             verified_principal = sum(payment.principal_amount for payment in verified_payments)
             verified_interest = sum(payment.interest_amount for payment in verified_payments)
             
+            # Calculate last paid date and amount (most recent verified payment)
+            last_paid_date = None
+            last_paid_amount = None
+            if verified_payments:
+                last_payment = max(verified_payments, key=lambda p: p.payment_date)
+                last_paid_date = last_payment.payment_date.date()
+                last_paid_amount = last_payment.amount
+            
             # Calculate interest pending based on payment frequency
             interest_pending = accumulated_interest_monthly if loan.payment_frequency == 'monthly' else accumulated_interest_daily
             
@@ -1225,7 +1256,9 @@ def register_routes():
                 'pending_interest': pending_interest,
                 'pending_total': pending_total,
                 'verified_principal': verified_principal,
-                'verified_interest': verified_interest
+                'verified_interest': verified_interest,
+                'last_paid_date': last_paid_date,
+                'last_paid_amount': last_paid_amount
             })
         
         return render_template('customer/all_loans.html',
@@ -1256,6 +1289,9 @@ def register_routes():
         interest_data = calculate_accumulated_interest(loan)
         accumulated_interest_daily = interest_data['daily']
         accumulated_interest_monthly = interest_data['monthly']
+        
+        # Calculate interest pending based on payment frequency (same logic as customer_all_loans)
+        interest_pending = accumulated_interest_monthly if loan.payment_frequency == 'monthly' else accumulated_interest_daily
         
         # Get payment history
         payments = get_payment_query().filter_by(loan_id=loan_id).order_by(Payment.payment_date.desc()).all()
@@ -1341,6 +1377,7 @@ def register_routes():
                              monthly_interest=monthly_interest,
                              accumulated_interest_daily=accumulated_interest_daily,
                              accumulated_interest_monthly=accumulated_interest_monthly,
+                             interest_pending=interest_pending,
                              interest_data=interest_data,
                              total_interest_paid=total_interest_paid,
                              verified_principal=verified_principal,

@@ -145,7 +145,6 @@
                                     <th>ID</th>
                                     <th>User</th>
                                     <th>Tracker Name</th>
-                                    <th>Type</th>
                                     <th>Investment</th>
                                     <th>Scheme Period</th>
                                     <th>Per Day Payment</th>
@@ -153,6 +152,7 @@
                                     <th>Total Payments</th>
                                     <th>Pending</th>
                                     <th>Cashback</th>
+                                    <th>Last Updated</th>
                                     <th>Start Date</th>
                                     <th>Status</th>
                                     <th>Actions</th>
@@ -167,15 +167,6 @@
                                         <span class="badge bg-info">{{ tracker.user.username }}</span>
                                     </td>
                                     <td>{{ tracker.tracker_name }}</td>
-                                    <td>
-                                        {% if tracker.tracker_type == '50K' %}
-                                        <span class="badge bg-success">50K Reinvest</span>
-                                        {% elif tracker.tracker_type == '1L' %}
-                                        <span class="badge bg-primary">1L Enhanced</span>
-                                        {% else %}
-                                        <span class="badge bg-warning text-dark">No Reinvest</span>
-                                        {% endif %}
-                                    </td>
                                     <td>₹{{ "%.2f"|format(tracker.investment) }}</td>
                                     <td>{{ tracker.scheme_period }} days</td>
                                     <td>
@@ -211,6 +202,7 @@
                                             <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(item.cashback_total) }}
                                         </span>
                                     </td>
+                                    <td>{{ tracker.updated_at.strftime('%Y-%m-%d') if tracker.updated_at else '-' }}</td>
                                     <td>{{ tracker.start_date.strftime('%Y-%m-%d') }}</td>
                                     <td>
                                         {% if tracker.is_closed_by_user %}
