@@ -287,11 +287,11 @@
                                                         </div>
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Points</label>
-                                                            <input type="number" class="form-control form-control-sm" 
+                                                            <input type="number" class="form-control form-control-sm cashback-points-input" 
                                                                    name="cashback_points[]" 
-                                                                   step="0.01" min="0.01" 
+                                                                   step="0.01" min="0" 
                                                                    value="{{ "%.2f"|format(cb.points) }}" 
-                                                                   placeholder="0.00" required>
+                                                                   placeholder="0.00">
                                                         </div>
                                                         <div class="col-md-2 mb-2 d-flex align-items-end">
                                                             <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user">
@@ -356,11 +356,11 @@
                                                         </div>
                                                         <div class="col-md-5 mb-2">
                                                             <label class="form-label small">Points</label>
-                                                            <input type="number" class="form-control form-control-sm" 
-                                                                   name="cashback_points[]" step="0.01" min="0.01" placeholder="0.00">
+                                                            <input type="number" class="form-control form-control-sm cashback-points-input" 
+                                                                   name="cashback_points[]" step="0.01" min="0" placeholder="0.00">
                                                         </div>
                                                         <div class="col-md-2 mb-2 d-flex align-items-end">
-                                                            <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user" style="display: none;">
+                                                            <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user">
                                                                 <i class="fas fa-trash"></i>
                                                             </button>
                                                         </div>
@@ -499,24 +499,41 @@ if (dailyPaymentsInput && configuredCashbackList) {
     dailyPaymentsInput.addEventListener('input', recalculateConfiguredCashback);
     dailyPaymentsInput.addEventListener('change', recalculateConfiguredCashback);
     
+    // Update points field validation based on daily payment
+    function updatePointsFieldValidation() {
+        const dailyPayment = parseFloat(dailyPaymentsInput.value) || 0;
+        const pointsInputs = document.querySelectorAll('.cashback-points-input');
+        pointsInputs.forEach(input => {
+            if (dailyPayment === 0) {
+                input.removeAttribute('required');
+                input.setAttribute('min', '0');
+            } else {
+                // Keep optional but allow 0
+                input.removeAttribute('required');
+                input.setAttribute('min', '0');
+            }
+        });
+    }
+    
+    dailyPaymentsInput.addEventListener('input', updatePointsFieldValidation);
+    dailyPaymentsInput.addEventListener('change', updatePointsFieldValidation);
+    
     // Initial calculation
     recalculateConfiguredCashback();
+    updatePointsFieldValidation();
 }
 
 // Cashback user management
 const cashbackContainer = document.getElementById('cashbackUsersContainer');
 const addCashbackBtn = document.getElementById('addCashbackUserBtn');
 
-// Show remove buttons if there are multiple entries
+// Show remove buttons - always show delete button
 function updateRemoveButtons() {
     const entries = cashbackContainer.querySelectorAll('.cashback-user-entry');
     entries.forEach((entry) => {
         const removeBtn = entry.querySelector('.remove-cashback-user');
-        if (entries.length > 1) {
-            removeBtn.style.display = 'block';
-        } else {
-            removeBtn.style.display = 'none';
-        }
+        // Always show delete button
+        removeBtn.style.display = 'block';
     });
 }
 
@@ -557,10 +574,9 @@ if (addCashbackBtn) {
 document.addEventListener('click', function(e) {
     if (e.target.closest('.remove-cashback-user')) {
         const container = document.getElementById('cashbackUsersContainer');
-        if (container.children.length > 1) {
-            e.target.closest('.cashback-user-entry').remove();
-            updateRemoveButtons();
-        }
+        // Allow deletion even if only one entry exists
+        e.target.closest('.cashback-user-entry').remove();
+        updateRemoveButtons();
     }
 });
 
@@ -632,11 +648,11 @@ document.querySelectorAll('.add-template-btn').forEach(btn => {
                     </div>
                 <div class="col-md-5 mb-2">
                     <label class="form-label small">Points</label>
-                    <input type="number" class="form-control form-control-sm" 
+                    <input type="number" class="form-control form-control-sm cashback-points-input" 
                            name="cashback_points[]" 
-                           step="0.01" min="0.01" 
+                           step="0.01" min="0" 
                            value="${points.toFixed(2)}" 
-                           placeholder="0.00" required>
+                           placeholder="0.00">
                 </div>
                 <div class="col-md-2 mb-2 d-flex align-items-end">
                     <button type="button" class="btn btn-danger btn-sm w-100 remove-cashback-user">

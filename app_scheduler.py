@@ -21,6 +21,7 @@ from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 import atexit
 import logging
+import os
 
 # Configure logging
 logging.basicConfig()
@@ -193,12 +194,21 @@ def init_scheduler(app):
     The scheduler runs in a background thread within the Flask process.
     Schedule times are read from the first admin user's ReportPreference.
     
+    In development mode with Flask's auto-reloader, this prevents duplicate
+    scheduler initialization by only running in the main process.
+    
     Args:
         app: Flask application instance
         
     Returns:
         scheduler: BackgroundScheduler instance
     """
+    # In Flask development mode with auto-reload, skip initialization in reloader process
+    # WERKZEUG_RUN_MAIN is set to 'true' only in the main process, not the reloader
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true' and app.debug:
+        print("⏭️  Skipping scheduler initialization in Flask reloader process")
+        return scheduler
+    
     try:
         # Default times
         morning_hour = 8

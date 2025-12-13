@@ -75,6 +75,7 @@
                             <th>{{ _('Principal') }}</th>
                             <th>{{ _('Monthly Interest') }} (Rate%)</th>
                             <th>{{ _('Interest Pending') }}</th>
+                            <th>{{ _('Last Paid Date') }} ({{ _('Amount') }})</th>
                             <th>{{ _('Creation Date') }}</th>
                         </tr>
                     </thead>
@@ -94,6 +95,16 @@
                                 <span class="{% if data.interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">
                                     <strong>₹{{ "%.2f"|format(data.interest_pending) }}</strong>
                                 </span>
+                            </td>
+                            <td>
+                                {% if data.last_paid_date %}
+                                    {{ data.last_paid_date.strftime('%Y-%m-%d') }}
+                                    {% if data.last_paid_amount %}
+                                        <span class="text-muted">(₹{{ "%.2f"|format(data.last_paid_amount) }})</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
                             </td>
                             <td>{{ data.loan.created_at.strftime('%Y-%m-%d') }}</td>
                         </tr>

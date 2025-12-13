@@ -65,6 +65,16 @@
                 <div class="col-md-2 mb-3">
                     <div class="card text-center">
                         <div class="card-body">
+                            <h5 class="card-title text-danger">
+                                ₹{{ "%.2f"|format(total_interest_pending) }}
+                            </h5>
+                            <p class="card-text">{{ _('Total Interest Pending') }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
                             <h5 class="card-title" style="color: #5f1e67;">
                                 <i class="fas fa-coins me-1"></i>₹{{ "%.2f"|format(total_cashback) }}
                             </h5>
@@ -258,17 +268,6 @@
                                                 </a>
                                             </th>
                                             <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='loan_type', order=('asc' if request.args.get('sort') == 'loan_type' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Type
-                                                    {% if request.args.get('sort') == 'loan_type' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
-                                            <th>
                                                 <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='principal', order=('asc' if request.args.get('sort') == 'principal' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
                                                     Principal
@@ -290,30 +289,11 @@
                                                     {% endif %}
                                                 </a>
                                             </th>
-                                            <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='interest_rate', order=('asc' if request.args.get('sort') == 'interest_rate' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Interest Rate
-                                                    {% if request.args.get('sort') == 'interest_rate' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
+                                            <th>Interest Amount (Rate%)</th>
                                             <th>Interest Paid</th>
+                                            <th>Interest Pending</th>
                                             <th>Cashback</th>
-                                            <th>
-                                                <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='frequency', order=('asc' if request.args.get('sort') == 'frequency' and request.args.get('order') == 'desc' else 'desc')) }}" 
-                                                   class="text-decoration-none text-dark">
-                                                    Frequency
-                                                    {% if request.args.get('sort') == 'frequency' %}
-                                                        <i class="fas fa-sort-{{ 'up' if request.args.get('order') == 'asc' else 'down' }} ms-1"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-sort ms-1 text-muted"></i>
-                                                    {% endif %}
-                                                </a>
-                                            </th>
+                                            <th>Last Paid Date (Amount)</th>
                                             <th>
                                                 <a href="{{ url_for('admin_loans', instance_name=instance_name, loan_type=request.args.get('loan_type', ''), frequency=request.args.get('frequency', ''), customer=request.args.get('customer', ''), loan_name=request.args.get('loan_name', ''), min_rate=request.args.get('min_rate', ''), max_rate=request.args.get('max_rate', ''), status=request.args.get('status', ''), sort='created', order=('asc' if request.args.get('sort') == 'created' and request.args.get('order') == 'desc' else 'desc')) }}" 
                                                    class="text-decoration-none text-dark">
@@ -332,7 +312,7 @@
                                     <tbody>
                                         {% for loan_data in loans %}
                                         {% set loan = loan_data.loan %}
-                                        <tr>
+                                        <tr class="clickable-row" data-href="{{ url_for('admin_view_loan', instance_name=instance_name, loan_id=loan.id) }}" style="cursor: pointer;">
                                             <td>
                                                 <strong>#{{ loan.id }}</strong>
                                             </td>
@@ -347,11 +327,6 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ 'primary' if loan.loan_type == 'regular' else 'info' }}">
-                                                    {{ 'Regular' if loan.loan_type == 'regular' else 'Interest-Only' }}
-                                                </span>
-                                            </td>
-                                            <td>
                                                 <strong>₹{{ "%.2f"|format(loan.principal_amount) }}</strong>
                                             </td>
                                             <td>
@@ -360,13 +335,16 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-info">
-                                                    {{ "%.2f"|format(loan.interest_rate * 100) }}%
-                                                </span>
+                                                ₹{{ "%.2f"|format(loan_data.monthly_interest) }} ({{ "%.2f"|format(loan.interest_rate * 100) }}%)
                                             </td>
                                             <td>
                                                 <span class="badge bg-success">
                                                     ₹{{ "%.2f"|format(loan_data.interest_paid) }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="{% if loan_data.interest_pending > 0 %}text-danger{% else %}text-success{% endif %}">
+                                                    <strong>₹{{ "%.2f"|format(loan_data.interest_pending) }}</strong>
                                                 </span>
                                             </td>
                                             <td>
@@ -375,9 +353,14 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-{{ 'success' if loan.payment_frequency == 'daily' else 'warning' }}">
-                                                    {{ loan.payment_frequency.title() }}
-                                                </span>
+                                                {% if loan_data.last_paid_date %}
+                                                    {{ loan_data.last_paid_date.strftime('%Y-%m-%d') }}
+                                                    {% if loan_data.last_paid_amount %}
+                                                        <span class="text-muted">(₹{{ "%.2f"|format(loan_data.last_paid_amount) }})</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
                                             </td>
                                             <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
                                             <td>
@@ -519,7 +502,25 @@ function calculateInterest(loanId) {
         `;
     }, 1000);
 }
+
+// Make table rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.clickable-row');
+    rows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on buttons or links
+            if (e.target.closest('button, a, .btn-group')) {
+                return;
+            }
+            const href = this.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+    });
+});
 </script>
+{% endblock %}
 
 <!-- Close Loan Confirmation Modals -->
 {% for loan_data in loans %}
@@ -618,4 +619,4 @@ function calculateInterest(loanId) {
     </div>
 </div>
 {% endfor %}
-{% endblock %}
+
