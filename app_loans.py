@@ -492,6 +492,8 @@ def register_routes():
         loan_name = request.args.get('loan_name', '')
         min_rate = request.args.get('min_rate', '')
         max_rate = request.args.get('max_rate', '')
+        min_pending = request.args.get('min_pending', '')
+        max_pending = request.args.get('max_pending', '')
         status = request.args.get('status', '')
         
         # Build query
@@ -602,6 +604,30 @@ def register_routes():
                 'last_paid_amount': last_paid_amount
             })
         
+        # Apply interest pending filter (after calculating interest pending)
+        if min_pending:
+            try:
+                min_pending_decimal = Decimal(str(min_pending))
+                loans_with_interest = [
+                    item for item in loans_with_interest 
+                    if item['interest_pending'] >= min_pending_decimal
+                ]
+            except (ValueError, InvalidOperation):
+                pass  # Ignore invalid input
+        if max_pending:
+            try:
+                max_pending_decimal = Decimal(str(max_pending))
+                loans_with_interest = [
+                    item for item in loans_with_interest 
+                    if item['interest_pending'] <= max_pending_decimal
+                ]
+            except (ValueError, InvalidOperation):
+                pass  # Ignore invalid input
+        
+        # Recalculate totals after filtering
+        total_cashback = sum(Decimal(str(item['cashback_total'])) for item in loans_with_interest)
+        total_interest_pending = sum(Decimal(str(item['interest_pending'])) for item in loans_with_interest)
+        
         return render_template('admin/loans.html', 
                              loans=loans_with_interest, 
                              customers=customers,
@@ -611,6 +637,8 @@ def register_routes():
                              loan_name=loan_name,
                              min_rate=min_rate,
                              max_rate=max_rate,
+                             min_pending=min_pending,
+                             max_pending=max_pending,
                              status=status,
                              sort_by=sort_by,
                              sort_order=sort_order,
