@@ -30,7 +30,7 @@
                         <i class="fas fa-coins me-1"></i>Cashback Config
                     </a>
                     {% if loan.status != 'closed' and loan.remaining_principal > 0 %}
-                    <a href="{{ url_for('admin_split_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-warning">
+                    <a href="{{ url_for('admin_split_loan', instance_name=instance_name, loan_id=loan.id) }}" class="btn btn-warning me-2">
                         <i class="fas fa-code-branch me-1"></i>Split Loan
                     </a>
                     {% endif %}
@@ -822,4 +822,8 @@
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
 {% endblock %}

@@ -477,71 +477,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-function viewLoanDetails(loanId) {
-    // Redirect to the loan details page
-    window.location.href = `/{{ instance_name }}/admin/loan/${loanId}`;
-}
-
-function viewPayments(loanId) {
-    // Placeholder for payment history
-    alert('Payment history for loan #' + loanId + ' will be displayed here');
-}
-
-function calculateInterest(loanId) {
-    // Placeholder for interest calculation
-    document.getElementById('interestContent').innerHTML = `
-        <div class="text-center">
-            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-            <p>Calculating interest...</p>
-        </div>
-    `;
-    
-    const modal = new bootstrap.Modal(document.getElementById('interestModal'));
-    modal.show();
-    
-    // Simulate API call
-    setTimeout(() => {
-        document.getElementById('interestContent').innerHTML = `
-            <div class="row text-center">
-                <div class="col-6">
-                    <h6>Daily Interest</h6>
-                    <h4 class="text-success">₹16.44</h4>
-                </div>
-                <div class="col-6">
-                    <h6>Monthly Interest</h6>
-                    <h4 class="text-warning">₹500.00</h4>
-                </div>
-            </div>
-            <hr>
-            <p class="text-muted text-center">
-                Based on current principal and interest rate
-            </p>
-        `;
-    }, 1000);
-}
-
-// Make table rows clickable
-document.addEventListener('DOMContentLoaded', function() {
-    const rows = document.querySelectorAll('.clickable-row');
-    rows.forEach(row => {
-        row.addEventListener('click', function(e) {
-            // Don't navigate if clicking on buttons or links
-            if (e.target.closest('button, a, .btn-group')) {
-                return;
-            }
-            const href = this.getAttribute('data-href');
-            if (href) {
-                window.location.href = href;
-            }
-        });
-    });
-});
-</script>
-{% endblock %}
 
 <!-- Close Loan Confirmation Modals -->
 {% for loan_data in loans %}
@@ -640,4 +575,70 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 {% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function viewLoanDetails(loanId) {
+    // Redirect to the loan details page
+    window.location.href = `/{{ instance_name }}/admin/loan/${loanId}`;
+}
+
+function viewPayments(loanId) {
+    // Placeholder for payment history
+    alert('Payment history for loan #' + loanId + ' will be displayed here');
+}
+
+function calculateInterest(loanId) {
+    // Placeholder for interest calculation
+    document.getElementById('interestContent').innerHTML = `
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+            <p>Calculating interest...</p>
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('interestModal'));
+    modal.show();
+    
+    // Simulate API call
+    setTimeout(() => {
+        document.getElementById('interestContent').innerHTML = `
+            <div class="row text-center">
+                <div class="col-6">
+                    <h6>Daily Interest</h6>
+                    <h4 class="text-success">₹16.44</h4>
+                </div>
+                <div class="col-6">
+                    <h6>Monthly Interest</h6>
+                    <h4 class="text-warning">₹500.00</h4>
+                </div>
+            </div>
+            <hr>
+            <p class="text-muted text-center">
+                Based on current principal and interest rate
+            </p>
+        `;
+    }, 1000);
+}
+
+// Make table rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.clickable-row');
+    rows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on buttons or links
+            if (e.target.closest('button, a, .btn-group')) {
+                return;
+            }
+            const href = this.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
 
