@@ -8,7 +8,7 @@ This module handles all payment-related functionality including:
 - Payment routes
 """
 
-from flask import request, redirect, url_for, flash, jsonify, render_template, abort, g
+from flask import request, redirect, url_for, flash, jsonify, render_template, abort, g, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
 from decimal import Decimal
@@ -156,6 +156,7 @@ def register_routes():
         pending_principal = sum(payment.principal_amount for payment in payments if payment.status == 'pending')
         pending_interest = sum(payment.interest_amount for payment in payments if payment.status == 'pending')
         
+        show_interest_rate = current_app.config.get('CUSTOMER_SHOW_INTEREST_RATE', False)
         return render_template('customer/loan_detail.html',
                              loan=loan,
                              daily_interest=daily_interest,
@@ -167,7 +168,8 @@ def register_routes():
                              verified_principal=verified_principal,
                              pending_principal=pending_principal,
                              pending_interest=pending_interest,
-                             instance_name=instance_name)
+                             instance_name=instance_name,
+                             show_interest_rate_to_customer=show_interest_rate)
 
     @app.route('/<instance_name>/customer/loan/<int:loan_id>/gpay/initiate', methods=['POST'])
     @login_required

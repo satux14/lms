@@ -66,6 +66,10 @@ app.config['GOOGLE_PAY_MERCHANT_NAME'] = os.environ.get('GOOGLE_PAY_MERCHANT_NAM
 app.config['GOOGLE_PAY_MERCHANT_CODE'] = os.environ.get('GOOGLE_PAY_MERCHANT_CODE', '0000')  # MCC code
 app.config['GOOGLE_PAY_CALLBACK_URL'] = os.environ.get('GOOGLE_PAY_CALLBACK_URL', '')
 
+# Customer UI: show interest rate (%) to customers (Monthly Interest rate%, Interest Rate row)
+# Set to true to show; false to show only amounts. Code remains, just hidden when false.
+app.config['CUSTOMER_SHOW_INTEREST_RATE'] = os.environ.get('CUSTOMER_SHOW_INTEREST_RATE', 'false').lower() == 'true'
+
 # Initialize extensions without database URI first
 db = SQLAlchemy()
 login_manager = LoginManager()

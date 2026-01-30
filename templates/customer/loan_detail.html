@@ -68,10 +68,12 @@
                                             <td><strong>{{ _('Remaining Balance') }}:</strong></td>
                                             <td class="text-warning">₹{{ "%.2f"|format(loan.remaining_principal) }}</td>
                                         </tr>
+                                        {% if show_interest_rate_to_customer %}
                                         <tr>
                                             <td><strong>{{ _('Interest Rate') }}:</strong></td>
                                             <td>{{ "%.2f"|format(loan.interest_rate * 100) }}% {{ _('Annual') }}</td>
                                         </tr>
+                                        {% endif %}
                                         <tr>
                                             <td><strong>{{ _('Payment Frequency') }}:</strong></td>
                                             <td>

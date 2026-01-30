@@ -9,7 +9,7 @@ This module handles all loan-related functionality including:
 - Loan Excel report generation
 """
 
-from flask import request, redirect, url_for, flash, render_template, send_file, abort, g
+from flask import request, redirect, url_for, flash, render_template, send_file, abort, g, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
@@ -1289,9 +1289,11 @@ def register_routes():
                 'last_paid_amount': last_paid_amount
             })
         
+        show_interest_rate = current_app.config.get('CUSTOMER_SHOW_INTEREST_RATE', False)
         return render_template('customer/all_loans.html',
                              loan_data=loan_data,
-                             instance_name=instance_name)
+                             instance_name=instance_name,
+                             show_interest_rate_to_customer=show_interest_rate)
 
 
     @app.route('/<instance_name>/customer/loan/<int:loan_id>')
@@ -1399,6 +1401,7 @@ def register_routes():
             CashbackTransaction.transaction_type.in_(['loan_interest_auto', 'loan_interest_manual'])
         ).scalar() or Decimal('0')
         
+        show_interest_rate = current_app.config.get('CUSTOMER_SHOW_INTEREST_RATE', False)
         return render_template('customer/loan_detail.html', 
                              loan=loan,
                              daily_interest=daily_interest,
@@ -1418,7 +1421,8 @@ def register_routes():
                              loan_cashback_total=float(loan_cashback_total),
                              payment_cashback_map=payment_cashback_map,
                              has_any_cashback=has_any_cashback,
-                             instance_name=instance_name)
+                             instance_name=instance_name,
+                             show_interest_rate_to_customer=show_interest_rate)
 
 
     @app.route('/<instance_name>/customer/loan/<int:loan_id>/edit-notes', methods=['GET', 'POST'])
